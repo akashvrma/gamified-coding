@@ -46,6 +46,27 @@ function wireEditorKeys(editor, afterEdit) {
 
 const EDITOR_LABEL = 'Python code editor. Tab inserts four spaces; press Escape then Tab to move focus out.';
 
+// Bind the small "Summoning the interpreter…" status line inside a forge
+// to runner state, and drop the listener when the view's DOM is replaced.
+function wireRunnerLabel(host) {
+  const stateLabel = host.querySelector('[data-role="runner-state"]');
+  if (!stateLabel) return;
+  const update = (s) => {
+    stateLabel.textContent = {
+      cold: '',
+      summoning: 'Summoning the interpreter…',
+      ready: 'The interpreter is bound and listening.',
+      dead: 'Interpreter unreachable — spells cannot be cast.',
+    }[s] || '';
+  };
+  update(runnerStatus());
+  const unsubscribe = onRunnerStatus(update);
+  const observer = new MutationObserver(() => {
+    if (!document.body.contains(host)) { unsubscribe(); observer.disconnect(); }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+}
+
 // ---------------- onboarding ----------------
 
 export function renderOnboarding(root, onDone) {
@@ -328,7 +349,6 @@ function mountChallenge(host, lesson, onChange) {
   const consoleBox = host.querySelector('[data-role="console"]');
   const verdictBox = host.querySelector('[data-role="verdict"]');
   const hintsBox = host.querySelector('[data-role="hints"]');
-  const stateLabel = host.querySelector('[data-role="runner-state"]');
   const runBtn = host.querySelector('[data-act="run"]');
 
   editor.value = loadDraft(lesson.id, ch.starter);
@@ -350,21 +370,7 @@ function mountChallenge(host, lesson, onChange) {
   wireEditorKeys(editor, () => { saveDraft(lesson.id, editor.value); syncGutter(); });
   syncGutter();
 
-  const updateRunnerLabel = (s) => {
-    stateLabel.textContent = {
-      cold: '',
-      summoning: 'Summoning the interpreter…',
-      ready: 'The interpreter is bound and listening.',
-      dead: 'Interpreter unreachable — spells cannot be cast.',
-    }[s] || '';
-  };
-  updateRunnerLabel(runnerStatus());
-  const unsubscribe = onRunnerStatus(updateRunnerLabel);
-  // Views are re-rendered wholesale; drop the listener when this DOM dies.
-  const observer = new MutationObserver(() => {
-    if (!document.body.contains(host)) { unsubscribe(); observer.disconnect(); }
-  });
-  observer.observe(document.body, { childList: true, subtree: true });
+  wireRunnerLabel(host);
 
   let hintIdx = 0;
   host.querySelector('[data-act="hint"]').addEventListener('click', () => {
@@ -735,6 +741,7 @@ function mountBossForge(host, pseudo, onPass) {
   editor.addEventListener('scroll', () => { gutter.scrollTop = editor.scrollTop; });
   wireEditorKeys(editor, () => { saveDraft(pseudo.id, editor.value); syncGutter(); });
   syncGutter();
+  wireRunnerLabel(host);
 
   host.querySelector('[data-act="reset"]').addEventListener('click', () => {
     editor.value = ch.starter;
@@ -859,7 +866,7 @@ export function renderCodex(root) {
     const unlocked = S.isActUnlocked(curriculum, i);
     if (!unlocked) {
       return `<section class="codex-act">
-        <h2>${act.sigil} ${escapeHtml(act.title)}</h2>
+        <h2>${escapeHtml(act.sigil)} ${escapeHtml(act.title)}</h2>
         <p class="codex-locked-note">These pages are still sealed. Reach Act ${escapeHtml(act.numeral)} to read them.</p>
       </section>`;
     }
@@ -869,7 +876,7 @@ export function renderCodex(root) {
         <span class="codex-def">${prose(c.def).replace(/^<p>|<\/p>$/g, '')}</span>
       </div>`).join('');
     return `<section class="codex-act">
-      <h2>${act.sigil} ${escapeHtml(act.title)}</h2>
+      <h2>${escapeHtml(act.sigil)} ${escapeHtml(act.title)}</h2>
       ${entries}
     </section>`;
   }).join('');

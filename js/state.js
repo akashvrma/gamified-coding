@@ -144,7 +144,9 @@ export function markQuiz(lessonId, perfect) {
   const rec = lessonRec(lessonId);
   const first = !rec.quiz;
   rec.quiz = true;
-  if (perfect && !rec.perfectQuiz) {
+  // Only a flawless FIRST attempt counts — retakes with the answers
+  // already revealed must not feed the Legilimens achievement.
+  if (first && perfect) {
     rec.perfectQuiz = true;
     state.stats.quizzesPerfect += 1;
   }

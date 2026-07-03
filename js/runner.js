@@ -33,6 +33,10 @@ function spawn() {
   worker.onmessage = (e) => {
     const msg = e.data || {};
     if (msg.type === 'ready') {
+      // A summoning we already declared dead must not speak: a late
+      // 'ready' after the boot timeout would flip status while
+      // bootPromise stays resolved-false, wedging runPython.
+      if (status === 'dead') return;
       setStatus('ready');
     } else if (msg.type === 'fatal') {
       setStatus('dead');
@@ -76,6 +80,7 @@ export function preboot() {
     const bootTimer = setTimeout(() => {
       if (status !== 'ready') {
         setStatus('dead');
+        try { worker.terminate(); } catch { /* already gone */ }
         failAll('The summoning took too long — check your connection to the outer world.');
         resolve(false);
       }
@@ -88,20 +93,20 @@ export function preboot() {
   return bootPromise;
 }
 
+const UNREACHABLE = {
+  ok: false,
+  stage: 'engine',
+  output: '',
+  error: 'The interpreter is unreachable. Reload the page, or study on — '
+    + 'you can still read the scrolls and face the quizzes.',
+};
+
 // Run user code (+ optional validation). Resolves to
 // { ok, stage, output, error } — never rejects.
 export async function runPython(code, validation = '') {
-  if (status === 'dead') {
-    return {
-      ok: false,
-      stage: 'engine',
-      output: '',
-      error: 'The interpreter is unreachable. Reload the page, or study on — '
-        + 'you can still read the scrolls and face the quizzes.',
-    };
-  }
+  if (status === 'dead') return { ...UNREACHABLE };
   const booted = await preboot();
-  if (!booted) return runPython(code, validation); // status is now 'dead'
+  if (!booted) return { ...UNREACHABLE };
   seq += 1;
   const id = seq;
   return new Promise((resolve) => {

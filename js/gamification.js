@@ -157,19 +157,33 @@ let headerRefresh = () => {};
 export function onHeaderRefresh(fn) { headerRefresh = fn; }
 
 export function emit(event) {
+  // Any recorded deed counts as study for the day's streak. The 'streak'
+  // event itself is skipped: dailyTouch emits it, and same-day re-touches
+  // are no-ops, so this cannot loop.
+  if (event.type !== 'streak') dailyTouch();
   const st = S.getState();
   for (const ach of ACHIEVEMENTS) {
     if (S.hasAchievement(ach.id)) continue;
     let hit = false;
     try { hit = Boolean(ach.check(st, event)); } catch { hit = false; }
     if (hit && S.unlockAchievement(ach.id)) {
+      const before = rankFor(S.getState().xp);
       S.addXp(ach.xp);
+      const after = rankFor(S.getState().xp);
       toast({
         icon: ach.icon,
         title: `Achievement — ${ach.title}`,
         sub: `${ach.desc} (+${ach.xp} XP)`,
         kind: 'toast-ach',
       });
+      if (after.index > before.index) {
+        toast({
+          icon: '🜏',
+          title: 'You have ascended',
+          sub: `New rank: ${after.title}`,
+          kind: 'toast-level',
+        });
+      }
     }
   }
   headerRefresh();

@@ -11,7 +11,7 @@ import { toast } from './ui.js';
 // of the Codex (see tools/validate_content.mjs, which prints total XP).
 
 export const RANKS = [
-  { xp: 0,    title: 'Muggle of the Shire' },
+  { xp: 0,    title: 'Novice at the Threshold' },
   { xp: 150,  title: 'Initiate of Shadows' },
   { xp: 400,  title: 'Apprentice of the Dark Arts' },
   { xp: 800,  title: 'Wraith-Touched' },
@@ -48,7 +48,7 @@ export function rankFor(xp) {
 export const ACHIEVEMENTS = [
   {
     id: 'first-spell', icon: '🕯️', xp: 25,
-    title: 'The First Incantation',
+    title: 'First Words in the Dark',
     desc: 'Run your first piece of Python. The dark takes notice.',
     check: (st, ev) => ev.type === 'run',
   },
@@ -90,8 +90,8 @@ export const ACHIEVEMENTS = [
   },
   {
     id: 'act4-fall', icon: '👑', xp: 60,
-    title: 'No Man Am I',
-    desc: 'Defeat the boss of Act IV. Prophecies are just untested assumptions.',
+    title: 'The Crown Rings Hollow',
+    desc: 'Defeat the boss of Act IV. The prophecy that shielded him was never tested against you.',
     check: (st, ev) => ev.type === 'boss-defeated' && ev.actId === 'act4',
   },
   {
@@ -102,7 +102,7 @@ export const ACHIEVEMENTS = [
   },
   {
     id: 'streak-3', icon: '🌒', xp: 30,
-    title: 'Constant Vigilance',
+    title: 'The Watch Unbroken',
     desc: 'Study three days in a row.',
     check: (st) => st.streak.count >= 3,
   },
@@ -139,7 +139,7 @@ export const ACHIEVEMENTS = [
   },
   {
     id: 'all-trials', icon: '🌋', xp: 150,
-    title: 'One Codebase to Rule Them All',
+    title: 'No Trial Left Standing',
     desc: 'Solve every coding trial in the Codex.',
     check: (st) => st.stats.challengesSolved >= 35,
   },

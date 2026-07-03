@@ -14,7 +14,7 @@
   --line-soft: #1a1d2b;
   --ink: #cfd2dd;
   --ink-dim: #8b8fa3;
-  --ink-faint: #5c6075;
+  --ink-faint: #7d829b;
   --parchment: #e8dfc8;
   --accent: #c98a2e;           /* ember (default / Ring) */
   --accent-bright: #f0b45a;
@@ -146,7 +146,7 @@ button { font-family: inherit; }
 .site-footer p { margin: 0.2rem 0; }
 .footer-fine { font-size: 0.7rem; opacity: 0.7; }
 
-.noscript { text-align: center; color: var(--danger); font-family: var(--serif); font-size: 1.2rem; }
+.noscript { text-align: center; color: #e07a7a; font-family: var(--serif); font-size: 1.2rem; }
 
 /* ---------------- shared components ---------------- */
 
@@ -263,7 +263,7 @@ pre.codeblock code { font-family: inherit; }
 
 .tok-kw { color: #c586c0; }
 .tok-str { color: #ce9178; }
-.tok-com { color: #5f7355; font-style: italic; }
+.tok-com { color: #79936d; font-style: italic; }
 .tok-num { color: #b5cea8; }
 .tok-fn { color: #dcdcaa; }
 .tok-cls { color: #4ec9b0; }
@@ -292,6 +292,10 @@ pre.codeblock code { font-family: inherit; }
   border: 1px solid var(--code-line);
   border-radius: 0 0 8px 8px;
   overflow: hidden;
+}
+.editor-wrap:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-dim);
 }
 .editor-gutter {
   padding: 0.9rem 0.4rem 0.9rem 0.8rem;
@@ -354,7 +358,7 @@ details.solution-reveal summary {
 }
 details.solution-reveal summary:hover { color: var(--danger); }
 details.solution-reveal .solution-warning {
-  font-size: 0.8rem; color: var(--danger); margin: 0.5rem 0;
+  font-size: 0.8rem; color: #e07a7a; margin: 0.5rem 0;
 }
 
 /* ---------------- quiz ---------------- */
@@ -392,7 +396,7 @@ details.solution-reveal .solution-warning {
 }
 .q-result { margin-top: 0.5rem; font-size: 0.85rem; }
 .q-result.ok { color: var(--success); }
-.q-result.bad { color: var(--danger); }
+.q-result.bad { color: #e07a7a; }
 
 /* ---------------- map / act cards ---------------- */
 
@@ -527,6 +531,8 @@ details.solution-reveal .solution-warning {
 .sanctum-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-top: 1.5rem; }
 @media (max-width: 720px) { .sanctum-grid { grid-template-columns: 1fr; } }
 
+.panel-h { font-size: 1.15rem; margin: 0 0 0.5rem; }
+
 .stat-row { display: flex; justify-content: space-between; padding: 0.45rem 0; border-bottom: 1px solid var(--line-soft); font-size: 0.92rem; }
 .stat-row:last-child { border-bottom: none; }
 .stat-row .stat-k { color: var(--ink-dim); }
@@ -570,7 +576,7 @@ details.solution-reveal .solution-warning {
 .onboarding h1 { font-size: 2.3rem; margin-bottom: 0.4rem; }
 .onboarding .ob-lead { font-family: var(--serif); font-style: italic; color: var(--ink-dim); }
 .ob-form { margin-top: 2rem; text-align: left; }
-.ob-form label { display: block; font-size: 0.8rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--ink-faint); margin: 1.3rem 0 0.4rem; }
+.ob-form label, .ob-form .ob-label { display: block; font-size: 0.8rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--ink-faint); margin: 1.3rem 0 0.4rem; }
 .ob-form input[type="text"] {
   width: 100%; padding: 0.7rem 1rem;
   background: var(--bg-inset); border: 1px solid var(--line);
@@ -590,7 +596,8 @@ details.solution-reveal .solution-warning {
 .allegiance-card.chosen-wand { border-color: #3da35f; box-shadow: 0 0 22px rgba(61, 163, 95, 0.25); }
 .allegiance-card.chosen-ring { border-color: #c98a2e; box-shadow: 0 0 22px rgba(201, 138, 46, 0.25); }
 .allegiance-card .al-icon { font-size: 2.2rem; }
-.allegiance-card h3 { margin: 0.5rem 0 0.3rem; }
+.allegiance-card h2 { margin: 0.5rem 0 0.3rem; font-size: 1.15rem; }
+.allegiance-card[aria-checked="true"] h2::after { content: ' ✓'; color: var(--accent-bright); }
 .allegiance-card p { font-size: 0.82rem; color: var(--ink-dim); margin: 0; }
 .ob-submit { margin-top: 2rem; text-align: center; }
 

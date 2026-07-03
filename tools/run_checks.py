@@ -15,8 +15,19 @@ import traceback
 from contextlib import redirect_stdout
 
 
+def sweep_files():
+    """Mirror of the worker's per-run file sweep — keep in sync."""
+    for f in os.listdir("."):
+        if os.path.isfile(f):
+            try:
+                os.remove(f)
+            except OSError:
+                pass
+
+
 def run_pair(user_code: str, validation_code: str):
     """Mirror of the worker harness in js/worker.js — keep in sync."""
+    sweep_files()
     ns = {"__name__": "__main__"}
     buf = io.StringIO()
     try:

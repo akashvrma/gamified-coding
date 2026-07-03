@@ -33,7 +33,10 @@ onHeaderRefresh(refreshHeader);
 
 function setNavActive(key) {
   nav.querySelectorAll('a').forEach((a) => {
-    a.classList.toggle('active', a.dataset.nav === key);
+    const active = a.dataset.nav === key;
+    a.classList.toggle('active', active);
+    if (active) a.setAttribute('aria-current', 'page');
+    else a.removeAttribute('aria-current');
   });
 }
 

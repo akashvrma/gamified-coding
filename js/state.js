@@ -43,12 +43,19 @@ function load() {
     const parsed = JSON.parse(raw);
     // Merge onto defaults so older saves survive schema additions.
     const base = defaultState();
-    return {
+    const merged = {
       ...base,
       ...parsed,
       streak: { ...base.streak, ...(parsed.streak || {}) },
       stats: { ...base.stats, ...(parsed.stats || {}) },
     };
+    // Coerce numerics so a hand-edited save can't smuggle markup into
+    // render paths that interpolate these values.
+    merged.xp = Number(merged.xp) || 0;
+    for (const k of Object.keys(base.stats)) merged.stats[k] = Number(merged.stats[k]) || 0;
+    merged.streak.count = Number(merged.streak.count) || 0;
+    merged.streak.best = Number(merged.streak.best) || 0;
+    return merged;
   } catch {
     return defaultState();
   }

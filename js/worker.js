@@ -13,11 +13,26 @@ const PYODIDE_URL = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/';
 // the SAME namespace with `_stdout` bound to everything printed.
 // Validation failures surface as AssertionError messages.
 const HARNESS = `
-import sys, io, json, traceback
+import sys, io, json, os, traceback
+
+def __sweep_files():
+    # Each casting begins with the basin swept clean: remove files the
+    # previous run left in the working directory so runs stay isolated
+    # (the Pensieve lessons rely on this).
+    try:
+        for f in os.listdir("."):
+            if os.path.isfile(f):
+                try:
+                    os.remove(f)
+                except OSError:
+                    pass
+    except OSError:
+        pass
 
 def __dark_run():
     user_code = globals().get("USER_CODE", "")
     validation_code = globals().get("VALIDATION_CODE", "")
+    __sweep_files()
     ns = {"__name__": "__main__"}
     buf = io.StringIO()
     real_stdout, real_stderr = sys.stdout, sys.stderr

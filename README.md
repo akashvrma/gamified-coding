@@ -54,7 +54,7 @@ of code with no hints and no mercy.
 
 ## The dark bargain (gamification)
 
-- **XP and twelve ranks**, from *Muggle of the Shire* to *The Nameless One*.
+- **XP and twelve ranks**, from *Novice at the Threshold* to *The Nameless One*.
 - **Seventeen achievements** — some earned by skill, some by scars
   (fail ten spells and you are *Splinched*).
 - **Allegiance**: swear to the Path of the Wand or the Path of the Ring;

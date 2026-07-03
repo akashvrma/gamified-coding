@@ -66,7 +66,7 @@ export default {
     hints: ['hint 1 (gentle nudge)', 'hint 2 (concrete)', 'hint 3 (nearly the answer)'],
     validation: py`# assertions, see §5`,
     successText: 'one dark, satisfying sentence',
-    xp: 60,                // 50–90; later lessons higher
+    xp: 60,                // 50–100; later lessons higher
   },
   quiz: [                  // 3–4 questions
     {

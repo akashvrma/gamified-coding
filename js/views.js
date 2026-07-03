@@ -26,14 +26,34 @@ function clearDraft(id) {
   try { localStorage.removeItem(draftKey(id)); } catch { /* fine */ }
 }
 
+// Tab inserts spaces but must not trap keyboard users (WCAG 2.1.2):
+// Shift+Tab always moves focus out, and Escape arms a one-shot
+// pass-through so the next Tab also leaves the editor.
+function wireEditorKeys(editor, afterEdit) {
+  let escapeArmed = false;
+  editor.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { escapeArmed = true; return; }
+    if (e.key !== 'Tab') { escapeArmed = false; return; }
+    if (e.shiftKey || escapeArmed) { escapeArmed = false; return; }
+    e.preventDefault();
+    const { selectionStart: s, selectionEnd: eIdx, value } = editor;
+    editor.value = `${value.slice(0, s)}    ${value.slice(eIdx)}`;
+    editor.selectionStart = s + 4;
+    editor.selectionEnd = s + 4;
+    afterEdit();
+  });
+}
+
+const EDITOR_LABEL = 'Python code editor. Tab inserts four spaces; press Escape then Tab to move focus out.';
+
 // ---------------- onboarding ----------------
 
 export function renderOnboarding(root, onDone) {
   root.innerHTML = `
     <section class="onboarding">
       <h1>The Dark Codex</h1>
-      <p class="ob-lead">“It is a curious thing, the craft of code. Wands and rings are
-      only vessels — the power was always in the language.”</p>
+      <p class="ob-lead">“A curious craft, code. Wands and rings were only ever vessels —
+      the power was always in the language.”</p>
       <div class="panel ob-form">
         <p>You stand before a book that should not exist: a grimoire that teaches
         <strong>Python</strong>, the serpent-tongue of machines, from first whisper to
@@ -41,19 +61,19 @@ export function renderOnboarding(root, onDone) {
         <label for="ob-name">Your true name</label>
         <input type="text" id="ob-name" maxlength="24" autocomplete="off"
                placeholder="What shall the Codex call you?">
-        <label>Your allegiance</label>
-        <div class="allegiance-row">
-          <div class="allegiance-card" data-allegiance="wand" role="button" tabindex="0">
-            <div class="al-icon">🪄</div>
-            <h3>The Path of the Wand</h3>
+        <span class="ob-label" id="allegiance-label">Your allegiance</span>
+        <div class="allegiance-row" role="radiogroup" aria-labelledby="allegiance-label">
+          <div class="allegiance-card" data-allegiance="wand" role="radio" aria-checked="false" tabindex="0">
+            <div class="al-icon" aria-hidden="true">🪄</div>
+            <h2>The Path of the Wand</h2>
             <p>Forbidden curses, horcruxes, and the long patience of the Dark Arts.
             Your magic glows a sickly green.</p>
           </div>
-          <div class="allegiance-card" data-allegiance="ring" role="button" tabindex="0">
-            <div class="al-icon">💍</div>
-            <h3>The Path of the Ring</h3>
-            <p>Forge-fire, wraiths, and one will to bind them. Your magic burns
-            molten gold.</p>
+          <div class="allegiance-card" data-allegiance="ring" role="radio" aria-checked="false" tabindex="0">
+            <div class="al-icon" aria-hidden="true">💍</div>
+            <h2>The Path of the Ring</h2>
+            <p>Forge-fire, wraiths, and a single will that outlasts its bearers.
+            Your magic burns molten gold.</p>
           </div>
         </div>
         <div class="ob-submit">
@@ -75,8 +95,10 @@ export function renderOnboarding(root, onDone) {
       allegiance = card.dataset.allegiance;
       root.querySelectorAll('.allegiance-card').forEach((c) => {
         c.classList.remove('chosen-wand', 'chosen-ring');
+        c.setAttribute('aria-checked', 'false');
       });
       card.classList.add(allegiance === 'wand' ? 'chosen-wand' : 'chosen-ring');
+      card.setAttribute('aria-checked', 'true');
       document.documentElement.dataset.allegiance = allegiance;
       refresh();
     };
@@ -107,13 +129,13 @@ export function renderHome(root) {
         : `<span class="tag tag-accent">${done ? 'In progress' : 'Open'}</span>`);
     const inner = `
       <article class="act-card ${unlocked ? '' : 'locked'}">
-        <div class="act-sigil">${act.sigil}</div>
+        <div class="act-sigil" aria-hidden="true">${escapeHtml(act.sigil)}</div>
         <div class="act-info">
-          <div class="act-num">Act ${act.numeral} — ${escapeHtml(act.arc)}</div>
+          <div class="act-num">Act ${escapeHtml(act.numeral)} — ${escapeHtml(act.arc)}</div>
           <h2 class="act-name">${escapeHtml(act.title)}</h2>
           <p class="act-tagline">${escapeHtml(act.tagline)}</p>
           <div class="act-meta">
-            <div class="act-progressbar"><i style="width:${pct}%"></i></div>
+            <div class="act-progressbar" aria-hidden="true"><i style="width:${pct}%"></i></div>
             <span class="act-progresstext">${done}/${total} trials</span>
             ${status}
           </div>
@@ -142,7 +164,7 @@ export function renderAct(root, actId) {
     root.innerHTML = `
       <div class="crumbs"><a href="#/">The Map</a> / ${escapeHtml(act.title)}</div>
       <div class="panel center">
-        <h1>The way is shut.</h1>
+        <h1>The seal has not broken.</h1>
         <p class="empty-note">Defeat the warden of the previous act to break this seal.</p>
         <p><a class="btn btn-ghost" href="#/">Return to the map</a></p>
       </div>`;
@@ -184,10 +206,10 @@ export function renderAct(root, actId) {
     </a>`;
 
   root.innerHTML = `
-    <div class="crumbs"><a href="#/">The Map</a> / Act ${act.numeral}</div>
+    <div class="crumbs"><a href="#/">The Map</a> / Act ${escapeHtml(act.numeral)}</div>
     <header class="act-header">
-      <span class="act-num">Act ${act.numeral} — ${escapeHtml(act.arc)}</span>
-      <h1>${act.sigil} ${escapeHtml(act.title)}</h1>
+      <span class="act-num">Act ${escapeHtml(act.numeral)} — ${escapeHtml(act.arc)}</span>
+      <h1>${escapeHtml(act.sigil)} ${escapeHtml(act.title)}</h1>
       <blockquote class="epigraph">${escapeHtml(act.epigraph.text)}
         <cite>— ${escapeHtml(act.epigraph.source)}</cite>
       </blockquote>
@@ -204,7 +226,7 @@ export function renderLesson(root, lessonId) {
   const { act, actIndex, lesson, lessonIndex } = found;
   if (!S.isLessonUnlocked(curriculum, actIndex, lessonIndex)) {
     root.innerHTML = `
-      <div class="crumbs"><a href="#/">The Map</a> / <a href="#/act/${act.id}">Act ${act.numeral}</a></div>
+      <div class="crumbs"><a href="#/">The Map</a> / <a href="#/act/${act.id}">Act ${escapeHtml(act.numeral)}</a></div>
       <div class="panel center">
         <h1>Not yet.</h1>
         <p class="empty-note">The Codex reveals its pages in order. Finish the previous trial first.</p>
@@ -225,7 +247,7 @@ export function renderLesson(root, lessonId) {
   root.innerHTML = `
     <div class="crumbs">
       <a href="#/">The Map</a> /
-      <a href="#/act/${act.id}">Act ${act.numeral}: ${escapeHtml(act.title)}</a> /
+      <a href="#/act/${act.id}">Act ${escapeHtml(act.numeral)}: ${escapeHtml(act.title)}</a> /
       Trial ${lessonIndex + 1}
     </div>
     <header class="lesson-header">
@@ -282,7 +304,7 @@ function mountChallenge(host, lesson, onChange) {
       <div class="editor-wrap">
         <div class="editor-gutter" aria-hidden="true">1</div>
         <textarea class="editor" spellcheck="false" autocapitalize="off"
-          aria-label="Python code editor"></textarea>
+          aria-label="${EDITOR_LABEL}"></textarea>
       </div>
       <div class="forge-actions">
         <button class="btn" data-act="run">▶ Cast the spell</button>
@@ -291,8 +313,8 @@ function mountChallenge(host, lesson, onChange) {
         <span class="runner-state" data-role="runner-state"></span>
       </div>
       <div class="hint-box" data-role="hints"></div>
-      <div class="console" data-role="console" hidden></div>
-      <div data-role="verdict"></div>
+      <div class="console" data-role="console" role="status" aria-live="polite" hidden></div>
+      <div data-role="verdict" role="status" aria-live="polite"></div>
       <details class="solution-reveal">
         <summary>☠ Surrender and read the answer</summary>
         <p class="solution-warning">Knowledge taken, not earned, teaches half as much.
@@ -325,17 +347,7 @@ function mountChallenge(host, lesson, onChange) {
   }
   editor.addEventListener('input', () => { syncGutter(); saveDraft(lesson.id, editor.value); });
   editor.addEventListener('scroll', () => { gutter.scrollTop = editor.scrollTop; });
-  editor.addEventListener('keydown', (e) => {
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      const { selectionStart: s, selectionEnd: eIdx, value } = editor;
-      editor.value = `${value.slice(0, s)}    ${value.slice(eIdx)}`;
-      editor.selectionStart = s + 4;
-      editor.selectionEnd = s + 4;
-      saveDraft(lesson.id, editor.value);
-      syncGutter();
-    }
-  });
+  wireEditorKeys(editor, () => { saveDraft(lesson.id, editor.value); syncGutter(); });
   syncGutter();
 
   const updateRunnerLabel = (s) => {
@@ -528,7 +540,7 @@ export function renderBoss(root, actId) {
   const alreadyDown = S.isBossDefeated(act.id);
   if (!S.isBossUnlocked(curriculum, actIndex) && !alreadyDown) {
     root.innerHTML = `
-      <div class="crumbs"><a href="#/">The Map</a> / <a href="#/act/${act.id}">Act ${act.numeral}</a></div>
+      <div class="crumbs"><a href="#/">The Map</a> / <a href="#/act/${act.id}">Act ${escapeHtml(act.numeral)}</a></div>
       <div class="panel center">
         <h1>The warden ignores you.</h1>
         <p class="empty-note">Complete every trial of ${escapeHtml(act.title)} before you knock on this door.</p>
@@ -540,7 +552,7 @@ export function renderBoss(root, actId) {
   preboot();
 
   root.innerHTML = `
-    <div class="crumbs"><a href="#/">The Map</a> / <a href="#/act/${act.id}">Act ${act.numeral}</a> / Boss</div>
+    <div class="crumbs"><a href="#/">The Map</a> / <a href="#/act/${act.id}">Act ${escapeHtml(act.numeral)}</a> / Boss</div>
     <div class="boss-arena" id="arena"></div>`;
   const arena = root.querySelector('#arena');
 
@@ -553,7 +565,7 @@ export function renderBoss(root, actId) {
 
   function intro() {
     arena.innerHTML = `
-      <span class="challenge-label">☠ Warden of Act ${act.numeral}</span>
+      <span class="challenge-label">☠ Warden of Act ${escapeHtml(act.numeral)}</span>
       <h1 class="boss-title">${escapeHtml(boss.title)}</h1>
       <div class="narrative">${prose(boss.narrative)}</div>
       <p class="prose">The trial has two movements: a <strong>gauntlet of ${boss.gauntlet.length} questions</strong>
@@ -576,7 +588,8 @@ export function renderBoss(root, actId) {
   }
 
   function livesHtml() {
-    return `<div class="lives">${[0, 1, 2].map((i) => `<span class="${i < battle.lives ? '' : 'lost'}">🕯️</span>`).join('')}</div>`;
+    return `<div class="lives" role="img" aria-label="${battle.lives} of 3 lives remain">${
+      [0, 1, 2].map((i) => `<span aria-hidden="true" class="${i < battle.lives ? '' : 'lost'}">🕯️</span>`).join('')}</div>`;
   }
 
   function gauntletStep() {
@@ -616,7 +629,7 @@ export function renderBoss(root, actId) {
           arena.querySelectorAll('.quiz-opt')[q.answer].classList.add('sel-right');
           battle.lives -= 1;
           battle.flawless = false;
-          qr.textContent = 'A candle gutters out.';
+          qr.textContent = `A candle gutters out. The true answer was ${'ABCD'[q.answer]}.`;
           qr.className = 'q-result bad';
           arena.querySelector('.lives').outerHTML = livesHtml();
           if (battle.lives <= 0) { fallen(); return; }
@@ -626,6 +639,7 @@ export function renderBoss(root, actId) {
           ? 'Face the final working →' : 'Next question →');
         btnNext.addEventListener('click', gauntletStep);
         nextHost.appendChild(btnNext);
+        btnNext.focus(); // keyboard users continue from where they answered
       });
     });
   }
@@ -695,15 +709,15 @@ function mountBossForge(host, pseudo, onPass) {
       <div class="editor-wrap">
         <div class="editor-gutter" aria-hidden="true">1</div>
         <textarea class="editor" spellcheck="false" autocapitalize="off"
-          aria-label="Python code editor"></textarea>
+          aria-label="${EDITOR_LABEL}"></textarea>
       </div>
       <div class="forge-actions">
         <button class="btn btn-danger" data-act="run">▶ Strike</button>
         <button class="btn btn-ghost" data-act="reset">Reset</button>
         <span class="runner-state" data-role="runner-state"></span>
       </div>
-      <div class="console" data-role="console" hidden></div>
-      <div data-role="verdict"></div>
+      <div class="console" data-role="console" role="status" aria-live="polite" hidden></div>
+      <div data-role="verdict" role="status" aria-live="polite"></div>
     </div>`;
 
   const editor = host.querySelector('textarea.editor');
@@ -719,16 +733,7 @@ function mountBossForge(host, pseudo, onPass) {
   }
   editor.addEventListener('input', () => { syncGutter(); saveDraft(pseudo.id, editor.value); });
   editor.addEventListener('scroll', () => { gutter.scrollTop = editor.scrollTop; });
-  editor.addEventListener('keydown', (e) => {
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      const { selectionStart: s, selectionEnd: eIdx, value } = editor;
-      editor.value = `${value.slice(0, s)}    ${value.slice(eIdx)}`;
-      editor.selectionStart = s + 4;
-      editor.selectionEnd = s + 4;
-      syncGutter();
-    }
-  });
+  wireEditorKeys(editor, () => { saveDraft(pseudo.id, editor.value); syncGutter(); });
   syncGutter();
 
   host.querySelector('[data-act="reset"]').addEventListener('click', () => {
@@ -806,7 +811,7 @@ export function renderProfile(root) {
     ${st.allegiance === 'wand' ? 'Path of the Wand 🪄' : 'Path of the Ring 💍'}</p>
     <div class="sanctum-grid">
       <div class="panel">
-        <h3>The Ledger</h3>
+        <h2 class="panel-h">The Ledger</h2>
         <div class="stat-row"><span class="stat-k">Experience</span><span class="stat-v">${st.xp} XP</span></div>
         <div class="stat-row"><span class="stat-k">Trials completed</span><span class="stat-v">${doneLessons} / ${totalLessons}</span></div>
         <div class="stat-row"><span class="stat-k">Wardens defeated</span><span class="stat-v">${bossesDown} / ${curriculum.acts.length}</span></div>
@@ -818,7 +823,7 @@ export function renderProfile(root) {
         <div class="stat-row"><span class="stat-k">Current streak</span><span class="stat-v">${st.streak.count} day${st.streak.count === 1 ? '' : 's'} (best ${st.streak.best})</span></div>
       </div>
       <div class="panel">
-        <h3>The Ascension</h3>
+        <h2 class="panel-h">The Ascension</h2>
         <div class="rank-ladder">${ladder}</div>
       </div>
     </div>
@@ -855,7 +860,7 @@ export function renderCodex(root) {
     if (!unlocked) {
       return `<section class="codex-act">
         <h2>${act.sigil} ${escapeHtml(act.title)}</h2>
-        <p class="codex-locked-note">These pages are still sealed. Reach Act ${act.numeral} to read them.</p>
+        <p class="codex-locked-note">These pages are still sealed. Reach Act ${escapeHtml(act.numeral)} to read them.</p>
       </section>`;
     }
     const entries = act.codex.map((c) => `

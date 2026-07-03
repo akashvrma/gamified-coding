@@ -79,7 +79,8 @@ print(next(walker))      # Loxias`,
             + 'When calling `next()` by hand you may pass a default as a second '
             + 'argument — `next(walker, "no one")` — and the default is returned '
             + 'instead of the exception. Everything built on iteration — loops, '
-            + '`list()`, `sum()`, unpacking — rests on this one signal.',
+            + '`list()`, `sum()` (a built-in that adds every value an iterable '
+            + 'yields), unpacking — rests on this one signal.',
           code: py`walker = iter(["the last master"])
 print(next(walker))
 print(next(walker, "no one"))   # a default silences the refusal
@@ -312,7 +313,10 @@ print(next(torrent))            # 2 - computed only now`,
           body: 'Wrap a comprehension in parentheses instead of square brackets and '
             + 'you get a **generator expression** — the lazy twin of a list '
             + 'comprehension. Consuming functions like `sum()`, `max()` and `any()` '
-            + 'accept any iterator directly, drawing values one at a time.\n\n'
+            + 'accept any iterator directly, drawing values one at a time '
+            + '(`sum()` you have met — it adds every value an iterable yields; '
+            + '`max()` keeps the largest value it is handed; `any()` reports '
+            + '`True` if at least one value is truthy).\n\n'
             + 'Watch the consequences of consumption: every value drawn is gone.',
           code: py`squares = (n * n for n in range(1, 5))
 print(next(squares))   # 1  - one drop drawn off the top
@@ -976,22 +980,31 @@ print(Evidence(9).relics is Evidence(9).relics)  # False - each record its own`,
           + 'Write a dataclass `VaultRecord`:\n\n'
           + '- Decorate it with `@dataclass`, imported from `dataclasses`.\n'
           + '- Fields in this exact order, with these hints and defaults: '
-          + '`vault: int`, `owner: str`, `galleons: int = 0`.\n'
-          + '- One method: `deposit(self, amount)` — add `amount` to `galleons` and '
-          + 'return the new total.\n\n'
+          + '`vault: int`, `owner: str`, `galleons: int = 0`, and `relics: list` — '
+          + 'defaulting to a **fresh empty list for every record**. Recall what the '
+          + 'sections said about mutable defaults: `= []` will be refused.\n'
+          + '- A method `deposit(self, amount)` — add `amount` to `galleons` and '
+          + 'return the new total.\n'
+          + '- A method `deposit_relic(self, name)` — append `name` to `relics` '
+          + 'and return how many relics the record now holds.\n\n'
           + 'The generated magic must hold: records with equal fields compare '
-          + 'equal, the repr names the class and its fields, and construction works '
-          + 'by position or by keyword.',
-        starter: py`# TODO: import dataclass from the dataclasses module
+          + 'equal, the repr names the class and its fields, construction works '
+          + 'by position or by keyword — and two separate records must never '
+          + 'share one relics list.',
+        starter: py`# TODO: import what you need from the dataclasses module
 
 # TODO: turn VaultRecord into a dataclass with fields, in order:
 #   vault: int
 #   owner: str
 #   galleons: int = 0
+#   relics: list  - a FRESH empty list per record (= [] is refused)
 class VaultRecord:
     # TODO: add deposit(self, amount) - add to galleons, return the new total
+
+    # TODO: add deposit_relic(self, name) - append name to relics,
+    #       return how many relics the record now holds
     pass`,
-        solution: py`from dataclasses import dataclass
+        solution: py`from dataclasses import dataclass, field
 
 
 @dataclass
@@ -999,21 +1012,27 @@ class VaultRecord:
     vault: int
     owner: str
     galleons: int = 0
+    relics: list = field(default_factory=list)
 
     def deposit(self, amount):
         self.galleons += amount
-        return self.galleons`,
+        return self.galleons
+
+    def deposit_relic(self, name):
+        self.relics.append(name)
+        return len(self.relics)`,
         hints: [
-          'The import is: from dataclasses import dataclass — then place @dataclass on the line directly above class VaultRecord.',
-          'Fields are bare, type-hinted declarations at class level: vault: int on its own line. The default rides on the declaration: galleons: int = 0.',
-          'deposit is an ordinary method inside the class: self.galleons += amount, then return self.galleons. Delete the pass once the body exists.',
+          'Place @dataclass directly above the class and declare each field as a bare, type-hinted line: vault: int. A default rides on the declaration: galleons: int = 0. The relics default is the one that needs care.',
+          'relics: list = [] is refused outright — one shared list would bleed between every record. The dataclasses module offers a helper, imported alongside dataclass, that mints a fresh list per instance; the third section showed it.',
+          'Give relics a default built by field(default_factory=list), importing field next to dataclass. The methods are ordinary: deposit adds to self.galleons and returns it; deposit_relic appends to self.relics and returns len(self.relics).',
         ],
         validation: py`import dataclasses
 assert dataclasses.is_dataclass(VaultRecord), "VaultRecord must be decorated with @dataclass"
 _names = [f.name for f in dataclasses.fields(VaultRecord)]
-assert _names == ["vault", "owner", "galleons"], "the fields must be vault, owner, galleons — in exactly that order"
+assert _names == ["vault", "owner", "galleons", "relics"], "the fields must be vault, owner, galleons, relics — in exactly that order"
 _r = VaultRecord(713, "Flamel")
 assert _r.galleons == 0, "galleons must default to 0 when omitted"
+assert _r.relics == [], "relics must default to an empty list when omitted"
 assert _r == VaultRecord(713, "Flamel"), "two records with identical fields must be equal — @dataclass writes __eq__ for you"
 assert _r != VaultRecord(714, "Flamel"), "records that differ in any field must not be equal"
 assert "VaultRecord" in repr(_r) and "713" in repr(_r), "the generated __repr__ should name the class and show its field values"
@@ -1021,7 +1040,14 @@ _kw = VaultRecord(owner="Karkaroff", vault=209, galleons=12)
 assert _kw.vault == 209 and _kw.galleons == 12, "the generated __init__ must accept keyword arguments for every field"
 assert _r.deposit(50) == 50, "deposit must return the new total"
 assert _r.deposit(25) == 75, "a second deposit must accumulate — expected 75"
-assert _r.galleons == 75, "deposit must actually update the galleons field"`,
+assert _r.galleons == 75, "deposit must actually update the galleons field"
+_a = VaultRecord(1, "Bane")
+_b = VaultRecord(2, "Bane")
+assert _a.deposit_relic("locket") == 1, "deposit_relic must append the name and return how many relics the record holds"
+assert _a.deposit_relic("diadem") == 2, "a second relic must accumulate — expected a count of 2"
+assert _a.relics == ["locket", "diadem"], "relics must hold the deposited names, in order"
+assert _b.relics == [], "a fresh record must hold no relics — even after another record has deposited some"
+assert _a.relics is not _b.relics, "two records must never share one relics list — mint a fresh list per record with field(default_factory=list)"`,
         successText: 'The ledger writes itself now — every record minted, printed and judged by law rather than by a tired hand.',
         xp: 90,
       },
@@ -1295,13 +1321,15 @@ assert _Borrowed("Barty").bind() == "Barty pays with borrowed time.", "bind must
           options: [
             'The failure happens at object creation — the earliest possible moment — rather than at some distant later call',
             'ABCs execute abstract methods faster',
-            'NotImplementedError was removed from Python 3',
+            'The abstract method\'s body runs as a default implementation if the subclass forgets to override it.',
             'ABCs make every method private to the class',
           ],
           answer: 0,
           explain: 'Both approaches fail; the difference is when. The convention fails '
             + 'wherever and whenever the missing method is finally called. The ABC fails '
-            + 'immediately, at the constructor, where the incomplete class is obvious.',
+            + 'immediately, at the constructor, where the incomplete class is obvious. '
+            + 'An abstract method\'s body is no fallback — a subclass that never '
+            + 'overrides it cannot even be instantiated.',
         },
         {
           q: 'May an abstract base class contain fully implemented (concrete) methods?',

@@ -193,7 +193,7 @@ assert step == 8, "When the loop breaks, step should still be 8 -- break fires b
         {
           q: 'A `while` loop’s counter is never updated inside the body. What happens?',
           options: [
-            'Python raises a LoopError',
+            'Python detects that the loop cannot end and raises an error',
             'The loop runs exactly once',
             'Python updates the counter automatically',
             'The loop runs forever — an infinite loop',
@@ -445,7 +445,7 @@ print(fallen)                    # Gandalf`,
           + '- Another shadows the wizard, second in line: inserts `"Sam"` at index `1`.\n'
           + '- The horn-bearer takes another road: removes `"Boromir"` by value.\n'
           + '- At the bridge, the front of the line is taken: pops index `0` and stores the returned name in a variable named `lost`.\n'
-          + '- Prints `lost`, then prints how many names remain using `len()`, then prints the last name on the roll using a negative index.\n\n'
+          + '- Prints `lost`, then prints `len(company)` on its own line — it should output `5` — then prints `company[-1]` on its own line: the last name on the roll, fetched by negative index.\n\n'
           + 'Three printed lines: the name taken, the count remaining, the rearguard.',
         starter: py`# The roll of the company. Keep it true; the mines will test it.
 
@@ -538,7 +538,7 @@ assert lines[-1] == "Frodo", "The last printed line must be the rearguard: Frodo
     // ----------------------------------------------------------
     {
       id: 'a2l4',
-      title: 'Unbreakable Oaths',
+      title: 'Cut in Stone',
       concept: 'tuples — immutable sequences, packing, unpacking, and swapping',
       xp: 35,
       narrative: 'In the Chamber of Records you find a slab of black stone, and on it '
@@ -744,8 +744,9 @@ print(len(book))        # 3`,
         {
           heading: 'Asking without waking the dead',
           body: 'The gentler question is `.get()`. `book.get("Nain")` returns `None` '
-            + 'when the key is absent, and `book.get("Nain", "unrecorded")` returns '
-            + 'your chosen default instead. No error either way.\n\n'
+            + '— Python’s special value meaning *nothing here* — when the key is '
+            + 'absent, and `book.get("Nain", "unrecorded")` returns your chosen '
+            + 'default instead. No error either way.\n\n'
             + 'To learn merely whether a name is present, use `in` — on a dictionary it '
             + 'examines the **keys**, never the values.',
           code: py`book = {"Balin": "lord of Moria", "Ori": "keeper of records"}
@@ -932,8 +933,11 @@ print(len(horde))           # 3: orc, troll, balrog`,
             + '- `a | b` — **union**: everything seen in either.\n'
             + '- `a & b` — **intersection**: only what both have seen.\n'
             + '- `a - b` — **difference**: what `a` saw that `b` did not. Order matters here; `b - a` is a different slate.\n\n'
-            + 'Because sets promise no order, display them predictably by handing them '
-            + 'to `sorted()`, which returns an ordered **list** of the members.',
+            + 'Because sets promise no order, display them predictably with '
+            + '**`sorted(iterable)`** — a built-in that takes any collection Python can '
+            + 'walk through and returns a NEW ordered **list**, leaving the set itself '
+            + 'untouched. You will study it properly in Act III; here it has one duty: '
+            + 'making an unordered tally printable in a fixed order.',
           code: py`west_door = {"orc", "troll", "balrog"}
 east_door = {"orc", "warg"}
 
@@ -1058,8 +1062,8 @@ assert lines[3] == "['cave troll']", "The fourth line must be sorted(west_only).
     // ----------------------------------------------------------
     {
       id: 'a2l7',
-      title: 'One Line to Rule Them All',
-      concept: 'list comprehensions, filtering with if, and dict and set comprehensions',
+      title: 'The Smith’s One Line',
+      concept: 'list comprehensions, filtering with if, dict and set comprehensions, enumerate() and zip()',
       xp: 40,
       narrative: 'On the lowest inhabited level you find a smith’s workshop, and in '
         + 'it the pattern for a terrible economy: whole furnaces of labor folded into a '
@@ -1073,8 +1077,8 @@ assert lines[3] == "['cave troll']", "The fourth line must be sorted(west_only).
         {
           heading: 'The loop, folded',
           body: 'A **list comprehension** builds a new list in a single expression:\n\n'
-            + '- The shape is `[expression for item in iterable]`.\n'
-            + '- Read it aloud as: *build a list of EXPRESSION, for each ITEM in ITERABLE*.\n'
+            + '- The shape is `[expression for item in source]` — the source being a list, a string, or a range: anything Python can walk through.\n'
+            + '- Read it aloud as: *build a list of EXPRESSION, for each ITEM in SOURCE*.\n'
             + '- It replaces the four-line ritual of creating an empty list, walking a loop, and appending.\n\n'
             + 'The example folds one loop both ways. (Recall from Act I: `.upper()` '
             + 'returns the shouted copy of a string — the original is untouched.)',
@@ -1120,6 +1124,26 @@ print(len(first_runes))        # 2 -- 'b' and 'o'; the second 'o' collapses`,
             + '— loops nested in loops, conditions stacked on conditions — unfold it '
             + 'back into an honest loop. The next reader of your code is usually you, '
             + 'in a worse hour, by a weaker light.',
+        },
+        {
+          heading: 'Walking with numbers, walking in step',
+          body: 'Two more built-ins fold common loop labor, and the smiths used both:\n\n'
+            + '- `enumerate(items)` walks a source and hands you **two** loop variables '
+            + 'per pass: the position and the value, paired — no hand-fed counter to '
+            + 'create, feed, or forget. Give it `start=1` to number from 1 instead of 0.\n'
+            + '- `zip(a, b)` walks two sources **in step**, pairing first with first, '
+            + 'second with second, and stopping the moment the shorter is spent.',
+          code: py`names = ["balin", "oin", "ori"]
+fates = ["fallen", "fallen", "lost"]
+
+for number, name in enumerate(names, start=1):
+    print(f"{number}. {name}")
+
+for name, fate in zip(names, fates):
+    print(f"{name} -- {fate}")`,
+          note: 'Each pass hands back a pair, and two loop variables unpack it — the '
+            + 'same unpacking you cut into the tomb-script. And `zip` keeps no record '
+            + 'of the longer source’s leftovers: whatever has no partner goes uncounted.',
         },
       ],
       challenge: {
@@ -1219,6 +1243,19 @@ assert lines[2] == "5", "The third printed line must be rune_count['balin'] -- f
           explain: 'A comprehension always builds a NEW list; the source is untouched. '
             + 'The unfolded form creates an empty list, walks words, tests each, and '
             + 'appends the survivors.',
+        },
+        {
+          q: 'What does `for n, name in enumerate(["Balin", "Oin"]):` give you on its first pass?',
+          options: [
+            '`n = 0` and `name = "Balin"`',
+            '`n = 1` and `name = "Balin"`',
+            '`n = "Balin"` and `name = "Oin"`',
+            'An error — a for loop takes only one variable',
+          ],
+          answer: 0,
+          explain: 'enumerate hands back (position, value) pairs, and positions count '
+            + 'from 0 unless you pass start=1. The two loop variables unpack each pair '
+            + '— the same tuple unpacking used throughout this act.',
         },
       ],
     },
@@ -1383,7 +1420,7 @@ assert lines[-1] == "['orc', 'troll', 'goblin']", "The last line must be the gre
     { term: 'tuple', def: 'An immutable sequence written in parentheses: read like a list, but never changed after creation.' },
     { term: 'unpacking', def: 'Splitting a sequence into named variables in one line, as in `name, year = record`; the counts on both sides must match.' },
     { term: 'dictionary', def: 'A collection of key–value pairs in curly braces; values are looked up by key, not by position.' },
-    { term: '.get()', def: 'Dictionary lookup that returns a default (or `None`) for a missing key instead of raising a `KeyError`.' },
+    { term: '.get()', def: 'Dictionary lookup that returns a default for a missing key instead of raising a `KeyError`; with no default given it returns `None`, Python’s special value meaning *nothing here*.' },
     { term: 'set', def: 'An unordered collection of unique values; duplicates collapse on entry and membership tests are instant.' },
     { term: 'comprehension', def: 'A one-line expression that builds a list, dict, or set from a loop, optionally filtered by an `if`.' },
   ],

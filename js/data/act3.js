@@ -54,7 +54,10 @@ export default {
             + 'indented lines beneath are the **body** — the working itself.\n\n'
             + '- `def` only *creates* the function and binds it to the name. The body does not run yet.\n'
             + '- Writing the name with parentheses — `open_door()` — is a **call**. That is what runs the body.\n'
-            + '- A function can be called any number of times; each call runs the body from the top.',
+            + '- A function can be called any number of times; each call runs the body from the top.\n\n'
+            + 'One more mark you will find chalked into the trials ahead: `pass` is a placeholder '
+            + 'statement that does nothing — it holds a required indented body open until you '
+            + 'replace it with real code. Delete it when your real working arrives.',
           code: py`def open_door():
     print("The handleless door swings inward.")
 

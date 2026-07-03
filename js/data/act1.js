@@ -76,8 +76,9 @@ print("Third: this line always speaks last.")`,
         {
           heading: 'Margin notes the machine ignores',
           body: 'A line beginning with `#` is a **comment**. The interpreter skips it '
-            + 'entirely — it exists for human eyes alone. A `#` partway through a line works '
-            + 'the same way: everything after it is ignored.\n\n'
+            + 'entirely — it exists for human eyes alone. A `#` partway through a line — '
+            + 'outside of quotes — works the same way: everything after it is ignored. But '
+            + 'a `#` *inside* a string is merely another character, printed like any other.\n\n'
             + '- Comments record *why* the code exists, not merely what it does.\n'
             + '- They cost the machine nothing and spare the reader everything.\n'
             + '- The reader is usually you, three weeks later, by failing candlelight.',
@@ -123,11 +124,13 @@ assert _lines[2] == "I read at my own peril.", "The oath is incomplete. Line 3 m
             'It sends the word Nox to a paper printer',
             'It writes the text Nox to the screen',
             'It stores Nox in a variable named print',
-            'It darkens the screen',
+            'It writes "Nox" to the screen with the quotes still around it',
           ],
           answer: 1,
           explain: 'print() writes text to the screen — the console. It has nothing to do '
-            + 'with paper printers, and it stores nothing: the quoted text is spoken and gone.',
+            + 'with paper printers, and it stores nothing: the quoted text is spoken and gone. '
+            + 'The quotes themselves are never printed — they only mark where the string '
+            + 'begins and ends.',
         },
         {
           q: 'Which of these lines will Python ignore completely?',
@@ -139,7 +142,7 @@ assert _lines[2] == "I read at my own peril.", "The oath is incomplete. Line 3 m
           ],
           answer: 2,
           explain: 'A line beginning with # is a comment — the interpreter skips it. The '
-            + 'third option is tempting, but its # lives *inside* the quotes, so it is just '
+            + 'second option is tempting, but its # lives *inside* the quotes, so it is just '
             + 'text and gets printed like any other character.',
         },
         {
@@ -328,7 +331,7 @@ assert "<class 'int'>" in _stdout, "The count's nature was never proven. Print t
     {
       id: 'a1l3',
       title: 'The Serpent’s Tongue',
-      concept: 'strings — quoting, joining, indexing, slicing, len(), methods, and f-strings',
+      concept: 'strings — quoting, joining, indexing, slicing, len(), and methods',
       xp: 35,
       narrative: 'There is a language the shelves use among themselves after the candles die '
         + '— a dry sliding of syllables, like scales drawn over parchment. The primer calls '
@@ -383,19 +386,14 @@ print(whisper.strip().upper())    # THE SERPENT STIRS
 print("open the gate".replace("open", "seal"))   # seal the gate`,
         },
         {
-          heading: 'The joining rune and the f-string',
-          body: 'The `+` rune joins strings end to end — with nothing between, so supply '
-            + 'your own spaces. It joins strings *only*; a number must be converted before '
-            + 'it may pass, as a later trial will show.\n\n'
-            + 'The finer instrument is the **f-string**: place an `f` before the opening '
-            + 'quote, and anything wrapped in braces `{}` inside the string is replaced by '
-            + 'its value — a variable, a number, even a call like `len(name)`. Forget the '
-            + '`f` and the braces are printed literally, exactly as written.',
+          heading: 'The joining rune',
+          body: 'The `+` rune joins strings end to end — with nothing between them, so '
+            + 'supply your own spaces. It joins strings *only*: a number must be converted '
+            + 'to text before it may pass, a rite the next chapter teaches — along with a '
+            + 'finer instrument for weaving values into sentences.',
           code: py`warning = "beware " + "the " + "serpent"
-print(warning)
-name = "Nagini"
-fed = 3
-print(f"{name} has fed {fed} times tonight.")`,
+print(warning)              # beware the serpent
+print("open" + "gate")      # opengate - no space unless you supply one`,
         },
       ],
       challenge: {
@@ -408,8 +406,8 @@ print(f"{name} has fed {fed} times tonight.")`,
           + '- Binds `proclaimed` to `cleansed` in all capitals (use `.upper()`).\n'
           + '- Binds `sealed` to `cleansed` with the word `open` replaced by `sealed` (use `.replace()`).\n'
           + '- Prints `proclaimed`, then prints `sealed`.\n'
-          + '- Prints exactly the line `The whisper has 19 characters.` — built with an '
-          + 'f-string around `len(cleansed)`, not typed by hand.',
+          + '- Prints the cleansed whisper’s character count by handing `len(cleansed)` '
+          + 'straight to print — a line holding the bare number `19`, counted, never typed by hand.',
         starter: py`# The whisper, exactly as it was scraped from the wall:
 whisper = "   the chamber is open   "
 
@@ -417,7 +415,7 @@ whisper = "   the chamber is open   "
 # 2) proclaimed = cleansed in ALL CAPITALS
 # 3) sealed     = cleansed with "open" replaced by "sealed"
 # 4) print proclaimed, then sealed
-# 5) print, via an f-string: The whisper has 19 characters.
+# 5) print len(cleansed) - the bare count, 19, on its own line
 `,
         solution: py`whisper = "   the chamber is open   "
 cleansed = whisper.strip()
@@ -425,11 +423,11 @@ proclaimed = cleansed.upper()
 sealed = cleansed.replace("open", "sealed")
 print(proclaimed)
 print(sealed)
-print(f"The whisper has {len(cleansed)} characters.")`,
+print(len(cleansed))`,
         hints: [
           'Methods hang off a value with a dot: whisper.strip() hands you a new string — it does not change whisper itself, so bind the result to a name.',
           'Chain the bindings in order: cleansed = whisper.strip(), then proclaimed = cleansed.upper(), then sealed = cleansed.replace("open", "sealed").',
-          'The final line is print(f"The whisper has {len(cleansed)} characters.") — note the f before the opening quote.',
+          'The final line is print(len(cleansed)) — hand the count straight to print, just as you once printed type(fragments).',
         ],
         validation: py`assert "cleansed" in dir(), "There is no vessel named cleansed. Bind it to whisper.strip()."
 assert cleansed == "the chamber is open", "cleansed still carries dead air. Strip the spaces from both ends of whisper with .strip()."
@@ -437,7 +435,7 @@ assert proclaimed == "THE CHAMBER IS OPEN", "proclaimed must be cleansed in ALL 
 assert sealed == "the chamber is sealed", "sealed must be cleansed with the word open exchanged for sealed - use .replace(\"open\", \"sealed\")."
 assert "THE CHAMBER IS OPEN" in _stdout, "The proclamation was never printed. Print proclaimed."
 assert "the chamber is sealed" in _stdout, "The countermand was never printed. Print sealed."
-assert "The whisper has 19 characters." in _stdout, "The count line is missing or wrong. It must read exactly: The whisper has 19 characters. Build it with an f-string around len(cleansed)."`,
+assert any(ln.strip() == "19" for ln in _stdout.splitlines()), "The count was never spoken. Print len(cleansed) - a line holding the bare number 19."`,
         successText: 'The wall drinks the corrected words. Far below the floorboards, something very long changes direction.',
         xp: 60,
       },
@@ -480,17 +478,17 @@ assert "The whisper has 19 characters." in _stdout, "The count line is missing o
             + 'trap — Python never includes the stop.',
         },
         {
-          q: 'With `name = "Nagini"`, what does `print(f"{name} waits")` show?',
+          q: 'After `spell = "nox"`, the line `spell.upper()` runs on its own. What does `print(spell)` show afterwards?',
           options: [
-            '{name} waits',
-            'name waits',
-            'f"Nagini waits"',
-            'Nagini waits',
+            'NOX — the method changed the string in place',
+            'nox — .upper() handed back a new string, and nothing kept it; the original is untouched',
+            'noxNOX',
+            'An error — a method’s result must always be bound to a name',
           ],
-          answer: 3,
-          explain: 'The f prefix makes the braces live: {name} is replaced by the value of '
-            + 'name. Drop the f and the braces go dead — the string would print literally '
-            + 'as {name} waits.',
+          answer: 1,
+          explain: 'String methods never alter the original — they return a new string, '
+            + 'and a result no name catches is discarded on the spot. To keep it, bind it: '
+            + 'spell = spell.upper().',
         },
       ],
     },
@@ -501,7 +499,7 @@ assert "The whisper has 19 characters." in _stdout, "The count line is missing o
     {
       id: 'a1l4',
       title: 'Dark Arithmancy',
-      concept: 'int and float, the arithmetic operators, precedence, and type conversion',
+      concept: 'int and float, the arithmetic operators, precedence, type conversion, and f-strings',
       xp: 35,
       narrative: 'Arithmancy, the respectable schools insist, is the study of number as '
         + 'prophecy. The primer disagrees in the margins: number is not prophecy but '
@@ -528,15 +526,17 @@ print(souls - 13) # -1    - the ledger permits debt`,
         {
           heading: 'The remainder always finds you',
           body: 'Three more runes complete the set:\n\n'
-            + '- `//` — **floor division**: how many *whole* times the divisor fits; the rest is discarded.\n'
+            + '- `//` — **floor division**: how many *whole* times the divisor fits; the '
+            + 'rest is discarded. (True for the non-negative counts kept here — in truth '
+            + '`//` rounds *down*, toward negative infinity.)\n'
             + '- `%` — **modulo**: the remainder that floor division discarded.\n'
-            + '- `**` — power: `2 ** 10` is 2 multiplied by itself ten times.\n\n'
-            + 'Floor division and modulo are a pair: `227 // 13` tells you how many full '
-            + 'cells your prisoners fill, and `227 % 13` tells you how many stand '
+            + '- `**` — power: `2 ** 10` is ten 2s multiplied together.\n\n'
+            + 'Floor division and modulo are a pair: `227 // 13` tells you how many '
+            + 'prisoners each of the 13 cells receives, and `227 % 13` how many stand '
             + 'unassigned in the corridor. Together they account for every last one.',
           code: py`prisoners = 227
 cells = 13
-print(prisoners // cells)  # 17 - full cells
+print(prisoners // cells)  # 17 - prisoners per cell
 print(prisoners % cells)   # 6  - left standing in the corridor
 print(2 ** 10)             # 1024`,
         },

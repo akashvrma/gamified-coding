@@ -150,10 +150,10 @@ assert "corrupted" in vars(r), "corrupted must be laid on each instance inside _
 r2 = RingOfPower("Narya", "Cirdan")
 r2.corrupted = True
 assert r.corrupted is False, "Corrupting one ring tainted another — attributes must be set on self, so each instance owns its own."
-assert "vilya" in dir(), "The forge sees no ring named vilya — create it with vilya = RingOfPower(\"Vilya\", \"Gil-galad\")."
+assert "vilya" in dir(), "Sammath Naur sees no ring named vilya — create it with vilya = RingOfPower(\"Vilya\", \"Gil-galad\")."
 assert isinstance(vilya, RingOfPower), "vilya must be cast from the RingOfPower mold — call the class to create it."
 assert vilya.name == "Vilya" and vilya.bearer == "Gil-galad", "vilya carries the wrong inscription — its name must be Vilya, its bearer Gil-galad."
-assert "Vilya is borne by Gil-galad" in _stdout, "The forge heard no proclamation — print exactly: Vilya is borne by Gil-galad"`,
+assert "Vilya is borne by Gil-galad" in _stdout, "Sammath Naur heard no proclamation — print exactly: Vilya is borne by Gil-galad"`,
         successText: 'The mold cools. Somewhere inside it, nineteen unmade rings wait their turn.',
         xp: 75,
       },
@@ -214,11 +214,11 @@ assert "Vilya is borne by Gil-galad" in _stdout, "The forge heard no proclamatio
     },
 
     // ------------------------------------------------------------------
-    // a4l2 — Rings for Mortal Men
+    // a4l2 — Nine Bands for Nine Kings
     // ------------------------------------------------------------------
     {
       id: 'a4l2',
-      title: 'Rings for Mortal Men',
+      title: 'Nine Bands for Nine Kings',
       concept: 'methods that use self; instance attributes vs class attributes; calling methods across many objects',
       xp: 36,
       narrative: 'Nine rings leave the forge in a single season, cast from a single mold. The '
@@ -260,7 +260,8 @@ print(angmar.wear(50))   # 100 — the tally survived between calls`,
             + 'When you *read* `a.master`, Python looks on the instance first; not finding it, '
             + 'it climbs to the class. When you *assign* `a.master = ...`, Python writes onto '
             + 'the instance, creating a private shadow that hides the class value from `a` alone. '
-            + 'Reading climbs; writing does not.',
+            + 'Reading climbs; writing does not — for plain attributes, that is. The next trial '
+            + 'forges *properties*: guards built to intercept an assignment before it lands.',
           code: py`class MortalKing:
     master = "Sauron"          # ONE value, stamped on the mold itself
 
@@ -397,7 +398,7 @@ other = MortalKing("Herumor")
 assert other.years_worn == 0, "One king's years bled into another — years_worn must be set on self in __init__, never shared on the class."
 assert getattr(MortalKing, "master", None) == "Sauron", "The brand is missing from the mold — write master = \"Sauron\" in the class body itself."
 assert "master" not in vars(other), "master was stamped onto each king separately — define it once in the class body, not inside __init__."
-assert "witch_king" in dir(), "The forge sees no witch_king — create it with MortalKing(\"the Witch-king\")."
+assert "witch_king" in dir(), "Sammath Naur sees no witch_king — create it with MortalKing(\"the Witch-king\")."
 assert witch_king.years_worn == 120, "The Witch-king has worn his ring the wrong span — call witch_king.wear(60) twice."
 assert "the Witch-king serves Sauron" in _stdout, "No oath was heard — print exactly: the Witch-king serves Sauron"`,
         successText: 'Nine hands close around nine bands. The tally of years begins, and it runs in one direction only.',
@@ -452,9 +453,11 @@ assert "the Witch-king serves Sauron" in _stdout, "No oath was heard — print e
             '`a` gains its own instance attribute shadowing the class value; other instances still read the original',
           ],
           answer: 3,
-          explain: 'Assignment through an instance always writes onto the instance. The class '
-            + 'value survives underneath, still visible to every other king. To change the '
-            + 'shared brand, assign on the class: `MortalKing.master = ...`.',
+          explain: 'For a plain attribute, assignment through an instance writes onto the '
+            + 'instance. The class value survives underneath, still visible to every other king. '
+            + 'To change the shared brand, assign on the class: `MortalKing.master = ...`. '
+            + '(The next trial\'s properties are the deliberate exception — they intercept the '
+            + 'assignment before it lands.)',
         },
       ],
     },
@@ -510,7 +513,9 @@ print(f._heat)   # Python permits it — the underscore is a pact, not a lock`,
         },
         {
           heading: '@property — the window of dark glass',
-          body: 'The guard itself is `@property`. Placed above a method, it makes that method '
+          body: 'The guard itself is `@property` — the `@` line is a **decorator**, a spell '
+            + 'cast upon the definition below it; Act V teaches you to forge your own. Placed '
+            + 'above a method, it makes that method '
             + 'run whenever the attribute is **read** — `f.heat`, no parentheses. A companion '
             + 'method marked `@heat.setter` runs whenever the attribute is **assigned** — and '
             + 'there, before storing anything, you enforce the law: judge the value, and '
@@ -731,10 +736,13 @@ assert "True" in _stdout, "The chamber heard no report — print(fire.is_raging)
             + 'and the new class **inherits**: every method and every attribute the parent '
             + 'lays down is available on the child, unwritten. The child is called a '
             + '**subclass**; the parent, a **base class**.\n\n'
-            + 'Inheritance makes a promise: the child *is a kind of* the parent. '
-            + '`isinstance(h, Numenorean)` answers `True` for a `BlackNumenorean`, and any code '
-            + 'written for the parent will accept the child. The promise flows one way — '
-            + 'parents know nothing of their children.',
+            + 'Inheritance makes a promise: the child *is a kind of* the parent. Python gives '
+            + 'you a built-in to test that promise: `isinstance(obj, Cls)` answers `True` when '
+            + '`obj` is an instance of `Cls` — or of any class descended from it — and its '
+            + 'sibling `issubclass(Sub, Base)` asks the same question of the classes themselves, '
+            + 'not their instances. So `isinstance(h, Numenorean)` answers `True` for a '
+            + '`BlackNumenorean`, and any code written for the parent will accept the child. '
+            + 'The promise flows one way — parents know nothing of their children.',
           code: py`class Numenorean:
     def __init__(self, name):
         self.name = name
@@ -1209,7 +1217,10 @@ assert "shrieks for blood." in _stdout and "bellows and breaks stone." in _stdou
             + '- `a == b` summons `a.__eq__(b)`\n'
             + '- `a + b` summons `a.__add__(b)`\n\n'
             + 'You have already written one dunder in every lesson of this act. `__init__` was '
-            + 'the first word of the Black Speech on your tongue.',
+            + 'the first word of the Black Speech on your tongue.\n\n'
+            + 'One detail of the `__init__` below: `self.words = list(words)` stores a **copy** '
+            + 'of the caller\'s list — so a hand that later mutates the original list cannot '
+            + 'silently rewrite the verse from outside the class.',
           code: py`class Verse:
     def __init__(self, words):
         self.words = list(words)
@@ -1229,7 +1240,10 @@ print(str(v))     # the same summons, spoken directly`,
             + 'recreate the object, shown in debuggers and inside containers.\n\n'
             + '- If `__str__` is missing, `str()` falls back to `__repr__`.\n'
             + '- The reverse never happens — `repr()` ignores `__str__` entirely.\n'
-            + '- Lists, dicts, and tuples always display their elements with `repr`.',
+            + '- Lists, dicts, and tuples always display their elements with `repr`.\n'
+            + '- `!r` inside an f-string applies `repr()` to the value — quotes and all — '
+            + 'which is how `f"Verse({self.words!r})"` below shows the list exactly as a '
+            + 'sorcerer would need to retype it.',
           code: py`class Verse:
     def __init__(self, words):
         self.words = list(words)

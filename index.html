@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="The Dark Codex — a gamified grimoire that teaches Python and object-oriented programming through the darker legends of wizards and rings.">
+  <title>The Dark Codex — A Grimoire of Python</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#128065;&#65039;</text></svg>">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="veil" class="veil" aria-hidden="true"></div>
+
+  <header class="site-header" id="site-header">
+    <a class="brand" href="#/">
+      <span class="brand-sigil" aria-hidden="true">☠</span>
+      <span class="brand-text">
+        <span class="brand-title">The Dark Codex</span>
+        <span class="brand-sub">One tongue to rule them all</span>
+      </span>
+    </a>
+    <div class="header-status" id="header-status" hidden>
+      <div class="rank-block">
+        <span class="rank-name" id="hdr-rank">Initiate</span>
+        <div class="xpbar" title="Experience"><div class="xpbar-fill" id="hdr-xpfill"></div></div>
+        <span class="xp-text" id="hdr-xp">0 XP</span>
+      </div>
+      <span class="streak" id="hdr-streak" title="Consecutive days of study">🔥 0</span>
+    </div>
+    <nav class="site-nav" id="site-nav" hidden>
+      <a href="#/" data-nav="map">The Map</a>
+      <a href="#/codex" data-nav="codex">Codex</a>
+      <a href="#/profile" data-nav="profile">Sanctum</a>
+    </nav>
+  </header>
+
+  <main id="app" class="app" tabindex="-1">
+    <noscript>
+      <p class="noscript">The Codex requires JavaScript — no magic flows through a severed wand.</p>
+    </noscript>
+  </main>
+
+  <footer class="site-footer">
+    <p>The Dark Codex teaches real Python 3 — every spell you cast here runs in a true Python interpreter.</p>
+    <p class="footer-fine">A work of parody and pedagogy. Not affiliated with any estate, studio, or dark lord.</p>
+  </footer>
+
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

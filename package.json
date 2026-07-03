@@ -1,0 +1,11 @@
+{
+  "name": "the-dark-codex",
+  "version": "1.0.0",
+  "description": "A gamified grimoire that teaches Python and OOP through dark fantasy.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "validate": "node tools/validate_content.mjs",
+    "serve": "python3 -m http.server 8000"
+  }
+}

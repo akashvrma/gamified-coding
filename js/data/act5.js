@@ -474,7 +474,7 @@ print(taken())    # 2 - the count survives between calls
 another = make_tally()
 print(another())  # 1 - each closure keeps its own memory`,
           note: 'Two tallies, two private counts. A closure is state without a class '
-            + '— and it is the machinery every decorator is built on.',
+            + '— and it is the machinery most wrapper decorators are built on.',
         },
         {
           heading: 'The decorator pattern',
@@ -1806,7 +1806,7 @@ assert next(unmaking([_Ring("the ring")])) == "the ring cracks upon the hearth."
     { term: 'decorator', def: 'A function that takes a function and returns a replacement for it, applied with the `@name` line above a `def`.' },
     { term: 'functools.wraps', def: 'A helper applied to a wrapper so the decorated function keeps its original `__name__`, docstring and metadata.' },
     { term: 'context manager', def: 'An object with `__enter__` and `__exit__` that guarantees teardown around a `with` block — even when the block raises.' },
-    { term: 'contextlib.contextmanager', def: 'A decorator that turns a generator function into a context manager; code before `yield` is entry, code after it is the guaranteed exit.' },
+    { term: 'contextlib.contextmanager', def: 'A decorator that turns a generator function into a context manager; code before `yield` is entry, code after it is the exit — wrap the `yield` in `try/finally` so the exit runs even when the block raises.' },
     { term: '@dataclass', def: 'A decorator that reads a class’s type-hinted field declarations and generates `__init__`, `__repr__` and `__eq__` from them.' },
     { term: 'type hint', def: 'An annotation such as `vault: int` documenting a value’s intended type; Python does not enforce it at runtime.' },
     { term: 'abc.ABC / @abstractmethod', def: 'The machinery of contracts: subclass `ABC`, mark required methods abstract, and any incomplete class raises `TypeError` at instantiation.' },

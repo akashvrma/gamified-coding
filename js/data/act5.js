@@ -948,18 +948,25 @@ class VaultRecord:
             + '`relics: list = []`. The machinery refuses it outright, because one '
             + 'shared list would bleed between every instance. Use '
             + '`field(default_factory=list)` to mint a fresh list per record.',
-          code: py`a = VaultRecord(713, "Flamel")
-b = VaultRecord(713, "Flamel")
-print(a)              # VaultRecord(vault=713, owner='Flamel', galleons=0)
-print(a == b)         # True - judged field by field
-print(a.deposit(50))  # 50
+          code: py`from dataclasses import dataclass, field
 
-from dataclasses import dataclass, field
+@dataclass
+class VaultRecord:
+    vault: int
+    owner: str
+    galleons: int = 0
+
+a = VaultRecord(713, "Flamel")
+b = VaultRecord(713, "Flamel")
+print(a)       # VaultRecord(vault=713, owner='Flamel', galleons=0)
+print(a == b)  # True - judged field by field
 
 @dataclass
 class Evidence:
     case: int
-    relics: list = field(default_factory=list)   # a fresh list per record`,
+    relics: list = field(default_factory=list)   # a fresh list per record
+
+print(Evidence(9).relics is Evidence(9).relics)  # False - each record its own`,
         },
       ],
       challenge: {

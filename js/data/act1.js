@@ -560,6 +560,22 @@ print("cell " + str(13))   # str() lets a number join text`,
             + 'guess wrong, and you would never learn where. Python makes you name the '
             + 'conversion, so the intent is written where the next reader can see it.',
         },
+        {
+          heading: 'Speaking numbers into sentences',
+          body: 'A ledger line is words and numbers interleaved, and gluing them together '
+            + 'with `+` and `str()` grows tedious fast. The finer instrument is the '
+            + '**f-string**: place an `f` before the opening quote, and anything wrapped '
+            + 'in braces `{}` inside the string is replaced by its value — a variable, a '
+            + 'whole expression, even a call like `len(name)`. The conversion to text is '
+            + 'performed for you; no `str()` required.\n\n'
+            + 'Forget the `f` and the braces go dead: the string prints literally, braces '
+            + 'and all.',
+          code: py`souls = 12
+owed = 3
+print(f"The ledger holds {souls} souls.")   # The ledger holds 12 souls.
+print(f"With the debt: {souls + owed}.")    # expressions work inside the braces
+print("The ledger holds {souls} souls.")    # no f - the braces print literally`,
+        },
       ],
       challenge: {
         title: 'The Ledger of the North Tower',
@@ -624,17 +640,18 @@ assert "The ledger holds 272 souls." in _stdout, "The ledger's third line is mis
             + 'with a different purpose.',
         },
         {
-          q: 'What is `17 % 5`?',
+          q: 'With `left_over = 6`, what does `print(f"{left_over} wait in the corridor.")` show?',
           options: [
-            '3 — how many times 5 fits',
-            '3.4',
-            '2 — the remainder after taking out whole fives',
-            '85',
+            '{left_over} wait in the corridor.',
+            'left_over wait in the corridor.',
+            'A TypeError — a number cannot enter a string without str()',
+            '6 wait in the corridor.',
           ],
-          answer: 2,
-          explain: 'Modulo keeps what floor division discards: 5 fits into 17 three whole '
-            + 'times (that is 17 // 5), leaving a remainder of 2. The two runes are a pair '
-            + '— confuse them and your ledger lies.',
+          answer: 3,
+          explain: 'The f prefix makes the braces live: {left_over} is replaced by its '
+            + 'value, and the f-string performs the number-to-text conversion itself — no '
+            + 'str() needed. Drop the f and the braces go dead, printing literally as '
+            + '{left_over} wait in the corridor.',
         },
         {
           q: 'What does `2 + 3 * 4` equal, and why?',
@@ -1061,10 +1078,11 @@ assert "The aisle is empty. For now." not in _stdout, "The empty-aisle line spok
 #     "souls: " + 3
 # IndexError - a position beyond the end:
 #     "nox"[7]`,
-          note: 'One quirk worth its weight in silver: an unclosed parenthesis often '
-            + 'makes Python point at the line *below* the true wound — it read onward, '
-            + 'hoping the closure would come. When a SyntaxError makes no sense where it '
-            + 'points, look one line up.',
+          note: 'The unclosed bracket earns a mark all its own: Python names the wound '
+            + 'outright — `SyntaxError: \'(\' was never closed` — and points at the very '
+            + 'line where the doomed parenthesis opened. Trust the address it gives. Only '
+            + 'the ancient interpreters, long buried, blamed the line below; if you ever '
+            + 'raise one of those dead, remember to look one line up.',
         },
         {
           heading: 'The mindset that survives',

@@ -8,7 +8,9 @@ starter passes validation unchanged (an auto-passable challenge is broken).
 """
 import io
 import json
+import os
 import sys
+import tempfile
 import traceback
 from contextlib import redirect_stdout
 
@@ -37,9 +39,14 @@ def run_pair(user_code: str, validation_code: str):
 
 
 def main():
-    manifest_path = sys.argv[1]
+    manifest_path = os.path.abspath(sys.argv[1])
     with open(manifest_path, encoding="utf-8") as f:
         challenges = json.load(f)
+
+    # Challenges may legitimately write files (the Pensieve lessons); grade
+    # inside a throwaway directory so artifacts never litter the repo.
+    workdir = tempfile.mkdtemp(prefix="codex-grade-")
+    os.chdir(workdir)
 
     failures = []
     warnings = []

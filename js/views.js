@@ -10,6 +10,8 @@ import { runPython, preboot, runnerStatus, onRunnerStatus } from './runner.js';
 import { curriculum, findLesson, findAct } from './data/curriculum.js';
 import { avatarSvg, avatarTier, TIER_NAMES, bossSvg, mapSvg } from './art.js';
 import { castBolt, burst, hitFlash, bossStrike, dissolve } from './fx.js';
+import { typewriter, bossReveal, countUp } from './cinema.js';
+import { setAmbient } from './ambient.js';
 
 const QUIZ_XP = 35;
 const QUIZ_PERFECT_BONUS = 15;
@@ -294,6 +296,7 @@ export function renderLesson(root, lessonId) {
     <section class="quiz" id="quiz"></section>
     <footer class="lesson-footer" id="lesson-footer"></footer>`;
 
+  typewriter(root.querySelector('.narrative'));
   mountChallenge(root.querySelector('#challenge'), lesson, () => refreshFooter());
   mountQuiz(root.querySelector('#quiz'), lesson, () => refreshFooter());
 
@@ -416,8 +419,10 @@ function mountChallenge(host, lesson, onChange) {
     consoleBox.hidden = false;
     consoleBox.innerHTML = '<span class="con-dim">The runes begin to glow…</span>';
     verdictBox.innerHTML = '';
+    host.querySelector('.editor-wrap').classList.add('casting');
 
     const result = await runPython(editor.value, ch.validation);
+    host.querySelector('.editor-wrap')?.classList.remove('casting');
     runBtn.disabled = false;
     runBtn.textContent = '▶ Cast the spell';
 
@@ -607,6 +612,11 @@ export function renderBoss(root, actId) {
     const text = arena.querySelector('#boss-hptext');
     if (fill) fill.style.width = `${(battle.hp / battle.maxHp) * 100}%`;
     if (text) text.textContent = `Warden strength: ${battle.hp} / ${battle.maxHp}`;
+    // Wounded past reason, the warden enrages and the cinders thicken.
+    const enraged = battle.hp <= 2 && battle.hp < battle.maxHp;
+    const fig = figureEl();
+    if (fig) fig.classList.toggle('enraged', enraged);
+    setAmbient('boss', enraged ? 1.7 : 0.9);
   }
 
   function intro() {
@@ -623,11 +633,14 @@ export function renderBoss(root, actId) {
       ${alreadyDown ? '<p class="prose"><em>You have already broken this warden. Fight again for pride, not power — no further XP awaits.</em></p>' : ''}
       <button class="btn btn-danger" id="begin">Begin the trial</button>
       <a class="btn btn-ghost" href="#/act/${act.id}">Withdraw</a>`;
+    bossReveal(arena.querySelector('.boss-stage'), boss.title);
+    typewriter(flowEl().querySelector('.narrative'));
     flowEl().querySelector('#begin').addEventListener('click', () => {
       battle.lives = 3;
       battle.idx = 0;
       battle.flawless = true;
       battle.hp = battle.maxHp;
+      battle.won = false;
       updateHp();
       // Reshuffle question order each attempt so retries stay honest.
       for (let i = battle.order.length - 1; i > 0; i -= 1) {
@@ -739,6 +752,8 @@ export function renderBoss(root, actId) {
   }
 
   async function victory() {
+    if (battle.won) return; // a second killing blow lands on nothing
+    battle.won = true;
     const first = S.markBossDefeated(act.id);
     const bonus = battle.flawless ? boss.flawlessBonus : 0;
     // The killing blow: strength to zero, then the warden burns away.
@@ -749,7 +764,7 @@ export function renderBoss(root, actId) {
       <div class="boss-defeated-banner">
         <h2>☠ ${escapeHtml(boss.title)} has fallen.</h2>
         <div class="narrative"><p>${escapeHtml(boss.victoryText)}</p></div>
-        ${first ? `<p class="prose center">Spoils: <strong>${boss.xp} XP</strong>${bonus ? ` + <strong>${bonus} XP</strong> for a flawless gauntlet` : ''}</p>` : '<p class="empty-note">The warden was already yours; no new spoils.</p>'}
+        ${first ? `<p class="prose center">Spoils: <strong><span data-role="spoils">0</span> XP</strong>${bonus ? ' <em>(flawless gauntlet bonus included)</em>' : ''}</p>` : '<p class="empty-note">The warden was already yours; no new spoils.</p>'}
         <p>
           ${curriculum.acts[actIndex + 1]
     ? `<a class="btn" href="#/act/${curriculum.acts[actIndex + 1].id}">Descend to Act ${escapeHtml(curriculum.acts[actIndex + 1].numeral)} →</a>`
@@ -758,6 +773,7 @@ export function renderBoss(root, actId) {
         </p>
       </div>`;
     if (first) {
+      countUp(arena.querySelector('[data-role="spoils"]'), 0, boss.xp + bonus, { duration: 1300 });
       grantXp(boss.xp + bonus, `Warden defeated — ${boss.title}`);
       emit({ type: 'boss-defeated', actId: act.id });
     }
@@ -819,20 +835,23 @@ function mountBossForge(host, pseudo, onPass) {
     consoleBox.hidden = false;
     consoleBox.innerHTML = '<span class="con-dim">Steel meets shadow…</span>';
     verdictBox.innerHTML = '';
+    host.querySelector('.editor-wrap').classList.add('casting');
     const result = await runPython(editor.value, ch.validation);
-    runBtn.disabled = false;
-    runBtn.textContent = '▶ Strike';
+    host.querySelector('.editor-wrap')?.classList.remove('casting');
     const out = result.output
       ? escapeHtml(result.output)
       : '<span class="con-dim">(no output)</span>';
     S.recordRun(result.ok);
     emit({ type: 'run' });
     if (result.ok) {
+      // Leave Strike disabled: the blow has landed and victory owns the stage.
       consoleBox.innerHTML = out;
       clearDraft(pseudo.id);
       burst(runBtn);
       onPass();
     } else {
+      runBtn.disabled = false;
+      runBtn.textContent = '▶ Strike';
       consoleBox.innerHTML = `${out}\n<span class="con-err">${escapeHtml(result.error || '')}</span>`;
       verdictBox.innerHTML = `
         <div class="verdict verdict-fail">

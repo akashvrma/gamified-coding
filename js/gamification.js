@@ -5,6 +5,7 @@
 
 import * as S from './state.js';
 import { toast } from './ui.js';
+import { rankUpMoment } from './cinema.js';
 
 // ---------------- ranks ----------------
 // XP thresholds are tuned so the final rank demands near-total mastery
@@ -183,6 +184,7 @@ export function emit(event) {
           sub: `New rank: ${after.title}`,
           kind: 'toast-level',
         });
+        rankUpMoment(after.title);
       }
     }
   }
@@ -202,6 +204,7 @@ export function grantXp(amount, reason) {
       sub: `New rank: ${after.title}`,
       kind: 'toast-level',
     });
+    rankUpMoment(after.title);
   }
   headerRefresh();
 }

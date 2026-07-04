@@ -21,9 +21,11 @@ function inline(escaped) {
     codes.push(c);
     return `\u0000${codes.length - 1}\u0000`;
   });
+  // Flanking rules: emphasis markers must hug their content, so bare
+  // asterisks in math like "3 * 4" are never eaten as markup.
   s = s
-    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    .replace(/\*\*(?!\s)([^*]+?)(?<!\s)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(?!\s)([^*]+?)(?<!\s)\*/g, '<em>$1</em>');
   return s.replace(/\u0000(\d+)\u0000/g, (_, i) => `<code>${codes[Number(i)]}</code>`);
 }
 

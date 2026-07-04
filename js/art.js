@@ -26,40 +26,48 @@ export const TIER_NAMES = [
   'The Ascendant',
 ];
 
+let avatarUid = 0;
+
 export function avatarSvg(allegiance, tier) {
   const wand = allegiance !== 'ring';
   const glow = tier >= 1;
   const vessel = tier >= 2;
   const runes = tier >= 3;
   const ascended = tier >= 4;
+  // Unique def ids per instance: header + Sanctum avatars coexist in one
+  // document, and duplicate ids would make url(#...) resolve to the first.
+  avatarUid += 1;
+  const vid = `av-void-${avatarUid}`;
+  const gid = `av-glow-${avatarUid}`;
   return `
   <svg class="avatar-svg tier-${tier}" viewBox="0 0 120 140" role="img" aria-hidden="true">
     <defs>
-      <radialGradient id="av-void" cx="50%" cy="35%" r="70%">
+      <radialGradient id="${vid}" cx="50%" cy="35%" r="70%">
         <stop offset="0%" stop-color="#181c2b"/><stop offset="100%" stop-color="#07080d"/>
       </radialGradient>
-      <filter id="av-glow"><feGaussianBlur stdDeviation="2.2" result="b"/>
+      <filter id="${gid}" x="-150%" y="-150%" width="400%" height="400%">
+        <feGaussianBlur stdDeviation="2.2" result="b"/>
         <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
     </defs>
     ${ascended ? `
-      <g class="asc-shards" filter="url(#av-glow)" opacity="0.85">
+      <g class="asc-shards" filter="url(#${gid})" opacity="0.85">
         <path d="M18 38 l6 -14 4 16 z" fill="var(--accent)"/>
         <path d="M98 30 l8 -10 2 16 z" fill="var(--accent)"/>
         <path d="M30 110 l-10 6 12 6 z" fill="var(--accent)"/>
         <path d="M96 106 l12 4 -8 10 z" fill="var(--accent)"/>
       </g>` : ''}
     ${runes ? `
-      <g class="av-runes" fill="none" stroke="var(--accent)" stroke-width="1.4" opacity="0.7" filter="url(#av-glow)">
+      <g class="av-runes" fill="none" stroke="var(--accent)" stroke-width="1.4" opacity="0.7" filter="url(#${gid})">
         <circle cx="60" cy="66" r="52" stroke-dasharray="6 10"/>
       </g>` : ''}
     <!-- cloak -->
     <path d="M60 16 C40 16 30 34 28 52 C24 84 20 106 16 126 L104 126 C100 106 96 84 92 52 C90 34 80 16 60 16 Z"
-      fill="url(#av-void)" stroke="#232738" stroke-width="2"/>
+      fill="url(#${vid})" stroke="#232738" stroke-width="2"/>
     <!-- hood cavity -->
     <path d="M60 26 C48 26 41 38 41 50 C41 62 49 70 60 70 C71 70 79 62 79 50 C79 38 72 26 60 26 Z"
       fill="#04050a"/>
     ${glow ? `
-      <g class="av-eyes" filter="url(#av-glow)">
+      <g class="av-eyes" filter="url(#${gid})">
         <ellipse cx="52.5" cy="52" rx="3.2" ry="${ascended ? 2.4 : 1.7}" fill="var(--accent-bright)"/>
         <ellipse cx="67.5" cy="52" rx="3.2" ry="${ascended ? 2.4 : 1.7}" fill="var(--accent-bright)"/>
       </g>` : `
@@ -74,11 +82,11 @@ export function avatarSvg(allegiance, tier) {
       <path d="M84 92 C93 82 100 70 104 56" fill="none" stroke="#232738" stroke-width="7" stroke-linecap="round"/>
       <line x1="103" y1="58" x2="112" y2="34" stroke="#0c0e16" stroke-width="3.4" stroke-linecap="round"/>
       <line x1="103" y1="58" x2="112" y2="34" stroke="#3a3049" stroke-width="1.6" stroke-linecap="round"/>
-      <circle class="av-spark" cx="113" cy="31" r="${ascended ? 5 : 3.4}" fill="var(--accent-bright)" filter="url(#av-glow)"/>` : ''}
+      <circle class="av-spark" cx="113" cy="31" r="${ascended ? 5 : 3.4}" fill="var(--accent-bright)" filter="url(#${gid})"/>` : ''}
     ${vessel && !wand ? `
       <!-- ring hand -->
       <path d="M84 94 C92 88 97 80 99 72" fill="none" stroke="#232738" stroke-width="7" stroke-linecap="round"/>
-      <circle cx="100" cy="68" r="6.5" fill="none" stroke="var(--accent-bright)" stroke-width="2.4" filter="url(#av-glow)" class="av-spark"/>
+      <circle cx="100" cy="68" r="6.5" fill="none" stroke="var(--accent-bright)" stroke-width="2.4" filter="url(#${gid})" class="av-spark"/>
       ${ascended ? '<circle cx="100" cy="68" r="11" fill="none" stroke="var(--accent)" stroke-width="1" opacity="0.6" class="av-spark"/>' : ''}` : ''}
     <!-- hem shadow -->
     <path d="M16 126 L104 126 L104 132 L16 132 Z" fill="#04050a"/>
@@ -150,7 +158,7 @@ export function bossSvg(actId) {
           <path d="M96 76 q4 3 8 0" fill="none" stroke="#5c2440" stroke-width="1.6"/>
         </g>
         <path d="M97 70 q3 2 6 0" fill="none" stroke="#3d1b30" stroke-width="1.2"/>
-        <g class="asc-shards" opacity="0.8">
+        <g class="boss-shards" opacity="0.8">
           <path d="M40 60 q-14 -6 -18 -20 q16 2 22 12 z" fill="#1b1426"/>
           <path d="M160 60 q14 -6 18 -20 q-16 2 -22 12 z" fill="#1b1426"/>
         </g>
@@ -231,7 +239,7 @@ export function mapSvg(progress) {
         <stop offset="0%" stop-color="#0a0c14" stop-opacity="0.72"/>
         <stop offset="100%" stop-color="#0a0c14" stop-opacity="0.25"/>
       </radialGradient>
-      <filter id="map-glow"><feGaussianBlur stdDeviation="3" result="b"/>
+      <filter id="map-glow" x="-150%" y="-150%" width="400%" height="400%"><feGaussianBlur stdDeviation="3" result="b"/>
         <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
     </defs>
     <rect x="0" y="0" width="480" height="720" fill="none"/>

@@ -592,6 +592,12 @@ dread = rng.normal(5.0, 1.5, size=200)   # two hundred conjured readings
 fig, ax = plt.subplots()
 ax.hist(dread, bins=12)
 ax.set_title("Two hundred futures, binned")`,
+          note: 'When the values are **whole numbers**, `bins=10` is quietly treacherous: it '
+            + 'slices the range into ten equal widths and melts neighboring integers into one '
+            + 'bar, and the ward never says a word. For byte-like data running 0 to 255, write '
+            + 'the edges yourself — `bins=range(0, 257)` — so every value keeps a bin of its '
+            + 'own. Mind the final edge: stop at `range(0, 256)` and the topmost value loses '
+            + 'its bar, silently folded into its neighbor’s.',
         },
         {
           heading: 'An untitled chart is a lie',
@@ -1646,6 +1652,40 @@ mad = np.median(np.abs(dread - med))
 print(med)   # 2.0
 print(mad)   # 1.0 — the typical distance from the middle`,
         },
+        {
+          heading: 'Bytes, and the fingerprint of the sealed',
+          body: 'Beneath its ink, every record in the Hall is a run of **bytes** — whole '
+            + 'numbers from 0 to 255 — and the distribution of those values is a '
+            + 'fingerprint. Count how often each value occurs with '
+            + '`np.bincount(data, minlength=256)` — one count per possible byte — and '
+            + 'read the shape:\n\n'
+            + '- Ordinary script clusters in a **narrow band**: letters, digits, and '
+            + 'spaces carry nearly everything, while two hundred other bins sit close '
+            + 'to empty. The profile is lumpy, its spread enormous.\n'
+            + '- Enchanted contents — **encrypted or compressed** — spread almost '
+            + 'perfectly evenly across all 256 values. Nothing favored, nothing '
+            + 'spared. The profile is flat.\n\n'
+            + 'So the tell runs backwards from every other hunt tonight: here it is a '
+            + '**low** relative standard deviation across the bin counts — '
+            + '`counts.std() / counts.mean()` — that betrays the sealed thing. Honest '
+            + 'structure is lumpy; enchantment is flat.',
+          code: py`import numpy as np
+
+rng = np.random.default_rng(9)
+mundane = rng.integers(97, 123, 4096)   # letter-bytes: a narrow band of values
+sealed = rng.integers(0, 256, 4096)     # enchanted: every byte value equally likely
+
+for name, blob in [("mundane", mundane), ("sealed", sealed)]:
+    counts = np.bincount(blob, minlength=256)   # one count per byte value 0..255
+    spread = counts.std() / counts.mean()       # relative spread of the profile
+    verdict = "SEALED" if spread < 0.5 else "plain"
+    print(name, round(float(spread), 2), verdict)
+# mundane 2.99 plain
+# sealed 0.25 SEALED`,
+          note: 'The Unspeakables read whole shelves this way without breaking a single '
+            + 'seal: no record need be opened for its bytes to confess. What ciphering '
+            + 'hides, its own flatness reveals to be hidden.',
+        },
       ],
       challenge: {
         title: 'Naming the Screamer',
@@ -1794,6 +1834,21 @@ assert name_outliers(_names, _vals, 5.0) == [], "when none stray far enough, nam
             + 'converge as n grows. Pass ddof explicitly to make either tool perform '
             + 'the other’s rite. (And it is pandas that skips NaN, not numpy — that '
             + 'distractor runs backwards.)',
+        },
+        {
+          q: 'You count a record’s bytes into 256 bins with `np.bincount(data, minlength=256)`, and the counts are nearly identical from 0 to 255. What does that suggest?',
+          options: [
+            'Ordinary text — letters always spread evenly across all byte values',
+            'The record is empty',
+            'Encrypted or compressed contents — enchantment spreads near-uniformly across all 256 values',
+            'A counting error — real data never touches every bin',
+          ],
+          answer: 2,
+          explain: 'Ordinary script clusters in a narrow band, leaving most bins near '
+            + 'empty and the spread across counts high. Encryption and compression '
+            + 'flatten the profile — every value about equally common — so a LOW '
+            + 'relative standard deviation across the bin counts is the fingerprint '
+            + 'of a sealed thing.',
         },
       ],
     },

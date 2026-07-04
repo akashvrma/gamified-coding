@@ -131,7 +131,11 @@ print(np.prod(whispers))               # 0.0 -- underflow: the truth annihilated
 print(np.sum(np.log(whispers)))        # -4605.17018598809 -- finite, comparable, alive`,
           note: 'The stone is a float engine like any other. When your evidence is a long chain '
             + 'of small likelihoods, work in logarithms or watch the chain evaporate. This single '
-            + 'trick is what keeps real classifiers of that family breathing.',
+            + 'trick is what keeps real classifiers of that family breathing. Their other lifeline '
+            + 'is **add-one (Laplace) smoothing**: an omen never once seen beside a class counts a '
+            + 'probability of exactly zero, and one zero factor annihilates the whole product — '
+            + 'lawfully, no underflow required. Pretend every event was witnessed once — add 1 to '
+            + 'each count — and nothing can multiply to nothing.',
         },
       ],
       challenge: {
@@ -314,6 +318,11 @@ mags = np.abs(np.fft.rfft(wave))
 freqs = np.fft.rfftfreq(wave.size, d=1 / rate)
 print(mags.size)                   # 65 bins for 128 samples
 print(freqs[np.argmax(mags)])      # 5.0 -- the transform names the throb exactly`,
+          note: 'The spectrum has a second witness: **autocorrelation** — `np.correlate` of a '
+            + 'signal with a copy of itself slid to every possible lag — spikes wherever the '
+            + 'signal lines up with its own past. A drum struck every N steps throws a peak at '
+            + 'lag N. When the loudest FFT bin and the strongest lag name the same rhythm, the '
+            + 'two lenses confirm each other, and the warden may trust what he hears.',
         },
         {
           heading: 'The zeroth bin is a trap',
@@ -736,6 +745,11 @@ scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
 print(np.round(X_scaled.mean(axis=0), 6))   # [0. 0.] -- every column centered
 print(np.round(X_scaled.std(axis=0), 6))    # [1. 1.]   -- every column speaks at one volume`,
+          note: 'StandardScaler is not the only discipline. **MinMaxScaler** presses each '
+            + 'feature into the range 0 to 1 — `(x - min) / (max - min)` — the right rite when '
+            + 'a method demands bounded inputs. And when outliers poison the mean and spread '
+            + 'that StandardScaler leans on, robust variants scale by the median and '
+            + 'interquartile range instead, which no lone monstrous reading can drag.',
         },
         {
           heading: 'K-Means — carving the host into k broods',
@@ -1284,6 +1298,11 @@ print(np.round(importances, 2))
 # [0.23 0.3  0.08 0.07 0.07 0.06 0.09 0.09]
 #  ^chill ^mist -- the two true marks dwarf all six rumors
 print(np.argsort(importances)[-2:])   # [0 1] -- the council names its witnesses`,
+          note: 'The forest is not the only council. **GradientBoostingClassifier** convenes '
+            + 'its trees in *series* — each new tree is trained on the errors the ones before '
+            + 'it left behind, its correction throttled by `learning_rate` so no single judge '
+            + 'overrules the rest. Forests vote in parallel and cancel noise; boosters '
+            + 'accumulate in sequence — slower to convene, often sharper in the verdict.',
         },
       ],
       challenge: {
@@ -1536,6 +1555,41 @@ print(accuracy_score(y_test, rbf.predict(X_test)))      # 0.96 -- the curved one
             + 'honest, metrics chosen before the vision. The discipline is the inheritance; '
             + 'the models are merely heirs.',
         },
+        {
+          heading: 'The sharper measures — F1, specificity, and the sweeping curve',
+          body: 'Precision and recall are two numbers, and commanders demand one. The **F1 '
+            + 'score** is their **harmonic mean** — `2 * p * r / (p + r)` — and the harmonic '
+            + 'mean is a harsh judge: it hugs the *smaller* of the pair, so no single '
+            + 'flattering number can mask a dead one. Work it from this lesson\'s own counts: '
+            + 'the trying watchman (precision 0.5, recall 0.5) earns F1 `2 * 0.25 / 1.0 = '
+            + '0.5`; the rbf blade (precision 1.0, recall 0.75) earns `2 * 0.75 / 1.75 = '
+            + '0.857` — below the arithmetic average of 0.875, because imbalance is punished. '
+            + 'A stone with recall 0.0 earns F1 exactly 0, whatever its precision.\n\n'
+            + '- **Specificity** = `tn / (tn + fp)` — the true-negative rate: of the days of '
+            + 'true peace, how many were called peace. Recall\'s mirror, aimed at the quiet '
+            + 'class.\n'
+            + '- Most stones do not merely vote — they emit a **score**, and you choose the '
+            + 'threshold that turns score into verdict. `roc_curve(y_true, scores)` sweeps '
+            + 'every threshold at once, tracing the true-positive rate against the '
+            + 'false-positive rate as the bar slides; `auc(fpr, tpr)` measures the area under '
+            + 'that sweep. AUC 1.0 is a perfect ranker; 0.5 is a coin flipped in the dark.',
+          code: py`import numpy as np
+from sklearn.metrics import f1_score, roc_curve, auc
+
+rng = np.random.default_rng(0)
+y_true = np.array([0] * 12 + [1] * 8)    # twenty days, eight raids
+scores = np.clip(rng.normal(0.3, 0.15, 20) + y_true * 0.4, 0.0, 1.0)
+
+y_pred = (scores >= 0.5).astype(int)         # one chosen threshold, one verdict set
+print(round(f1_score(y_true, y_pred), 3))    # 0.933 -- precision 1.0, recall 0.875
+
+fpr, tpr, thresholds = roc_curve(y_true, scores)   # every threshold at once
+print(round(auc(fpr, tpr), 3))                     # 0.958 -- nearly a perfect ranker`,
+          note: 'Accuracy asked one coward\'s question at one threshold. AUC asks the braver '
+            + 'one across all of them: *if I hand you a true raid-day and a true peace-day, '
+            + 'how often does your stone score the raid higher?* That is a question no '
+            + 'sleeping watchman can pass.',
+        },
       ],
       challenge: {
         title: 'Ask the Right Question',
@@ -1696,6 +1750,20 @@ assert "1.0" in _stdout and "0.75" in _stdout and "0.0" in _stdout, "Print the t
           explain: 'False negatives are truth = 1, prediction = 0: real events waved through as '
             + 'nothing. They are the cell recall interrogates, and in raid-hunting they are the '
             + 'expensive ones. Peace wrongly called raid is the false positive, fp.',
+        },
+        {
+          q: 'A watch-stone achieves precision 1.0 but recall 0.0 on raids. What is its F1 score?',
+          options: [
+            '0.5 — F1 is the arithmetic average of precision and recall',
+            '0.0 — F1 is the harmonic mean, 2pr/(p+r), which collapses toward the smaller number; one zero annihilates it',
+            '1.0 — perfect precision guarantees a perfect F1',
+            '0.25 — F1 is the product of precision and recall',
+          ],
+          answer: 1,
+          explain: 'The harmonic mean 2pr/(p+r) gives 2 * 1.0 * 0.0 / 1.0 = 0. That is exactly '
+            + 'why F1 is chosen: an arithmetic average would award 0.5 to a stone that catches '
+            + 'nothing, letting one flattering number mask a dead one. F1 is high only when '
+            + 'precision AND recall are both high.',
         },
       ],
     },

@@ -197,6 +197,22 @@ export function bossSvg(actId) {
         <path class="boss-hand" d="M62 96 C52 106 46 120 44 134 C54 126 62 126 68 116" fill="none" stroke="#120d10" stroke-width="10" stroke-linecap="round"/>
         <g opacity="0.55"><ellipse cx="100" cy="182" rx="76" ry="9" fill="#140b10"/></g>
       </g>`;
+  art.act8 = `
+      <g class="boss-sway">
+        <!-- the Shadow of the Machine: an angular titan, self-assembled -->
+        <path d="M100 24 L76 40 L72 78 L60 86 L58 176 L142 176 L140 86 L128 78 L124 40 Z"
+          fill="#0b0e14" stroke="#2a3244" stroke-width="2"/>
+        <path d="M84 44 L116 44 L112 70 L88 70 Z" fill="#040609"/>
+        <g class="boss-eyes"><rect x="90" y="54" width="20" height="4" fill="#e8641f"/></g>
+        <path d="M72 96 L60 96 L60 104 L72 104 Z M128 96 L140 96 L140 104 L128 104 Z" fill="#2a3244"/>
+        <g class="boss-flames" opacity="0.7">
+          <path d="M96 120 C94 112 98 106 100 100 C102 106 106 112 104 120 Z" fill="#e8641f"/>
+        </g>
+        <path class="boss-hand" d="M58 100 C42 108 34 124 32 142 C42 132 52 132 58 120" fill="none" stroke="#0b0e14" stroke-width="11" stroke-linecap="round"/>
+        <path class="boss-hand" d="M142 100 C158 108 166 124 168 142 C158 132 148 132 142 120" fill="none" stroke="#0b0e14" stroke-width="11" stroke-linecap="round"/>
+        <path d="M70 176 L74 156 L80 176 Z M120 176 L126 156 L130 176 Z" fill="#060810"/>
+        <g opacity="0.55"><ellipse cx="100" cy="182" rx="80" ry="9" fill="#0a0e16"/></g>
+      </g>`;
   return `
   <svg class="boss-svg" viewBox="0 0 200 192" role="img" aria-hidden="true">
     <defs>
@@ -264,6 +280,16 @@ function regionVignette(actIndex, x, y) {
       <path d="M-22 -34 l6 8 -5 1 6 9" fill="none" stroke="#3d4a7a" stroke-width="1.5"/>
       <path d="M22 -38 l-5 9 5 1 -6 8" fill="none" stroke="#3d4a7a" stroke-width="1.5"/>
     </g>`,
+    // VIII — the last alliance: wand and sword crossed beneath twin banners
+    `<g transform="translate(${x} ${y})" class="map-vig">
+      <line x1="-16" y1="14" x2="14" y2="-24" stroke="#3d4a7a" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="16" y1="14" x2="-14" y2="-24" stroke="#7a5a3d" stroke-width="2.5" stroke-linecap="round"/>
+      <circle cx="15" cy="-25" r="2.6" fill="var(--accent-bright)" opacity="0.9"/>
+      <path d="M-30 -18 L-30 -44 L-20 -40 L-30 -36 Z" fill="#1c2438"/>
+      <path d="M30 -18 L30 -44 L20 -40 L30 -36 Z" fill="#332014"/>
+      <line x1="-30" y1="-18" x2="-30" y2="10" stroke="#232738" stroke-width="1.5"/>
+      <line x1="30" y1="-18" x2="30" y2="10" stroke="#232738" stroke-width="1.5"/>
+    </g>`,
   ];
   return v[actIndex % v.length];
 }
@@ -298,7 +324,7 @@ export function mapSvg(progress) {
       <g class="map-node ${n.unlocked ? 'open' : 'sealed'}" transform="translate(${n.x} ${n.y})">
         <circle r="22" fill="#0d0f17" stroke="${n.unlocked ? 'var(--accent)' : '#232738'}" stroke-width="2"/>
         <text y="7" text-anchor="middle" font-size="20" fill="${n.unlocked ? 'var(--accent-bright)' : '#3a3f55'}"
-          font-family="Georgia, serif">${['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'][n.i] || n.i + 1}</text>
+          font-family="Georgia, serif">${['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX'][n.i] || n.i + 1}</text>
         ${n.done === n.total ? '<circle r="28" fill="none" stroke="var(--success)" stroke-width="1.6" opacity="0.8"/>' : ''}
       </g>
       ${!n.unlocked ? `<ellipse cx="${n.x + (n.i % 2 === 0 ? 75 : -75)}" cy="${n.y}" rx="230" ry="76" fill="url(#map-fog-g)" class="map-fog"/>` : ''}

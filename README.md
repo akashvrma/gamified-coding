@@ -38,13 +38,16 @@ needed on first run to fetch the Python interpreter from the Pyodide CDN.
 | **IV — The Forging of the One Ring** | Sammath Naur | classes, `self`, encapsulation, properties, inheritance, polymorphism, dunder methods, composition |
 | **V — The Deathly Hallows Protocol** | Mastery of death | iterators, generators, decorators, context managers, dataclasses, ABCs, design patterns |
 | **VI — The Hall of Prophecy** | The prophecy archive | NumPy arrays and masks, matplotlib, pandas DataFrames and groupby, sqlite3, BeautifulSoup, statistics (means, z-scores, outliers) |
-| **VII — The Palantír** | The seeing-stones | probability & Bayes, FFT signal hunting, scikit-learn: train/test, scaling, K-Means, DBSCAN, PCA, random forests, SVC, evaluation |
+| **VII — The Palantír** | The seeing-stones | probability & Bayes, FFT signal hunting, scikit-learn: train/test, scaling, K-Means, DBSCAN, PCA, random forests, SVC, evaluation (incl. F1, ROC/AUC) |
+| **VIII — The Last Alliance** | Both hosts united | neural sorcery from first principles: regression, gradient descent, neurons & activations, backpropagation, text features & cross-entropy, autoencoder anomaly detection, convolution — all in raw NumPy |
 
-Acts VI–VII teach the scientific-Python stack — the exact prerequisite
-skills for applied data-science and machine-learning coursework — with
-every example running live in the browser (the engine fetches numpy,
-pandas, scikit-learn and matplotlib on first import, and renders the
-figures your code draws).
+Acts VI–VIII teach the scientific-Python and machine-learning stack —
+the exact prerequisite skills for applied data-science and ML
+coursework — with every example running live in the browser (the
+engine fetches numpy, pandas, scikit-learn and matplotlib on first
+import, and renders the figures your code draws). Neural networks are
+built and trained in raw NumPy: miniature, seeded, and fully runnable
+where TensorFlow cannot follow.
 
 Each act holds **seven trials** (lessons) and ends with a **warden** (boss
 battle): a six-question gauntlet fought on three lives, then a final working

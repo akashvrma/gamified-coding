@@ -111,10 +111,16 @@ export const ACHIEVEMENTS = [
     check: (st, ev) => ev.type === 'boss-defeated' && ev.actId === 'act6',
   },
   {
-    id: 'act7-fall', icon: '👁️', xp: 120,
-    title: 'Master of Death',
-    desc: 'Defeat the final boss. Even the seeing-stone kneels; the Codex has nothing left to teach you.',
+    id: 'act7-fall', icon: '👁️', xp: 80,
+    title: 'The Stone Kneels',
+    desc: 'Defeat the boss of Act VII. The palantír shows you nothing you have not verified.',
     check: (st, ev) => ev.type === 'boss-defeated' && ev.actId === 'act7',
+  },
+  {
+    id: 'act8-fall', icon: '⚔️', xp: 120,
+    title: 'Master of Death',
+    desc: 'Defeat the final boss. The machine-shadow unravels; the Codex has nothing left to teach you.',
+    check: (st, ev) => ev.type === 'boss-defeated' && ev.actId === 'act8',
   },
   {
     id: 'streak-3', icon: '🌒', xp: 30,
@@ -157,7 +163,7 @@ export const ACHIEVEMENTS = [
     id: 'all-trials', icon: '🌋', xp: 150,
     title: 'No Trial Left Standing',
     desc: 'Solve every coding trial in the Codex.',
-    check: (st) => st.stats.challengesSolved >= 49,
+    check: (st) => st.stats.challengesSolved >= 56,
   },
   {
     id: 'unaided', icon: '🐍', xp: 80,

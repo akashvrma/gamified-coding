@@ -11,9 +11,10 @@ import { rankUpMoment } from './cinema.js';
 // XP thresholds are tuned so the final rank demands near-total mastery
 // of the Codex (see tools/validate_content.mjs, which prints total XP).
 
-// Thresholds tuned to the 7-act curriculum (11,305 attainable XP —
-// see tools/validate_content.mjs): each of the last ranks falls as a
-// late act is conquered, and the final rank demands near-everything.
+// Thresholds tuned to the 8-act curriculum (13,205 attainable XP —
+// see tools/validate_content.mjs): late acts crest the high ranks, and
+// the final rank demands near-everything, the last ascent spanning the
+// Palantír and the Last Alliance.
 export const RANKS = [
   { xp: 0,     title: 'Novice at the Threshold' },
   { xp: 200,   title: 'Initiate of Shadows' },
@@ -26,7 +27,7 @@ export const RANKS = [
   { xp: 6000,  title: 'Horcrux Forger' },
   { xp: 7600,  title: 'Necromancer of Dol Guldur' },
   { xp: 9400,  title: 'Dark Lord Ascendant' },
-  { xp: 11200, title: 'The Nameless One' },
+  { xp: 13100, title: 'The Nameless One' },
 ];
 
 export function rankFor(xp) {

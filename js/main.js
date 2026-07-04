@@ -4,6 +4,7 @@
 
 import * as S from './state.js';
 import { rankFor, onHeaderRefresh, dailyTouch } from './gamification.js';
+import { avatarSvg, avatarTier } from './art.js';
 import {
   renderOnboarding, renderHome, renderAct, renderLesson,
   renderBoss, renderProfile, renderCodex, renderMissing,
@@ -23,6 +24,13 @@ function refreshHeader() {
   headerStatus.hidden = false;
   nav.hidden = false;
   const rank = rankFor(st.xp);
+  const tier = avatarTier(rank.index);
+  const avatarHost = document.getElementById('hdr-avatar');
+  // Re-render the little adept only when its form actually changes.
+  if (avatarHost.dataset.form !== `${st.allegiance}-${tier}`) {
+    avatarHost.dataset.form = `${st.allegiance}-${tier}`;
+    avatarHost.innerHTML = avatarSvg(st.allegiance, tier);
+  }
   document.getElementById('hdr-rank').textContent = rank.title;
   document.getElementById('hdr-xp').textContent = `${st.xp} XP`;
   document.getElementById('hdr-xpfill').style.width = `${Math.round(rank.progress * 100)}%`;

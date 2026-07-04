@@ -27,6 +27,12 @@ function inline(escaped) {
   return s.replace(/\u0000(\d+)\u0000/g, (_, i) => `<code>${codes[Number(i)]}</code>`);
 }
 
+// Escape then render the inline markdown subset — for single-line strings
+// (quiz questions, options, explanations) that never contain blocks.
+export function mdInline(text) {
+  return inline(escapeHtml(text));
+}
+
 // Markdown-lite block renderer for lesson body text.
 // Supports paragraphs (blank-line separated) and "- " bullet lists.
 export function prose(text) {

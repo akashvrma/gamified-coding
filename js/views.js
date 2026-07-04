@@ -3,11 +3,13 @@
 // that take the app root element and paint a route.
 // ============================================================
 
-import { escapeHtml, prose, codeBlock, el, toast } from './ui.js';
+import { escapeHtml, prose, codeBlock, el, toast, mdInline } from './ui.js';
 import * as S from './state.js';
 import { emit, grantXp, rankFor, ACHIEVEMENTS, RANKS } from './gamification.js';
 import { runPython, preboot, runnerStatus, onRunnerStatus } from './runner.js';
 import { curriculum, findLesson, findAct } from './data/curriculum.js';
+import { avatarSvg, avatarTier, TIER_NAMES, bossSvg, mapSvg } from './art.js';
+import { castBolt, burst, hitFlash, bossStrike, dissolve } from './fx.js';
 
 const QUIZ_XP = 35;
 const QUIZ_PERFECT_BONUS = 15;
@@ -168,10 +170,20 @@ export function renderHome(root) {
       : `<div class="act-link" title="Defeat the previous act's warden to break this seal">${inner}</div>${road}`;
   }).join('');
 
+  // The illustrated descent: decorative map above the accessible act list.
+  const progress = curriculum.acts.map((act, i) => {
+    const unlocked = S.isActUnlocked(curriculum, i);
+    const { done, total } = S.actProgress(act);
+    return { unlocked, done, total, current: false };
+  });
+  const here = progress.findIndex((p) => p.unlocked && p.done < p.total);
+  (progress[here === -1 ? progress.length - 1 : here] || progress[0]).current = true;
+
   root.innerHTML = `
     <h1 class="map-title">The Descent</h1>
     <p class="map-sub">Five realms stand between ${escapeHtml(st.name || 'you')} and mastery.
     Each must be survived in turn.</p>
+    <div class="map-wrap" aria-hidden="true">${mapSvg(progress)}</div>
     <div class="act-road">${cards}</div>`;
 }
 
@@ -422,6 +434,7 @@ function mountChallenge(host, lesson, onChange) {
           <span class="verdict-title">The ward yields.</span>
           ${escapeHtml(ch.successText)}
         </div>`;
+      castBolt(runBtn, verdictBox).then(() => burst(verdictBox));
       if (first) {
         grantXp(ch.xp, `Trial passed — ${lesson.title}`);
         emit({ type: 'challenge-solved', lessonId: lesson.id });
@@ -501,6 +514,7 @@ function mountQuiz(host, lesson, onChange) {
           qr.className = 'q-result ok';
           explain.hidden = false;
           explain.innerHTML = inlineOption(q.explain);
+          burst(btn);
           checkQuizDone();
         } else {
           state[qi].missed = true;
@@ -531,9 +545,10 @@ function mountQuiz(host, lesson, onChange) {
   }
 }
 
-// Escape then apply inline `code` markup for quiz strings.
+// Quiz strings render the full inline markdown subset (`code`, **bold**,
+// *italic*) with code spans shielded from emphasis parsing.
 function inlineOption(text) {
-  return escapeHtml(text).replace(/`([^`]+)`/g, '<code>$1</code>');
+  return mdInline(text);
 }
 
 // ---------------- boss ----------------
@@ -567,23 +582,53 @@ export function renderBoss(root, actId) {
     idx: 0,
     flawless: true,
     order: boss.gauntlet.map((_, i) => i),
+    maxHp: boss.gauntlet.length + 1, // questions + the final working
+    hp: boss.gauntlet.length + 1,
   };
 
+  // The stage (figure + health) persists across gauntlet steps so the
+  // strike animations and HP transitions play against a stable target.
+  function stageHtml() {
+    return `
+      <div class="boss-stage">
+        <div class="boss-figure" id="boss-figure" aria-hidden="true">${bossSvg(act.id)}</div>
+        <div class="boss-name-plate">${escapeHtml(boss.title)}</div>
+        <div class="boss-hpbar" aria-hidden="true"><i id="boss-hpfill" style="width:${(battle.hp / battle.maxHp) * 100}%"></i></div>
+        <div class="boss-hptext" id="boss-hptext">Warden strength: ${battle.hp} / ${battle.maxHp}</div>
+      </div>
+      <div id="boss-flow"></div>`;
+  }
+
+  function flowEl() { return arena.querySelector('#boss-flow'); }
+  function figureEl() { return arena.querySelector('#boss-figure'); }
+
+  function updateHp() {
+    const fill = arena.querySelector('#boss-hpfill');
+    const text = arena.querySelector('#boss-hptext');
+    if (fill) fill.style.width = `${(battle.hp / battle.maxHp) * 100}%`;
+    if (text) text.textContent = `Warden strength: ${battle.hp} / ${battle.maxHp}`;
+  }
+
   function intro() {
-    arena.innerHTML = `
+    battle.hp = battle.maxHp;
+    arena.innerHTML = stageHtml();
+    flowEl().innerHTML = `
       <span class="challenge-label">☠ Warden of Act ${escapeHtml(act.numeral)}</span>
       <h1 class="boss-title">${escapeHtml(boss.title)}</h1>
       <div class="narrative">${prose(boss.narrative)}</div>
       <p class="prose">The trial has two movements: a <strong>gauntlet of ${boss.gauntlet.length} questions</strong>
       (you carry three lives — each wrong answer feeds one to the dark), then a
-      <strong>final working of code</strong>. Fall, and you begin the gauntlet anew.</p>
+      <strong>final working of code</strong>. Every true answer wounds the warden;
+      fall, and you begin the gauntlet anew.</p>
       ${alreadyDown ? '<p class="prose"><em>You have already broken this warden. Fight again for pride, not power — no further XP awaits.</em></p>' : ''}
       <button class="btn btn-danger" id="begin">Begin the trial</button>
       <a class="btn btn-ghost" href="#/act/${act.id}">Withdraw</a>`;
-    arena.querySelector('#begin').addEventListener('click', () => {
+    flowEl().querySelector('#begin').addEventListener('click', () => {
       battle.lives = 3;
       battle.idx = 0;
       battle.flawless = true;
+      battle.hp = battle.maxHp;
+      updateHp();
       // Reshuffle question order each attempt so retries stay honest.
       for (let i = battle.order.length - 1; i > 0; i -= 1) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -601,7 +646,7 @@ export function renderBoss(root, actId) {
   function gauntletStep() {
     if (battle.idx >= battle.order.length) { finalChallenge(); return; }
     const q = boss.gauntlet[battle.order[battle.idx]];
-    arena.innerHTML = `
+    flowEl().innerHTML = `
       <span class="challenge-label">☠ ${escapeHtml(boss.title)}</span>
       ${livesHtml()}
       <p class="gauntlet-progress">Question ${battle.idx + 1} of ${battle.order.length}</p>
@@ -617,27 +662,34 @@ export function renderBoss(root, actId) {
         <div class="q-explain" hidden></div>
         <div class="mt" data-role="next"></div>
       </div>`;
-    const qr = arena.querySelector('[data-role="qr"]');
-    const explain = arena.querySelector('.q-explain');
-    const nextHost = arena.querySelector('[data-role="next"]');
-    arena.querySelectorAll('.quiz-opt').forEach((btn) => {
+    const flow = flowEl();
+    const qr = flow.querySelector('[data-role="qr"]');
+    const explain = flow.querySelector('.q-explain');
+    const nextHost = flow.querySelector('[data-role="next"]');
+    flow.querySelectorAll('.quiz-opt').forEach((btn) => {
       btn.addEventListener('click', () => {
         const oi = Number(btn.dataset.o);
-        arena.querySelectorAll('.quiz-opt').forEach((b) => { b.disabled = true; });
+        flow.querySelectorAll('.quiz-opt').forEach((b) => { b.disabled = true; });
         explain.hidden = false;
         explain.innerHTML = inlineOption(q.explain);
         if (oi === q.answer) {
           btn.classList.add('sel-right');
-          qr.textContent = 'The warden recoils.';
+          qr.textContent = 'Your spell strikes home. The warden recoils.';
           qr.className = 'q-result ok';
+          battle.hp = Math.max(1, battle.hp - 1); // the last point falls only to code
+          castBolt(btn, figureEl()).then(() => {
+            hitFlash(figureEl());
+            updateHp();
+          });
         } else {
           btn.classList.add('sel-wrong');
-          arena.querySelectorAll('.quiz-opt')[q.answer].classList.add('sel-right');
+          flow.querySelectorAll('.quiz-opt')[q.answer].classList.add('sel-right');
           battle.lives -= 1;
           battle.flawless = false;
-          qr.textContent = `A candle gutters out. The true answer was ${'ABCD'[q.answer]}.`;
+          qr.textContent = `The warden strikes back — a candle gutters out. The true answer was ${'ABCD'[q.answer]}.`;
           qr.className = 'q-result bad';
-          arena.querySelector('.lives').outerHTML = livesHtml();
+          flow.querySelector('.lives').outerHTML = livesHtml();
+          bossStrike(figureEl());
           if (battle.lives <= 0) { fallen(); return; }
         }
         battle.idx += 1;
@@ -651,17 +703,25 @@ export function renderBoss(root, actId) {
   }
 
   function fallen() {
-    arena.innerHTML = `
+    const fig = figureEl();
+    if (fig) {
+      // The warden looms over the fallen.
+      fig.animate(
+        [{ transform: 'scale(1)' }, { transform: 'scale(1.18) translateY(10px)' }],
+        { duration: 900, easing: 'ease-out', fill: 'forwards' },
+      );
+    }
+    flowEl().innerHTML = `
       <h1 class="boss-title">You are cast down.</h1>
       <div class="narrative"><p>${escapeHtml(boss.defeatText)}</p></div>
       <button class="btn btn-danger" id="again">Rise and try again</button>
       <a class="btn btn-ghost" href="#/act/${act.id}">Retreat and study</a>`;
-    arena.querySelector('#again').addEventListener('click', intro);
+    flowEl().querySelector('#again').addEventListener('click', intro);
   }
 
   function finalChallenge() {
     const ch = boss.finalChallenge;
-    arena.innerHTML = `
+    flowEl().innerHTML = `
       <span class="challenge-label">☠ The Final Working</span>
       <h2 class="boss-title">${escapeHtml(ch.title)}</h2>
       ${livesHtml()}
@@ -675,12 +735,16 @@ export function renderBoss(root, actId) {
       xp: 0,
       challenge: { ...ch, successText: 'The warden kneels.' },
     };
-    mountBossForge(arena.querySelector('#boss-forge'), pseudo, () => victory());
+    mountBossForge(flowEl().querySelector('#boss-forge'), pseudo, () => victory());
   }
 
-  function victory() {
+  async function victory() {
     const first = S.markBossDefeated(act.id);
     const bonus = battle.flawless ? boss.flawlessBonus : 0;
+    // The killing blow: strength to zero, then the warden burns away.
+    battle.hp = 0;
+    updateHp();
+    await dissolve(figureEl());
     arena.innerHTML = `
       <div class="boss-defeated-banner">
         <h2>☠ ${escapeHtml(boss.title)} has fallen.</h2>
@@ -688,7 +752,7 @@ export function renderBoss(root, actId) {
         ${first ? `<p class="prose center">Spoils: <strong>${boss.xp} XP</strong>${bonus ? ` + <strong>${bonus} XP</strong> for a flawless gauntlet` : ''}</p>` : '<p class="empty-note">The warden was already yours; no new spoils.</p>'}
         <p>
           ${curriculum.acts[actIndex + 1]
-    ? `<a class="btn" href="#/act/${curriculum.acts[actIndex + 1].id}">Descend to Act ${curriculum.acts[actIndex + 1].numeral} →</a>`
+    ? `<a class="btn" href="#/act/${curriculum.acts[actIndex + 1].id}">Descend to Act ${escapeHtml(curriculum.acts[actIndex + 1].numeral)} →</a>`
     : '<a class="btn" href="#/profile">Behold what you have become →</a>'}
           <a class="btn btn-ghost" href="#/">The Map</a>
         </p>
@@ -766,6 +830,7 @@ function mountBossForge(host, pseudo, onPass) {
     if (result.ok) {
       consoleBox.innerHTML = out;
       clearDraft(pseudo.id);
+      burst(runBtn);
       onPass();
     } else {
       consoleBox.innerHTML = `${out}\n<span class="con-err">${escapeHtml(result.error || '')}</span>`;
@@ -812,10 +877,25 @@ export function renderProfile(root) {
     </div>`;
   }).join('');
 
+  // The adept's evolving form: tier thresholds sit at rank indexes 2/5/8/11.
+  const tier = avatarTier(rank.index);
+  const nextTierRankIdx = [2, 5, 8, 11].find((r) => r > rank.index);
+  const nextForm = nextTierRankIdx !== undefined
+    ? `Your next form awakens at the rank of <strong>${escapeHtml(RANKS[nextTierRankIdx].title)}</strong> (${RANKS[nextTierRankIdx].xp} XP).`
+    : 'There is no form beyond this one. You are what the Codex was written to create.';
+
   root.innerHTML = `
     <h1 class="map-title">The Sanctum</h1>
     <p class="map-sub">${escapeHtml(st.name)}, ${escapeHtml(rank.title)} — sworn to the
     ${st.allegiance === 'wand' ? 'Path of the Wand 🪄' : 'Path of the Ring 💍'}</p>
+    <div class="panel avatar-card">
+      <span aria-hidden="true">${avatarSvg(st.allegiance, tier)}</span>
+      <div>
+        <div class="avatar-form-name">${escapeHtml(TIER_NAMES[tier])}</div>
+        <div class="prose"><p>The dark reshapes those who study it. Form ${tier + 1} of ${TIER_NAMES.length}.</p></div>
+        <div class="avatar-form-next">${nextForm}</div>
+      </div>
+    </div>
     <div class="sanctum-grid">
       <div class="panel">
         <h2 class="panel-h">The Ledger</h2>

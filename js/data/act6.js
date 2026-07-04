@@ -470,7 +470,8 @@ assert isinstance(_o1, np.ndarray) and _o1.shape == (8,), "conjure_omens(8) must
 assert np.array_equal(_o1, _o2), "the same seed must conjure the same omens — build the generator with default_rng(0) INSIDE the function"
 assert _o1.min() >= 1 and _o1.max() <= 9, "omens must lie between 1 and 9 — integers(1, 10) excludes its upper bound"
 assert _o1.dtype.kind == "i", "omens must be integers — rng.integers, not rng.random"
-assert len(conjure_omens(3)) == 3, "count must govern how many omens are conjured"`,
+assert len(conjure_omens(3)) == 3, "count must govern how many omens are conjured"
+assert np.array_equal(conjure_omens(64), np.random.default_rng(0).integers(1, 10, size=64)), "the omen-stream itself is wrong — with default_rng(0), integers(1, 10) must reproduce it exactly; check your bounds (10 excludes itself; writing 9 would silence the nines)"`,
         successText: 'The sieve holds: ten thousand dim futures fall away, and the burning few remain in your hand.',
         xp: 85,
       },

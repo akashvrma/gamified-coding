@@ -762,19 +762,19 @@ marrowbats = np.column_stack([rng.normal(0.8, 0.05, 60), rng.normal(700.0, 40.0,
 X = np.vstack([emberlings, gloomwings, marrowbats])
 
 raw = KMeans(n_clusters=3, n_init=10, random_state=0).fit(X)
-for i in range(3):   # which cluster labels landed on each true brood?
-    print(sorted(set(raw.labels_[i * 60:(i + 1) * 60].tolist())))
-# [1, 2]  -- emberlings torn between two clusters
-# [1, 2]  -- gloomwings smeared into the same two
-# [0]     -- only the huge-winged brood came out whole: wingspan ruled alone
+for i in range(3):   # how many clusters claimed each true brood?
+    print(len(set(raw.labels_[i * 60:(i + 1) * 60].tolist())))
+# 2  -- emberlings torn between two clusters
+# 2  -- gloomwings smeared across the same two
+# 1  -- only the huge-winged brood came out whole: wingspan ruled alone
 
 X_scaled = StandardScaler().fit_transform(X)
 km = KMeans(n_clusters=3, n_init=10, random_state=0).fit(X_scaled)
 for i in range(3):
-    print(sorted(set(km.labels_[i * 60:(i + 1) * 60].tolist())))
-# [2]
-# [0]  -- scaled, each brood claims exactly one cluster
-# [1]`,
+    print(len(set(km.labels_[i * 60:(i + 1) * 60].tolist())))
+# 1
+# 1  -- scaled, each brood claims exactly one cluster
+# 1`,
           note: 'The cluster *numbers* mean nothing — K-Means may call the emberlings cluster 2 '
             + 'today and cluster 0 in another working. What matters is the grouping: which rows '
             + 'were judged kin. Never read meaning into the label values themselves.',
@@ -1911,7 +1911,7 @@ from sklearn.ensemble import RandomForestClassifier as _RF
 from sklearn.metrics import accuracy_score as _asc, confusion_matrix as _cmf
 _Xtr, _Xte, _ytr, _yte = _tts(X, y, test_size=0.25, random_state=0)
 assert X_train.shape == (165, 5) and X_test.shape == (55, 5), "The split is misproportioned — 220 souls at test_size=0.25 seals 55 away."
-assert np.allclose(X_train, _Xtr) and np.array_equal(np.asarray(y_test), _yte), "The split does not match random_state=0 — the rite is unverifiable without the seed."
+assert np.allclose(X_train, _Xtr) and np.array_equal(np.asarray(y_test), _yte), "X_train does not match a random_state=0 split of the RAW features. Either the seed is wrong, or the rows were scaled before the split (the scaler glimpsing sealed rows), or X_train was overwritten after. Split the raw features first, keep X_train raw, and store the scaled result separately."
 assert np.allclose(scaler.mean_, _Xtr.mean(axis=0)), "The scaler's memory is wrong — fit it on X_train alone, after the split."
 assert not np.allclose(scaler.mean_, X.mean(axis=0), atol=1e-3), "The scaler glimpsed the sealed rows — it was fitted on all of X. Split FIRST, then fit_transform on X_train only."
 assert np.allclose(X_train_s, (_Xtr - _Xtr.mean(axis=0)) / _Xtr.std(axis=0)), "X_train_s is not the training rows under the training scale — use scaler.fit_transform(X_train)."

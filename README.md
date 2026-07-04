@@ -40,6 +40,8 @@ needed on first run to fetch the Python interpreter from the Pyodide CDN.
 | **VI — The Hall of Prophecy** | The prophecy archive | NumPy arrays and masks, matplotlib, pandas DataFrames and groupby, sqlite3, BeautifulSoup, statistics (means, z-scores, outliers) |
 | **VII — The Palantír** | The seeing-stones | probability & Bayes, FFT signal hunting, scikit-learn: train/test, scaling, K-Means, DBSCAN, PCA, random forests, SVC, evaluation (incl. F1, ROC/AUC) |
 | **VIII — The Last Alliance** | Both hosts united | neural sorcery from first principles: regression, gradient descent, neurons & activations, backpropagation, text features & cross-entropy, autoencoder anomaly detection, convolution — all in raw NumPy |
+| **IX — The Age of Echoes** | The speaking portraits | language & the new minds: TF-IDF, sentiment classification, embeddings & cosine similarity, n-gram language models, attention in NumPy, a runnable RAG retrieval pipeline, agent loops with guardrails |
+| **X — The Counterfeit Forge** | Forgery under the Eye | vision & generation: images as arrays, 2D convolution & edge kernels, pooling hierarchies, template detection, latent-space generation, a miniature NumPy GAN, deepfake ethics & counterfeit detection |
 
 Acts VI–VIII teach the scientific-Python and machine-learning stack —
 the exact prerequisite skills for applied data-science and ML
@@ -101,6 +103,28 @@ Design principles:
 - **Content as data** — the entire curriculum is declarative
   (`docs/CONTENT_SPEC.md`); `npm run validate` re-grades every challenge
   solution in CPython and enforces the schema.
+
+## Curriculum alignment
+
+The Codex is designed as a one-stop foundation for applied AI/ML
+study. Beyond taking a true beginner to expert Python, the ten acts
+map onto the skills graduate AI/ML coursework assumes:
+
+- **Analytical methods for ML** (math tools, regression, classification,
+  clustering, trees/ensembles, optimization) — Acts VI–VIII
+- **Data engineering** (pipelines, cleaning, SQL, text ingestion,
+  time-series basics) — Acts III, VI–VII
+- **Deep learning & NLP** (network fundamentals from first principles,
+  text features, TF-IDF, sentiment, embeddings, attention, language
+  models) — Acts VIII–IX
+- **Computer vision & generative AI** (convolution, pooling, detection,
+  latent generation, GANs, ethics of synthetic media) — Act X
+- **LLMs, RAG & agents** (retrieval pipelines, prompting concepts,
+  agent loops, guardrails, evaluation) — Act IX
+
+Framework-bound topics (TensorFlow/Keras serving, GPU tooling) are
+taught conceptually with an honest 1:1 mapping onto the from-scratch
+implementations the learner has already built.
 
 ## Validating content
 

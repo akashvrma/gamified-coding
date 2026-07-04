@@ -118,10 +118,22 @@ export const ACHIEVEMENTS = [
     check: (st, ev) => ev.type === 'boss-defeated' && ev.actId === 'act7',
   },
   {
-    id: 'act8-fall', icon: '⚔️', xp: 120,
-    title: 'Master of Death',
-    desc: 'Defeat the final boss. The machine-shadow unravels; the Codex has nothing left to teach you.',
+    id: 'act8-fall', icon: '⚔️', xp: 80,
+    title: 'The Alliance Holds',
+    desc: 'Defeat the boss of Act VIII. The machine-shadow unravels before minds you forged yourself.',
     check: (st, ev) => ev.type === 'boss-defeated' && ev.actId === 'act8',
+  },
+  {
+    id: 'act9-fall', icon: '🗣️', xp: 80,
+    title: 'The Echo Answers to You',
+    desc: 'Defeat the boss of Act IX. The speaking things speak on your terms now.',
+    check: (st, ev) => ev.type === 'boss-defeated' && ev.actId === 'act9',
+  },
+  {
+    id: 'act10-fall', icon: '🎭', xp: 120,
+    title: 'Master of Death',
+    desc: 'Defeat the final boss. Even the perfect counterfeit could not deceive you; the Codex has nothing left to teach.',
+    check: (st, ev) => ev.type === 'boss-defeated' && ev.actId === 'act10',
   },
   {
     id: 'streak-3', icon: '🌒', xp: 30,
@@ -164,7 +176,7 @@ export const ACHIEVEMENTS = [
     id: 'all-trials', icon: '🌋', xp: 150,
     title: 'No Trial Left Standing',
     desc: 'Solve every coding trial in the Codex.',
-    check: (st) => st.stats.challengesSolved >= 56,
+    check: (st) => st.stats.challengesSolved >= 70,
   },
   {
     id: 'unaided', icon: '🐍', xp: 80,

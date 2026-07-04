@@ -213,6 +213,45 @@ export function bossSvg(actId) {
         <path d="M70 176 L74 156 L80 176 Z M120 176 L126 156 L130 176 Z" fill="#060810"/>
         <g opacity="0.55"><ellipse cx="100" cy="182" rx="80" ry="9" fill="#0a0e16"/></g>
       </g>`;
+  art.act9 = `
+      <g class="boss-sway">
+        <!-- the Echo Sovereign: a crowned figure of overlapping voices -->
+        <g opacity="0.35" transform="translate(-14 4)">
+          <path d="M100 30 C78 32 68 52 66 80 C64 112 56 146 46 176 L154 176 C144 146 136 112 134 80 C132 52 122 32 100 30 Z" fill="#141026"/>
+        </g>
+        <g opacity="0.5" transform="translate(14 4)">
+          <path d="M100 30 C78 32 68 52 66 80 C64 112 56 146 46 176 L154 176 C144 146 136 112 134 80 C132 52 122 32 100 30 Z" fill="#141026"/>
+        </g>
+        <path d="M100 26 C78 28 68 48 66 76 C64 110 56 144 46 176 L154 176 C144 144 136 110 134 76 C132 48 122 28 100 26 Z"
+          fill="#0e0b1a" stroke="#2c2444" stroke-width="2"/>
+        <path d="M100 38 C88 38 80 50 80 63 C80 76 89 85 100 85 C111 85 120 76 120 63 C120 50 112 38 100 38 Z" fill="#050310"/>
+        <g class="boss-eyes"><ellipse cx="92" cy="60" rx="2.8" ry="3.4" fill="#b49fff"/><ellipse cx="108" cy="60" rx="2.8" ry="3.4" fill="#b49fff"/></g>
+        <path d="M94 74 Q100 78 106 74" fill="none" stroke="#4a3d6b" stroke-width="1.8"/>
+        <g class="boss-flames" opacity="0.7">
+          <path d="M136 60 q8 8 0 16 M144 52 q14 14 0 32" fill="none" stroke="#6f5ad8" stroke-width="2"/>
+          <path d="M64 60 q-8 8 0 16 M56 52 q-14 14 0 32" fill="none" stroke="#6f5ad8" stroke-width="2"/>
+        </g>
+        <g opacity="0.55"><ellipse cx="100" cy="182" rx="78" ry="9" fill="#0e0b1a"/></g>
+      </g>`;
+  art.act10 = `
+      <g class="boss-sway">
+        <!-- the Perfect Counterfeit: a mirrored double, one half a lie -->
+        <path d="M100 26 C78 28 68 48 66 76 C64 110 56 144 46 176 L100 176 Z"
+          fill="#0c0a12" stroke="#2c2440" stroke-width="2"/>
+        <path d="M100 26 C122 28 132 48 134 76 C136 110 144 144 154 176 L100 176 Z"
+          fill="#160f0a" stroke="#3d2a1a" stroke-width="2"/>
+        <line x1="100" y1="26" x2="100" y2="176" stroke="#000" stroke-width="2" opacity="0.6"/>
+        <path d="M100 40 C90 40 82 51 82 63 C82 75 90 84 100 84 Z" fill="#04030a"/>
+        <path d="M100 40 C110 40 118 51 118 63 C118 75 110 84 100 84 Z" fill="#0a0604"/>
+        <g class="boss-eyes">
+          <ellipse cx="92" cy="61" rx="2.6" ry="3.4" fill="#9fb4ff"/>
+          <path d="M104 58 l10 3 -10 3 z" fill="#e8641f"/>
+        </g>
+        <path d="M112 92 l16 -6 -4 10 12 -2 -6 10" fill="none" stroke="#3d2a1a" stroke-width="2" opacity="0.8"/>
+        <path class="boss-hand" d="M62 96 C50 106 44 120 42 134 C52 126 60 126 66 116" fill="none" stroke="#0c0a12" stroke-width="10" stroke-linecap="round"/>
+        <path class="boss-hand" d="M138 96 C150 106 156 120 158 134 C148 126 140 126 134 116" fill="none" stroke="#160f0a" stroke-width="10" stroke-linecap="round"/>
+        <g opacity="0.55"><ellipse cx="100" cy="182" rx="78" ry="9" fill="#0e0a10"/></g>
+      </g>`;
   return `
   <svg class="boss-svg" viewBox="0 0 200 192" role="img" aria-hidden="true">
     <defs>
@@ -290,6 +329,22 @@ function regionVignette(actIndex, x, y) {
       <line x1="-30" y1="-18" x2="-30" y2="10" stroke="#232738" stroke-width="1.5"/>
       <line x1="30" y1="-18" x2="30" y2="10" stroke="#232738" stroke-width="1.5"/>
     </g>`,
+    // IX — the age of echoes: a speaking portrait, sound-rings spreading
+    `<g transform="translate(${x} ${y})" class="map-vig">
+      <rect x="-20" y="-34" width="40" height="52" rx="4" fill="none" stroke="#3a3049" stroke-width="2.5"/>
+      <path d="M-8 -14 C-8 -22 8 -22 8 -14 C8 -8 4 -4 0 -4 C-4 -4 -8 -8 -8 -14 Z" fill="#151021"/>
+      <path d="M-5 2 Q0 6 5 2" fill="none" stroke="#3a3049" stroke-width="1.6"/>
+      <path d="M26 -12 q6 6 0 12 M32 -18 q10 10 0 24" fill="none" stroke="#3d4a7a" stroke-width="1.6" opacity="0.8"/>
+      <circle cx="24" cy="-30" r="2" fill="var(--accent-bright)" opacity="0.8"/>
+    </g>`,
+    // X — the counterfeit forge: twin masks over an anvil, one cracked
+    `<g transform="translate(${x} ${y})" class="map-vig">
+      <path d="M-24 -26 C-32 -18 -32 -4 -24 2 C-18 6 -10 2 -8 -8 C-8 -18 -14 -28 -24 -26 Z" fill="#141021" stroke="#2c2440" stroke-width="1.5"/>
+      <path d="M24 -26 C32 -18 32 -4 24 2 C18 6 10 2 8 -8 C8 -18 14 -28 24 -26 Z" fill="#1c130c" stroke="#3d2a1a" stroke-width="1.5"/>
+      <path d="M18 -20 l6 8 -4 6" fill="none" stroke="#e8641f" stroke-width="1.2" opacity="0.8"/>
+      <path d="M-20 10 L20 10 L14 20 L-14 20 Z" fill="#10131f"/>
+      <circle cx="-21" cy="-14" r="1.8" fill="#9fb4ff" opacity="0.8"/><circle cx="21" cy="-14" r="1.8" fill="#e8641f" opacity="0.8"/>
+    </g>`,
   ];
   return v[actIndex % v.length];
 }
@@ -324,7 +379,7 @@ export function mapSvg(progress) {
       <g class="map-node ${n.unlocked ? 'open' : 'sealed'}" transform="translate(${n.x} ${n.y})">
         <circle r="22" fill="#0d0f17" stroke="${n.unlocked ? 'var(--accent)' : '#232738'}" stroke-width="2"/>
         <text y="7" text-anchor="middle" font-size="20" fill="${n.unlocked ? 'var(--accent-bright)' : '#3a3f55'}"
-          font-family="Georgia, serif">${['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX'][n.i] || n.i + 1}</text>
+          font-family="Georgia, serif">${['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'][n.i] || n.i + 1}</text>
         ${n.done === n.total ? '<circle r="28" fill="none" stroke="var(--success)" stroke-width="1.6" opacity="0.8"/>' : ''}
       </g>
       ${!n.unlocked ? `<ellipse cx="${n.x + (n.i % 2 === 0 ? 75 : -75)}" cy="${n.y}" rx="230" ry="76" fill="url(#map-fog-g)" class="map-fog"/>` : ''}

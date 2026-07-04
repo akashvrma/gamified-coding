@@ -11,19 +11,22 @@ import { rankUpMoment } from './cinema.js';
 // XP thresholds are tuned so the final rank demands near-total mastery
 // of the Codex (see tools/validate_content.mjs, which prints total XP).
 
+// Thresholds tuned to the 7-act curriculum (11,305 attainable XP —
+// see tools/validate_content.mjs): each of the last ranks falls as a
+// late act is conquered, and the final rank demands near-everything.
 export const RANKS = [
-  { xp: 0,    title: 'Novice at the Threshold' },
-  { xp: 150,  title: 'Initiate of Shadows' },
-  { xp: 400,  title: 'Apprentice of the Dark Arts' },
-  { xp: 800,  title: 'Wraith-Touched' },
-  { xp: 1300, title: 'Keeper of Forbidden Texts' },
-  { xp: 1900, title: 'Occlumens' },
-  { xp: 2600, title: 'Herald of the Nine' },
-  { xp: 3400, title: 'Bearer of the Morgul Blade' },
-  { xp: 4300, title: 'Horcrux Forger' },
-  { xp: 5300, title: 'Necromancer of Dol Guldur' },
-  { xp: 6400, title: 'Dark Lord Ascendant' },
-  { xp: 7600, title: 'The Nameless One' },
+  { xp: 0,     title: 'Novice at the Threshold' },
+  { xp: 200,   title: 'Initiate of Shadows' },
+  { xp: 500,   title: 'Apprentice of the Dark Arts' },
+  { xp: 1000,  title: 'Wraith-Touched' },
+  { xp: 1600,  title: 'Keeper of Forbidden Texts' },
+  { xp: 2400,  title: 'Occlumens' },
+  { xp: 3400,  title: 'Herald of the Nine' },
+  { xp: 4600,  title: 'Bearer of the Morgul Blade' },
+  { xp: 6000,  title: 'Horcrux Forger' },
+  { xp: 7600,  title: 'Necromancer of Dol Guldur' },
+  { xp: 9400,  title: 'Dark Lord Ascendant' },
+  { xp: 11200, title: 'The Nameless One' },
 ];
 
 export function rankFor(xp) {

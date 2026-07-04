@@ -8,8 +8,10 @@ import act2 from './act2.js';
 import act3 from './act3.js';
 import act4 from './act4.js';
 import act5 from './act5.js';
+import act6 from './act6.js';
+import act7 from './act7.js';
 
-export const curriculum = { acts: [act1, act2, act3, act4, act5] };
+export const curriculum = { acts: [act1, act2, act3, act4, act5, act6, act7] };
 
 const lessonIndex = new Map();
 const actIndexById = new Map();

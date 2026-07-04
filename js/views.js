@@ -181,9 +181,11 @@ export function renderHome(root) {
   const here = progress.findIndex((p) => p.unlocked && p.done < p.total);
   (progress[here === -1 ? progress.length - 1 : here] || progress[0]).current = true;
 
+  const realmWord = ['One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven',
+    'Eight', 'Nine'][curriculum.acts.length - 1] || String(curriculum.acts.length);
   root.innerHTML = `
     <h1 class="map-title">The Descent</h1>
-    <p class="map-sub">Five realms stand between ${escapeHtml(st.name || 'you')} and mastery.
+    <p class="map-sub">${realmWord} realms stand between ${escapeHtml(st.name || 'you')} and mastery.
     Each must be survived in turn.</p>
     <div class="map-wrap" aria-hidden="true">${mapSvg(progress)}</div>
     <div class="act-road">${cards}</div>`;

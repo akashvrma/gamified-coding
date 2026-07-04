@@ -1506,7 +1506,8 @@ assert forged.shape == (8, 8), "forged must be reshaped to 8x8 — an image agai
 assert np.allclose(forged, (np.array([[1.5, -1.0]]) @ W2 + b2).reshape(8, 8)), "forged must be decode(np.array([[1.5, -1.0]])) reshaped — minted from those exact empty coordinates."
 _tm = ((latents[0] + latents[1]) / 2.0) @ weave
 assert mid.shape == (8, 8), "mid must be reshaped to 8x8."
-assert float(np.sqrt(np.mean((mid.ravel() - _tm) ** 2))) < 0.15, "mid does not sit between its parents — encode X[0:1] and X[1:2], average the two CODES, then decode. Averaging the raw pixels or decoding the wrong rows lands elsewhere."
+assert float(np.sqrt(np.mean((mid.ravel() - _tm) ** 2))) < 0.15, "mid does not sit between its parents — encode X[0:1] and X[1:2], average the two CODES, then decode."
+assert np.allclose(mid, decode((encode(X[0:1]) + encode(X[1:2])) / 2.0).reshape(8, 8), atol=1e-6), "mid must be born of the vault: average the two CODES and decode the result. Averaging the raw pixels keeps noise the rank-2 decoder cannot emit — the vault would never mint this."
 _ax = plt.gcf().axes
 assert len(_ax) >= 1 and len(_ax[0].images) == 1, "The Forge sees no image — render the forgery with plt.imshow(forged, cmap='gray')."
 assert np.allclose(np.asarray(_ax[0].images[0].get_array(), dtype=float), forged), "The displayed image is not forged — show the minted sigil itself."

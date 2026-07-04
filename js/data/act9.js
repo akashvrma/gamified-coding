@@ -451,7 +451,7 @@ print(bool(np.allclose(a, b)))   # True -- order gone; any verdict downstream is
 
 # Trained on the full 26-scroll archive, the ward reads
 #   "what a sweet and golden triumph you have made of our home"
-# and answers: fair, with probability ~0.87. Every human censor
+# and answers: fair, with probability ~0.85. Every human censor
 # hears the ash in that sentence. The bag hears sugar.`,
         },
       ],
@@ -2682,7 +2682,7 @@ assert _lines[2] == "REFUSED: the rite will not unbind", "Third line must be the
     },
     {
       term: 'temperature',
-      def: 'The sampling dial: raise counts (or scores) to the power 1/T before normalizing — T below 1 sharpens toward greedy, T = 1 keeps honest frequencies, T above 1 flattens toward uniform daring; low for contracts, higher for verse, never trusted on a single sample.',
+      def: 'The sampling dial: raise counts (or probabilities) to the power 1/T before normalizing — T below 1 sharpens toward greedy, T = 1 keeps honest frequencies, T above 1 flattens toward uniform daring; low for contracts, higher for verse, never trusted on a single sample.',
     },
     {
       term: 'hallucination',

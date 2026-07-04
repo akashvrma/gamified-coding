@@ -335,6 +335,10 @@ textarea.editor {
 .console .con-err { color: #e07a7a; }
 .console .con-ok { color: var(--success); }
 .console .con-dim { color: var(--ink-faint); }
+.console .plot-render {
+  display: block; max-width: 100%; margin-top: 0.7rem;
+  border: 1px solid var(--code-line); border-radius: 6px;
+}
 
 .verdict {
   margin-top: 0.8rem; padding: 0.9rem 1.1rem;

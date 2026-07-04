@@ -232,6 +232,37 @@ assert lines[1] == "I accept what follows.", "The second line is wrong. It must 
 }
 ```
 
+## 8b. Data-science acts (acts 6–7) — additional rules
+
+Acts 6–7 teach scientific Python (the prerequisite skills for applied
+ML/data-science courses). Everything in this spec still applies, plus:
+
+- **Allowed libraries**: `numpy`, `pandas`, `matplotlib`, `sklearn` (scikit-learn),
+  and stdlib (`math`, `random`, `collections`, `statistics`). The engine
+  auto-loads these in the browser via Pyodide on first import (a few seconds;
+  the narrative should acknowledge the first summoning takes a moment).
+  **NO tensorflow/keras/scapy/requests** — not available in Pyodide. Neural
+  networks may be taught conceptually and/or implemented in tiny form with
+  numpy only.
+- **Determinism is law**: every use of randomness must be seeded
+  (`np.random.seed(0)`, `random_state=0` on every sklearn estimator/splitter).
+  Validation must never depend on unseeded randomness, dict-order accidents,
+  or floating-point equality (use `abs(a-b) < 1e-6` or `np.allclose`).
+- **Datasets are conjured, not fetched**: challenges generate their small
+  datasets in code (lists/arrays/DataFrames built inline, or seeded synthetic
+  data). No file downloads, no bundled CSVs, no network. Keep data tiny
+  (≤ a few hundred rows) so browser runs stay fast.
+- **Plots**: the harness captures the last matplotlib figure and shows it to
+  the learner. Validation must check figures via their object model
+  (`len(ax.lines)`, `ax.get_title()`, computed data) or via the underlying
+  numbers — never via rendered pixels. Always have solutions call
+  `plt.title(...)`/labels so the habit sticks.
+- **Themed but honest framing**: exercises wrap the same *kinds* of tasks a
+  data-science-for-security course uses (parsing structured records, feature
+  matrices, anomaly hunting, clustering entities, classifying events) in the
+  Codex's dark-fantasy fiction. Never reference any commercial course, its
+  text, or its datasets.
+
 ## 9. Hard checklist per act (validated mechanically)
 
 - Exactly 7 lessons, ids `aNl1..aNl7`; one boss; 10–16 codex entries.

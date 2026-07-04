@@ -426,9 +426,12 @@ function mountChallenge(host, lesson, onChange) {
     runBtn.disabled = false;
     runBtn.textContent = '▶ Cast the spell';
 
-    const out = result.output
+    const plotHtml = result.plot
+      ? `<img class="plot-render" alt="The figure your code drew" src="data:image/png;base64,${result.plot}">`
+      : '';
+    const out = (result.output
       ? escapeHtml(result.output)
-      : '<span class="con-dim">(the spell produced no output)</span>';
+      : '<span class="con-dim">(the spell produced no output)</span>') + plotHtml;
     if (result.ok) {
       consoleBox.innerHTML = out;
       S.recordRun(true);
@@ -838,9 +841,12 @@ function mountBossForge(host, pseudo, onPass) {
     host.querySelector('.editor-wrap').classList.add('casting');
     const result = await runPython(editor.value, ch.validation);
     host.querySelector('.editor-wrap')?.classList.remove('casting');
-    const out = result.output
+    const plotHtml = result.plot
+      ? `<img class="plot-render" alt="The figure your code drew" src="data:image/png;base64,${result.plot}">`
+      : '';
+    const out = (result.output
       ? escapeHtml(result.output)
-      : '<span class="con-dim">(no output)</span>';
+      : '<span class="con-dim">(no output)</span>') + plotHtml;
     S.recordRun(result.ok);
     emit({ type: 'run' });
     if (result.ok) {

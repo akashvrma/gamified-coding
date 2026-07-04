@@ -14,6 +14,8 @@ import tempfile
 import traceback
 from contextlib import redirect_stdout
 
+os.environ.setdefault("MPLBACKEND", "Agg")  # mirror of the worker harness
+
 
 def sweep_files():
     """Mirror of the worker's per-run file sweep — keep in sync."""
@@ -23,6 +25,13 @@ def sweep_files():
                 os.remove(f)
             except OSError:
                 pass
+    # Close any figures a previous challenge left open.
+    if "matplotlib" in sys.modules:
+        try:
+            import matplotlib.pyplot as plt
+            plt.close("all")
+        except Exception:
+            pass
 
 
 def run_pair(user_code: str, validation_code: str):

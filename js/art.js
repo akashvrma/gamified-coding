@@ -167,6 +167,36 @@ export function bossSvg(actId) {
         <g opacity="0.6"><ellipse cx="100" cy="182" rx="80" ry="9" fill="#0e0a16"/></g>
       </g>`,
   };
+  art.act6 = `
+      <g class="boss-sway">
+        <path d="M100 26 C78 28 68 48 66 76 C64 110 56 144 46 176 L154 176 C144 144 136 110 134 76 C132 48 122 28 100 26 Z"
+          fill="#0d0f1d" stroke="#232a4a" stroke-width="2"/>
+        <path d="M100 38 C88 38 80 50 80 63 C80 76 89 85 100 85 C111 85 120 76 120 63 C120 50 112 38 100 38 Z" fill="#04050c"/>
+        <g class="boss-eyes"><ellipse cx="92" cy="60" rx="2.6" ry="3.4" fill="#9fb4ff"/><ellipse cx="108" cy="60" rx="2.6" ry="3.4" fill="#9fb4ff"/></g>
+        <!-- cradled prophecy orb -->
+        <path class="boss-hand" d="M70 100 C64 112 62 124 64 134" fill="none" stroke="#0d0f1d" stroke-width="9" stroke-linecap="round"/>
+        <path class="boss-hand" d="M130 100 C136 112 138 124 136 134" fill="none" stroke="#0d0f1d" stroke-width="9" stroke-linecap="round"/>
+        <circle cx="100" cy="126" r="20" fill="#0a0e1e" stroke="#3d4a7a" stroke-width="2"/>
+        <circle class="boss-eyes" cx="100" cy="126" r="8" fill="#6f86d8" opacity="0.8"/>
+        <circle cx="94" cy="120" r="2.5" fill="#c9d6ff" opacity="0.9"/>
+        <g opacity="0.55"><ellipse cx="100" cy="182" rx="74" ry="9" fill="#0c1020"/></g>
+      </g>`;
+  art.act7 = `
+      <g class="boss-sway">
+        <path d="M100 30 C76 32 66 52 64 80 C62 112 54 146 44 176 L156 176 C146 146 138 112 136 80 C134 52 124 32 100 30 Z"
+          fill="#120d10" stroke="#33202a" stroke-width="2"/>
+        <!-- the seeing-stone held aloft -->
+        <path class="boss-hand" d="M138 92 C150 80 158 66 160 52" fill="none" stroke="#120d10" stroke-width="9" stroke-linecap="round"/>
+        <circle cx="163" cy="40" r="17" fill="#0c080e" stroke="#4a2330" stroke-width="2"/>
+        <g class="boss-eyes">
+          <ellipse cx="163" cy="40" rx="7" ry="9" fill="#e8641f" opacity="0.9"/>
+          <ellipse cx="163" cy="40" rx="2" ry="7" fill="#120306"/>
+        </g>
+        <path d="M100 44 C88 44 80 56 80 69 C80 82 89 91 100 91 C111 91 120 82 120 69 C120 56 112 44 100 44 Z" fill="#040208"/>
+        <g class="boss-eyes"><path d="M88 64 l10 3 -10 3 z" fill="#ff8f5f"/><path d="M112 64 l-10 3 10 3 z" fill="#ff8f5f"/></g>
+        <path class="boss-hand" d="M62 96 C52 106 46 120 44 134 C54 126 62 126 68 116" fill="none" stroke="#120d10" stroke-width="10" stroke-linecap="round"/>
+        <g opacity="0.55"><ellipse cx="100" cy="182" rx="76" ry="9" fill="#140b10"/></g>
+      </g>`;
   return `
   <svg class="boss-svg" viewBox="0 0 200 192" role="img" aria-hidden="true">
     <defs>
@@ -180,7 +210,8 @@ export function bossSvg(actId) {
 // A winding descent through five regions. Fog covers what is
 // sealed; a marker pulses where the learner stands.
 
-const REGION_Y = [64, 208, 352, 496, 640];
+const REGION_SPACING = 144;
+const REGION_TOP = 64;
 
 function regionVignette(actIndex, x, y) {
   const v = [
@@ -216,24 +247,42 @@ function regionVignette(actIndex, x, y) {
       <line x1="0" y1="-20" x2="0" y2="8" stroke="#2c2440" stroke-width="2"/>
       <circle cx="26" cy="-30" r="3" fill="var(--accent-bright)" opacity="0.8"/>
     </g>`,
+    // VI — the hall of prophecies: shelves of glowing orbs
+    `<g transform="translate(${x} ${y})" class="map-vig">
+      <rect x="-38" y="-32" width="76" height="4" fill="#151a2e"/>
+      <rect x="-38" y="-12" width="76" height="4" fill="#151a2e"/>
+      <rect x="-38" y="8" width="76" height="4" fill="#151a2e"/>
+      ${[-28, -8, 12, 28].map((ox) => `<circle cx="${ox}" cy="-38" r="4" fill="#3d4a7a" opacity="0.9"/>`).join('')}
+      ${[-22, 0, 22].map((ox) => `<circle cx="${ox}" cy="-18" r="4" fill="#3d4a7a" opacity="0.7"/>`).join('')}
+      <circle cx="6" cy="-38" r="4.5" fill="var(--accent-bright)" opacity="0.85"/>
+    </g>`,
+    // VII — the seeing-stone on its plinth, lightning-crowned
+    `<g transform="translate(${x} ${y})" class="map-vig">
+      <path d="M-14 18 L-8 -2 L8 -2 L14 18 Z" fill="#141021"/>
+      <circle cx="0" cy="-12" r="11" fill="#0d1020" stroke="#2c2440" stroke-width="2"/>
+      <circle cx="0" cy="-12" r="4" fill="#e8641f" opacity="0.85"/>
+      <path d="M-22 -34 l6 8 -5 1 6 9" fill="none" stroke="#3d4a7a" stroke-width="1.5"/>
+      <path d="M22 -38 l-5 9 5 1 -6 8" fill="none" stroke="#3d4a7a" stroke-width="1.5"/>
+    </g>`,
   ];
-  return v[actIndex];
+  return v[actIndex % v.length];
 }
 
 // progress: [{unlocked, done, total, current}] per act, plus name.
 export function mapSvg(progress) {
   const nodes = progress.map((p, i) => {
-    const y = REGION_Y[i];
+    const y = REGION_TOP + i * REGION_SPACING;
     const x = i % 2 === 0 ? 120 : 360;
     return { ...p, x, y, i };
   });
+  const mapH = REGION_TOP + (progress.length - 1) * REGION_SPACING + 80;
   const path = nodes.map((n, i) => (i === 0
     ? `M ${n.x} ${n.y}`
     : `C ${nodes[i - 1].x} ${nodes[i - 1].y + 80}, ${n.x} ${n.y - 80}, ${n.x} ${n.y}`)).join(' ');
   const current = nodes.find((n) => n.current) || nodes[0];
 
   return `
-  <svg class="map-svg" viewBox="0 0 480 720" role="img" aria-hidden="true" preserveAspectRatio="xMidYMid meet">
+  <svg class="map-svg" viewBox="0 0 480 ${mapH}" role="img" aria-hidden="true" preserveAspectRatio="xMidYMid meet">
     <defs>
       <radialGradient id="map-fog-g" cx="50%" cy="50%" r="60%">
         <stop offset="0%" stop-color="#0a0c14" stop-opacity="0.72"/>
@@ -242,14 +291,14 @@ export function mapSvg(progress) {
       <filter id="map-glow" x="-150%" y="-150%" width="400%" height="400%"><feGaussianBlur stdDeviation="3" result="b"/>
         <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
     </defs>
-    <rect x="0" y="0" width="480" height="720" fill="none"/>
+    <rect x="0" y="0" width="480" height="${mapH}" fill="none"/>
     <path d="${path}" fill="none" stroke="#232738" stroke-width="3" stroke-dasharray="1 10" stroke-linecap="round"/>
     ${nodes.map((n) => `
       ${regionVignette(n.i, n.x + (n.i % 2 === 0 ? 150 : -150), n.y)}
       <g class="map-node ${n.unlocked ? 'open' : 'sealed'}" transform="translate(${n.x} ${n.y})">
         <circle r="22" fill="#0d0f17" stroke="${n.unlocked ? 'var(--accent)' : '#232738'}" stroke-width="2"/>
         <text y="7" text-anchor="middle" font-size="20" fill="${n.unlocked ? 'var(--accent-bright)' : '#3a3f55'}"
-          font-family="Georgia, serif">${['I', 'II', 'III', 'IV', 'V'][n.i]}</text>
+          font-family="Georgia, serif">${['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'][n.i] || n.i + 1}</text>
         ${n.done === n.total ? '<circle r="28" fill="none" stroke="var(--success)" stroke-width="1.6" opacity="0.8"/>' : ''}
       </g>
       ${!n.unlocked ? `<ellipse cx="${n.x + (n.i % 2 === 0 ? 75 : -75)}" cy="${n.y}" rx="230" ry="76" fill="url(#map-fog-g)" class="map-fog"/>` : ''}

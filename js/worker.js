@@ -14,6 +14,27 @@ const PYODIDE_URL = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/';
 // Validation failures surface as AssertionError messages.
 const HARNESS = `
 import sys, io, json, os, traceback
+os.environ.setdefault("MPLBACKEND", "Agg")  # headless plots in the worker
+
+def __grab_plot():
+    # If the spell drew with matplotlib, capture the last figure as PNG.
+    if "matplotlib" not in sys.modules:
+        return None
+    try:
+        import matplotlib.pyplot as plt
+        import base64
+        nums = plt.get_fignums()
+        if not nums:
+            return None
+        buf = io.BytesIO()
+        plt.figure(nums[-1]).savefig(
+            buf, format="png", dpi=80,
+            facecolor="#0a0d14", edgecolor="none", bbox_inches="tight",
+        )
+        plt.close("all")
+        return base64.b64encode(buf.getvalue()).decode()
+    except Exception:
+        return None
 
 def __sweep_files():
     # Each casting begins with the basin swept clean: remove files the
@@ -72,6 +93,7 @@ def __dark_run():
                 "ok": False, "stage": "validate",
                 "output": out,
                 "error": str(e) or "The ward rejected your spell, but left no message.",
+                "plot": __grab_plot(),
             })
         except BaseException as e:
             sys.stdout, sys.stderr = real_stdout, real_stderr
@@ -79,9 +101,10 @@ def __dark_run():
                 "ok": False, "stage": "validate",
                 "output": out,
                 "error": type(e).__name__ + ": " + str(e),
+                "plot": __grab_plot(),
             })
         sys.stdout, sys.stderr = real_stdout, real_stderr
-    return json.dumps({"ok": True, "stage": "done", "output": out, "error": None})
+    return json.dumps({"ok": True, "stage": "done", "output": out, "error": None, "plot": __grab_plot()})
 `;
 
 let pyodidePromise = null;
@@ -105,6 +128,12 @@ onmessage = async (e) => {
   const { id, code, validation } = e.data || {};
   try {
     const py = await boot();
+    // Fetch scientific packages (numpy, pandas, scikit-learn, matplotlib…)
+    // named in the imports before the spell runs. Failures fall through:
+    // the import error will surface to the learner naturally.
+    try {
+      await py.loadPackagesFromImports(`${code}\n${validation || ''}`);
+    } catch { /* offline or unknown package */ }
     py.globals.set('USER_CODE', String(code || ''));
     py.globals.set('VALIDATION_CODE', String(validation || ''));
     const resultJson = py.runPython('__dark_run()');

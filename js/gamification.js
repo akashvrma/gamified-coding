@@ -96,10 +96,22 @@ export const ACHIEVEMENTS = [
     check: (st, ev) => ev.type === 'boss-defeated' && ev.actId === 'act4',
   },
   {
-    id: 'act5-fall', icon: '☄️', xp: 100,
-    title: 'Master of Death',
-    desc: 'Defeat the final boss. The Codex has nothing left to teach you.',
+    id: 'act5-fall', icon: '☄️', xp: 80,
+    title: 'Master of the Hallows',
+    desc: 'Defeat the boss of Act V. The old Codex is yours; the archives open.',
     check: (st, ev) => ev.type === 'boss-defeated' && ev.actId === 'act5',
+  },
+  {
+    id: 'act6-fall', icon: '🔮', xp: 80,
+    title: 'The Prophecies Read Back',
+    desc: 'Defeat the boss of Act VI. The orbs have no secrets from a good ledger.',
+    check: (st, ev) => ev.type === 'boss-defeated' && ev.actId === 'act6',
+  },
+  {
+    id: 'act7-fall', icon: '👁️', xp: 120,
+    title: 'Master of Death',
+    desc: 'Defeat the final boss. Even the seeing-stone kneels; the Codex has nothing left to teach you.',
+    check: (st, ev) => ev.type === 'boss-defeated' && ev.actId === 'act7',
   },
   {
     id: 'streak-3', icon: '🌒', xp: 30,
@@ -142,7 +154,7 @@ export const ACHIEVEMENTS = [
     id: 'all-trials', icon: '🌋', xp: 150,
     title: 'No Trial Left Standing',
     desc: 'Solve every coding trial in the Codex.',
-    check: (st) => st.stats.challengesSolved >= 35,
+    check: (st) => st.stats.challengesSolved >= 49,
   },
   {
     id: 'unaided', icon: '🐍', xp: 80,

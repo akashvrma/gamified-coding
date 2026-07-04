@@ -372,7 +372,7 @@ print(round(grad_w(2.5, -1.0), 3))   # -0.089 -- at the floor, the slope dies to
             + 'still dying on the stairs when winter comes.\n'
             + '- **Too large** and you *diverge*: each stride overshoots the floor and lands '
             + 'higher on the far wall, which tilts even harder, which flings you further. At '
-            + '`lr = 0.6` the loss after 30 steps is a number with 50 digits. The descent has '
+            + '`lr = 0.6` the loss after 30 steps is a number 51 digits long. The descent has '
             + 'become a catapult.\n'
             + '- The cure is empirical, like all smithing: try `0.05`; if the loss curve climbs '
             + 'or explodes, shrink the stride; if it barely moves, lengthen it.',
@@ -797,13 +797,13 @@ assert _sv[0] < 1e-6 and _sv[1] > 1 - 1e-6, "sigmoid must squash great negatives
 assert w.shape == (2,), "w must remain a 2-weight array — one weight per measure."
 assert len(history) == 400, "history must record 400 losses — one per training step."
 assert history[0] > history[-1], "The loss never fell — check that the updates subtract the gradients (w -= ...)."
-assert history[-1] < 0.15, "After 400 steps the cross-entropy should settle near 0.035 — a higher floor means a wrong gradient, stride, or a missing len(y) division."
+assert history[-1] < 0.15, "After 400 steps the cross-entropy should settle near 0.035 — a floor far from that means a wrong gradient or stride."
 _p_elf = sigmoid(np.array([-1.5, -1.0]) @ w + b)
 _p_orc = sigmoid(np.array([1.5, 1.0]) @ w + b)
 assert _p_elf < 0.1, "A fire at the elf heartland (-1.5, -1.0) must score a probability near 0 — yours reads too high. The neuron has not learned the boundary."
 assert _p_orc > 0.9, "A fire at the orc heartland (1.5, 1.0) must score near 1 — the neuron has not learned the boundary."
 assert abs(acc - (((sigmoid(X @ w + b)) >= 0.5).astype(int) == y).mean()) < 1e-9, "acc must measure p_final >= 0.5 against y over all 120 fires."
-assert acc > 0.95, "The trained ember should judge over 95% of the fires truly (0.992). Less means training went astray."
+assert acc > 0.99, "The trained ember should judge 0.992 of the fires truly — at most one misjudged of the 120. A lower verdict usually means the gradient's scale is off: divide the summed gradients by len(y)."
 assert "0.992" in _stdout, "Print the verdict — round(acc, 3), which is 0.992."`,
         successText: 'The ember takes its first breath and, without being told what an orc is, learns to smell one. The smiths of both hosts go quiet.',
         xp: 100,
@@ -1771,7 +1771,7 @@ assert normal_errs.shape == (150,), "normal_errs must score each ordinary pulse 
 assert abs(threshold - (normal_errs.mean() + 3 * normal_errs.std())) < 1e-12, "threshold must be normal_errs.mean() + 3 * normal_errs.std() — the line is drawn from the ordinary, never from the strangers."
 assert (normal_errs < threshold).mean() > 0.9, "Nearly all ordinary pulses must fall below the threshold — if many cross it, the mirror never converged."
 assert anomaly_errs.shape == (5,), "anomaly_errs must score each of the five strangers separately — axis=1 again."
-assert np.all(anomaly_errs > 5 * threshold), "Every stranger must reconstruct catastrophically — errors far above the threshold (the weakest sits over 100x it). If not, the mirror was trained on the strangers, or reconstruct is wrong."
+assert np.all(anomaly_errs > 5 * threshold), "Every stranger must reconstruct catastrophically — errors far above the threshold (the weakest sits over 100x it). If not, reconstruct or the per-row error formula is wrong."
 assert caught == 5, "caught must count the strangers above the threshold — all 5 of them, as an int."
 assert "caught 5 of 5" in _stdout, "Report the verdict exactly — print(f\"caught {caught} of 5\")."`,
         successText: 'The mirror gives back the night watch pulse for pulse — and returns five smears of static. The strangers named themselves by being impossible to reflect.',
@@ -1877,7 +1877,7 @@ print(slide(sig, kernel))    # [ 6. 11.  6.  1.] -- loudest where the bump align
             + '- **Stride** — how far the eye steps each time. Stride 1 checks every position; '
             + 'stride 2 checks every other (`fmap[::2]` after a stride-1 pass), halving the map.\n'
             + '- **Padding** — zeros stitched to the edges (`np.pad(sig, 1)`) so border patterns '
-            + 'are not orphaned; pad by `k // 2` and the output length matches the input — the '
+            + 'are not orphaned; for an odd-length kernel, pad by `k // 2` and the output length matches the input — the '
             + '"same" mode of the great engines.',
           code: py`import numpy as np
 
@@ -2375,6 +2375,7 @@ _hp = (forward(X_hold) >= 0.5).astype(int)
 assert np.array_equal(np.asarray(hold_pred), _hp), "hold_pred must be forward(X_hold) >= 0.5 on the SEALED rows — nothing else."
 assert abs(holdout_acc - (_hp == np.asarray(y_hold)).mean()) < 1e-9, "holdout_acc must score hold_pred against y_hold — the sealed truth."
 assert holdout_acc > 0.9, "The last mind must claim over 90% of the sealed souls (it reaches 1.0). Less means the forging or the judgment went astray."
+assert abs(history[-1] - 0.005513) < 3e-4, "The recorded loss does not match a forging on the 120 training rows alone — the sealed rows must have stayed sealed. Train only on X_train and y_train; X_hold exists to be judged, never learned from."
 assert "1.0" in _stdout, "Print the sealed verdict first — round(holdout_acc, 3), which is 1.0."
 assert "0.006" in _stdout, "Print the final loss — round(history[-1], 3), which is 0.006."`,
       successText: '',

@@ -522,6 +522,11 @@ dose = 2.5        # float - carries a decimal point
 print(souls / 4)  # 3.0   - true division always yields a float
 print(souls * 2)  # 24
 print(souls - 13) # -1    - the ledger permits debt`,
+          note: 'A float has a floor as well as heights: multiply enough numbers smaller '
+            + 'than 1 and the product shrinks beneath what a float can hold, until the '
+            + 'machine rounds it to exactly 0 — a vanishing called **underflow**. A whisper '
+            + 'repeated becomes silence. Later acts escape it by adding logarithms instead '
+            + 'of multiplying probabilities.',
         },
         {
           heading: 'The remainder always finds you',

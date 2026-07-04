@@ -1120,10 +1120,14 @@ print(rune_count)              # {'balin': 5, 'oin': 3, 'ori': 3}
 
 first_runes = {name[0] for name in names}
 print(len(first_runes))        # 2 -- 'b' and 'o'; the second 'o' collapses`,
-          note: 'Power tempts. When a comprehension no longer reads aloud in one breath '
-            + '— loops nested in loops, conditions stacked on conditions — unfold it '
-            + 'back into an honest loop. The next reader of your code is usually you, '
-            + 'in a worse hour, by a weaker light.',
+          note: 'One more fold the smiths permitted: a second `for` clause, read left to '
+            + 'right like nested loops. `[f"{hall}{door}" for hall in "AB" for door in "12"]` '
+            + 'crosses every hall with every door — A1, A2, B1, B2 — and the same double '
+            + 'fold flattens a nested list: `[rune for row in wall for rune in row]` walks '
+            + 'each row, then each rune within it. But power tempts. Beyond two fors — or '
+            + 'when a comprehension no longer reads aloud in one breath, conditions stacked '
+            + 'on conditions — unfold it back into an honest loop. The next reader of your '
+            + 'code is usually you, in a worse hour, by a weaker light.',
         },
         {
           heading: 'Walking with numbers, walking in step',

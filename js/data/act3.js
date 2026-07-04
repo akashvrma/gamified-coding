@@ -674,6 +674,31 @@ print(list(filter(lambda y: y > 1800, years)))
 print([y + 100 for y in years])
 print([y for y in years if y > 1800])`,
         },
+        {
+          heading: 'The spell that summons itself',
+          body: 'A function may call any function — including itself. This is **recursion**: '
+            + 'a working that performs one step, then invokes itself to finish the rest.\n\n'
+            + 'Two parts, always:\n\n'
+            + '- The **base case** — the condition under which the function stops and simply '
+            + 'returns. It is the ward against infinite descent; omit it and the calls never end.\n'
+            + '- The **recursive case** — do one step, then call yourself with a *smaller* '
+            + 'problem, each call one stair closer to the base case.\n\n'
+            + 'Recursion earns its keep when the data itself is nested — structures within '
+            + 'structures, rooms within rooms. For walking a flat sequence, a plain loop says '
+            + 'the same thing more clearly and more cheaply.',
+          code: py`def descend(steps):
+    if steps == 0:                 # the base case — the ward
+        print("Bottom. Something is waiting.")
+        return
+    print(f"Step {steps} — deeper.")
+    descend(steps - 1)             # the spell summons itself
+
+descend(3)`,
+          note: 'Every unfinished call stands waiting on the one beneath it, and Python will '
+            + 'hold only about 1000 such calls before it refuses with a RecursionError — the '
+            + 'interpreter’s own ward against a bottomless stair. Descend a thousand steps '
+            + 'and the machine itself turns you back.',
+        },
       ],
       challenge: {
         title: 'The Ordering of Orbs',
@@ -778,6 +803,20 @@ assert dangerous_names([], 5) == [], "An empty shelf names no one."`,
           explain: 'map and filter are lazy: they produce an iterator that computes values only '
             + 'as they are consumed. Print one raw and you get an unhelpful object tag — '
             + 'list() forces the working to completion.',
+        },
+        {
+          q: 'In a recursive function, what is the base case?',
+          options: [
+            'The first call, made from outside the function',
+            'The condition where the function stops calling itself and simply returns',
+            'The largest input the function can accept',
+            'The line where the function calls itself',
+          ],
+          answer: 1,
+          explain: 'The base case is the ward: the branch that returns without another '
+            + 'self-call, so the descent ends. Without one, the function summons itself until '
+            + 'Python halts it with a RecursionError — the self-call is the descent, not the '
+            + 'stopping of it.',
         },
       ],
     },
@@ -1083,6 +1122,41 @@ with open("memory.txt", "r") as vial:
             + 'each casting begins with the basin swept clean. On a true machine, what you '
             + 'write with "w" persists on disk long after the program dies. Treat every write '
             + 'as permanent, and you will never be surprised.',
+        },
+        {
+          heading: 'The structured phial — json',
+          body: 'Plain lines suit plain memories. But some memories arrive with *structure* — '
+            + 'a dict holding lists holding dicts — and flattening them into prose would '
+            + 'break their shape. The `json` module keeps the shape:\n\n'
+            + '- `json.dumps(data)` renders dicts, lists, strings, numbers, and booleans into '
+            + '**one string** — a phial fit for any basin.\n'
+            + '- `json.loads(text)` reverses the rite exactly: the string wakes back into '
+            + 'live Python structures.\n\n'
+            + 'Navigate the restored nest one bracket per layer, left to right: '
+            + '`data["records"]` is a list, `[0]` its first dict, `["name"]` a field within. '
+            + 'Nearly every ledger the outside world will hand you — records, reports, the '
+            + 'answers of distant archives — wears this nested shape.',
+          code: py`import json
+
+archive = {"basin": "west wing", "records": [
+    {"name": "the veil breathes", "potency": 3},
+    {"name": "a door refuses all keys", "potency": 7},
+]}
+
+phial = json.dumps(archive)              # structure -> one string
+print(type(phial).__name__)              # str
+
+with open("archive.json", "w") as f:
+    f.write(phial)
+
+with open("archive.json", "r") as f:
+    restored = json.loads(f.read())      # string -> live structure
+
+print(restored["records"][0]["name"])    # the veil breathes
+print(restored["records"][1]["potency"]) # 7`,
+          note: 'The shorter rite: `json.dump(data, f)` pours straight into an open file, and '
+            + '`json.load(f)` draws straight back out — the same magic with the middle string '
+            + 'left unspoken.',
         },
       ],
       challenge: {

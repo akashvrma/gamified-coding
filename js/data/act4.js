@@ -1508,6 +1508,12 @@ legion = Legion("Gorgoroth")
 legion.enlist(Orc("Snaga", 3))
 legion.enlist(Orc("Gorbag", 7))
 print(len(legion._ranks))              # 2 — held, not inherited`,
+          note: 'Many great libraries invert this bargain: they ask you to **declare** a '
+            + 'class whose attributes describe a record — fields laid out as class '
+            + 'attributes, a schema written as a class — and the library itself builds, '
+            + 'stores, and queries the objects. You write the description; machinery you '
+            + 'never see does the work. Recognize that declarative shape once and every '
+            + 'such library reads as kin — no memorizing each one.',
         },
         {
           heading: 'Delegation: pass the order down',

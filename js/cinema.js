@@ -5,6 +5,8 @@
 // prefers-reduced-motion.
 // ============================================================
 
+import { play } from './sound.js';
+
 const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // ---------------- the grimoire writes itself ----------------
@@ -70,6 +72,8 @@ export function countUp(el, from, to, { duration = 900, suffix = '' } = {}) {
 // A full-screen beat when a rank threshold falls.
 
 export function rankUpMoment(title) {
+  // Sound is governed by the sfx setting, not by reduced-motion.
+  play('ascend');
   if (reduced()) return;
   const veil = document.createElement('div');
   veil.className = 'cinema-ascend';

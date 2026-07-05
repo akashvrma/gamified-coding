@@ -6,6 +6,7 @@
 import * as S from './state.js';
 import { toast } from './ui.js';
 import { rankUpMoment } from './cinema.js';
+import { play } from './sound.js';
 
 // ---------------- ranks ----------------
 // XP thresholds are tuned so the final rank demands near-total mastery
@@ -243,15 +244,31 @@ export function grantXp(amount, reason) {
 }
 
 export function dailyTouch() {
-  if (S.touchStreak()) {
-    const st = S.getState();
-    if (st.streak.count > 1) {
-      toast({
-        icon: '🔥',
-        title: `${st.streak.count}-day streak`,
-        sub: 'The fire in the deep is kept burning.',
-      });
-    }
-    emit({ type: 'streak' });
+  const r = S.touchStreak();
+  if (!r) return;
+  const st = S.getState();
+  if (st.streak.count > 1) {
+    toast({
+      icon: '🔥',
+      title: `${st.streak.count}-day streak`,
+      sub: 'The fire in the deep is kept burning.',
+    });
+    play('crackle');
   }
+  // Mercy is revealed after the fact, never dangled before.
+  if (r === 2) {
+    toast({
+      icon: '🜂',
+      title: 'An ember burned in your place',
+      sub: `The watch was missed. The count holds at ${st.streak.count}.`,
+    });
+  }
+  if (st.streak.count % 7 === 0 && S.grantEmber('milestone')) {
+    toast({
+      icon: '🜂',
+      title: 'An ember is banked against the dark',
+      sub: 'Seven nights unbroken buy one night of grace.',
+    });
+  }
+  emit({ type: 'streak' });
 }

@@ -7,9 +7,10 @@ import { rankFor, onHeaderRefresh, dailyTouch } from './gamification.js';
 import { avatarSvg, avatarTier } from './art.js';
 import { setAmbient } from './ambient.js';
 import { viewTransition, countUp } from './cinema.js';
+import { initSound } from './sound.js';
 import {
   renderOnboarding, renderHome, renderAct, renderLesson,
-  renderBoss, renderProfile, renderCodex, renderMissing,
+  renderBoss, renderProfile, renderCodex, renderVigil, renderMissing,
 } from './views.js';
 
 const app = document.getElementById('app');
@@ -43,10 +44,33 @@ function refreshHeader() {
   }
   xpEl.dataset.xp = String(st.xp);
   document.getElementById('hdr-xpfill').style.width = `${Math.round(rank.progress * 100)}%`;
-  document.getElementById('hdr-streak').textContent = `🔥 ${st.streak.count}`;
+  const streakEl = document.getElementById('hdr-streak');
+  const embers = st.streak.embers || 0;
+  streakEl.textContent = `🔥 ${st.streak.count}${embers > 0 ? ` 🜂${embers}` : ''}`;
+  streakEl.title = `Consecutive days of study · ${embers} ember${embers === 1 ? '' : 's'} banked`;
+  reflectSoundRune();
 }
 
 onHeaderRefresh(refreshHeader);
+
+// ---------------- the sound rune ----------------
+
+const soundBtn = document.getElementById('sound-toggle');
+
+function reflectSoundRune() {
+  const on = Boolean(S.getState().settings.sfx);
+  soundBtn.textContent = on ? '🔉' : '🔇';
+  soundBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  soundBtn.title = on
+    ? 'The Codex speaks. Press to silence it.'
+    : 'The Codex is silent. Press to restore its voice.';
+}
+
+soundBtn.addEventListener('click', () => {
+  S.setSfx(!S.getState().settings.sfx);
+  reflectSoundRune();
+});
+reflectSoundRune();
 
 function setNavActive(key) {
   nav.querySelectorAll('a').forEach((a) => {
@@ -102,6 +126,10 @@ function route() {
       setNavActive('codex');
       setAmbient('dust', 0.6);
       renderCodex(app);
+    } else if (parts[0] === 'vigil') {
+      setNavActive('vigil');
+      setAmbient('void', 0.8);
+      renderVigil(app);
     } else {
       renderMissing(app);
     }
@@ -113,6 +141,9 @@ function route() {
 // Apply saved allegiance theme before first paint of views.
 const saved = S.getState();
 if (saved.allegiance) document.documentElement.dataset.allegiance = saved.allegiance;
+
+// Arm the Tolling: the AudioContext is created only on the first gesture.
+initSound();
 
 window.addEventListener('hashchange', route);
 route();

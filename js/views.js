@@ -3,7 +3,7 @@
 // that take the app root element and paint a route.
 // ============================================================
 
-import { escapeHtml, prose, codeBlock, el, toast, mdInline } from './ui.js';
+import { escapeHtml, prose, codeBlock, el, toast, mdInline, holdToasts, releaseToasts } from './ui.js';
 import * as S from './state.js';
 import { emit, grantXp, rankFor, ACHIEVEMENTS, RANKS } from './gamification.js';
 import { runPython, preboot, runnerStatus, onRunnerStatus } from './runner.js';
@@ -12,6 +12,8 @@ import { avatarSvg, avatarTier, TIER_NAMES, bossSvg, mapSvg } from './art.js';
 import { castBolt, burst, hitFlash, bossStrike, dissolve } from './fx.js';
 import { typewriter, bossReveal, countUp } from './cinema.js';
 import { setAmbient } from './ambient.js';
+import { play } from './sound.js';
+import { qHash, buildVigil, eligiblePool, pickReviewForBoss } from './review.js';
 
 const QUIZ_XP = 35;
 const QUIZ_PERFECT_BONUS = 15;
@@ -141,6 +143,82 @@ export function renderOnboarding(root, onDone) {
 
 // ---------------- home / map ----------------
 
+// The next unlocked, unfinished working — the page already cut.
+export function nextAction() {
+  for (let ai = 0; ai < curriculum.acts.length; ai += 1) {
+    const act = curriculum.acts[ai];
+    if (!S.isActUnlocked(curriculum, ai)) break; // acts unlock strictly in order
+    for (let li = 0; li < act.lessons.length; li += 1) {
+      const lesson = act.lessons[li];
+      if (!S.isLessonComplete(lesson.id) && S.isLessonUnlocked(curriculum, ai, li)) {
+        return {
+          route: `#/lesson/${lesson.id}`,
+          label: `Trial ${li + 1} — ${lesson.title} · Act ${act.numeral}, ${act.title}`,
+        };
+      }
+    }
+    if (!S.isBossDefeated(act.id) && S.isBossUnlocked(curriculum, ai)) {
+      return {
+        route: `#/boss/${act.id}`,
+        label: `${act.boss.title} · warden of Act ${act.numeral}`,
+      };
+    }
+  }
+  return null;
+}
+
+// The saved resume target, but only while it is still an open door.
+function resolveResume(resume) {
+  const route = String(resume.route || '');
+  const label = String(resume.label || '');
+  if (!route || !label) return null;
+  let m = route.match(/^#\/lesson\/([\w-]+)$/);
+  if (m) {
+    const found = findLesson(m[1]);
+    if (found && !S.isLessonComplete(m[1])
+      && S.isLessonUnlocked(curriculum, found.actIndex, found.lessonIndex)) {
+      return { route, label };
+    }
+    return null;
+  }
+  m = route.match(/^#\/boss\/([\w-]+)$/);
+  if (m) {
+    const found = findAct(m[1]);
+    if (found && !S.isBossDefeated(m[1]) && S.isBossUnlocked(curriculum, found.actIndex)) {
+      return { route, label };
+    }
+  }
+  return null;
+}
+
+// One dark panel, one primary action, facts only — the Codex never
+// threatens the flame.
+function returnPanelHtml(st) {
+  if (!st.resume || !Number(st.resume.at)) return '';
+  if (Date.now() - Number(st.resume.at) <= 4 * 3600 * 1000) return '';
+  let lead = 'The candle you left burning still holds your page.';
+  let target = resolveResume(st.resume);
+  if (!target) {
+    target = nextAction();
+    lead = 'The next page is already cut.';
+  }
+  if (!target) return '';
+  const facts = [];
+  if (st.streak.count > 0) {
+    facts.push(escapeHtml(`The watch-fire holds: ${st.streak.count} night${st.streak.count === 1 ? '' : 's'}.`));
+  }
+  if (st.vigil.lastDay !== S.todayStamp() && eligiblePool(st).length > 0) {
+    facts.push('The night’s walk awaits — <a href="#/vigil">the Vigil</a>.');
+  }
+  return `
+    <section class="return-panel panel">
+      <p class="return-lead">🕯 ${escapeHtml(lead)}</p>
+      <p class="return-target"><strong>${escapeHtml(target.label)}</strong></p>
+      <p><a class="btn" href="${escapeHtml(target.route)}">Resume the descent →</a></p>
+      ${facts.map((f) => `<p class="return-facts">${f}</p>`).join('')}
+    </section>`;
+}
+
 export function renderHome(root) {
   const st = S.getState();
   const cards = curriculum.acts.map((act, i) => {
@@ -184,6 +262,7 @@ export function renderHome(root) {
   const realmWord = ['One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven',
     'Eight', 'Nine'][curriculum.acts.length - 1] || String(curriculum.acts.length);
   root.innerHTML = `
+    ${returnPanelHtml(st)}
     <h1 class="map-title">The Descent</h1>
     <p class="map-sub">${realmWord} realms stand between ${escapeHtml(st.name || 'you')} and mastery.
     Each must be survived in turn.</p>
@@ -274,6 +353,12 @@ export function renderLesson(root, lessonId) {
 
   preboot(); // start summoning Python while they read
 
+  // The app remembers the exact surface the learner last stood in.
+  S.setResume(
+    `#/lesson/${lesson.id}`,
+    `Trial ${lessonIndex + 1} — ${lesson.title} · Act ${act.numeral}, ${act.title}`,
+  );
+
   const sectionsHtml = lesson.sections.map((sec) => `
     <h2 class="section-h">${escapeHtml(sec.heading)}</h2>
     <div class="prose">${prose(sec.body)}</div>
@@ -298,7 +383,11 @@ export function renderLesson(root, lessonId) {
     <section class="quiz" id="quiz"></section>
     <footer class="lesson-footer" id="lesson-footer"></footer>`;
 
-  typewriter(root.querySelector('.narrative'));
+  // The grimoire writes itself once; every later visit renders instantly.
+  if (!S.getLessonProgress(lesson.id).seen) {
+    typewriter(root.querySelector('.narrative'));
+  }
+  S.markSeen(lesson.id);
   mountChallenge(root.querySelector('#challenge'), lesson, () => refreshFooter());
   mountQuiz(root.querySelector('#quiz'), lesson, () => refreshFooter());
 
@@ -416,6 +505,7 @@ function mountChallenge(host, lesson, onChange) {
   });
 
   runBtn.addEventListener('click', async () => {
+    play('cast');
     runBtn.disabled = true;
     runBtn.textContent = '⏳ Casting…';
     consoleBox.hidden = false;
@@ -435,6 +525,7 @@ function mountChallenge(host, lesson, onChange) {
       ? escapeHtml(result.output)
       : '<span class="con-dim">(the spell produced no output)</span>') + plotHtml;
     if (result.ok) {
+      play('yield');
       consoleBox.innerHTML = out;
       S.recordRun(true);
       emit({ type: 'run' });
@@ -452,6 +543,7 @@ function mountChallenge(host, lesson, onChange) {
       }
       onChange();
     } else {
+      if (result.stage !== 'engine') play('collapse');
       consoleBox.innerHTML = `${out}\n<span class="con-err">${escapeHtml(result.error || '')}</span>`;
       S.recordRun(false);
       emit({ type: 'run' });
@@ -497,44 +589,12 @@ function mountQuiz(host, lesson, onChange) {
   const resultHost = host.querySelector('[data-role="quiz-result"]');
 
   lesson.quiz.forEach((q, qi) => {
-    const box = el('div', { class: 'quiz-q' });
-    const opts = q.options.map((opt, oi) => `
-      <button class="quiz-opt" data-q="${qi}" data-o="${oi}">
-        <span class="opt-key">${'ABCD'[oi]}.</span>
-        <span>${inlineOption(opt)}</span>
-      </button>`).join('');
-    box.innerHTML = `
-      <p class="q-text">${qi + 1}. ${inlineOption(q.q)}</p>
-      <div class="quiz-opts">${opts}</div>
-      <div class="q-result" data-role="qr"></div>
-      <div class="q-explain" hidden></div>`;
-    qHost.appendChild(box);
-
-    const explain = box.querySelector('.q-explain');
-    const qr = box.querySelector('[data-role="qr"]');
-    box.querySelectorAll('.quiz-opt').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const oi = Number(btn.dataset.o);
-        if (state[qi].solved) return;
-        if (oi === q.answer) {
-          state[qi].solved = true;
-          btn.classList.add('sel-right');
-          box.querySelectorAll('.quiz-opt').forEach((b) => { b.disabled = true; });
-          qr.textContent = state[qi].missed ? 'Correct — at last.' : 'Correct.';
-          qr.className = 'q-result ok';
-          explain.hidden = false;
-          explain.innerHTML = inlineOption(q.explain);
-          burst(btn);
-          checkQuizDone();
-        } else {
-          state[qi].missed = true;
-          btn.classList.add('sel-wrong');
-          btn.disabled = true;
-          qr.textContent = 'Wrong. The Codex remembers. Try again.';
-          qr.className = 'q-result bad';
-        }
-      });
-    });
+    renderQuizQuestion(qHost, q, (missed) => {
+      state[qi].solved = true;
+      state[qi].missed = missed;
+      S.recordQuestionOutcome(`${lesson.id}:q${qi}`, !missed, qHash(q.q));
+      checkQuizDone();
+    }, { number: qi + 1 });
   });
 
   function checkQuizDone() {
@@ -561,6 +621,55 @@ function inlineOption(text) {
   return mdInline(text);
 }
 
+// One retrievable question: option buttons, q-result, q-explain —
+// the exact interaction of the interrogation, shared by lesson
+// quizzes and the Night Vigil. Calls onSolved(missed) once, when the
+// right answer lands; missed is true if any wrong pick came first.
+function renderQuizQuestion(hostEl, q, onSolved, { number = 0 } = {}) {
+  const box = el('div', { class: 'quiz-q' });
+  const opts = q.options.map((opt, oi) => `
+      <button class="quiz-opt" data-o="${oi}">
+        <span class="opt-key">${'ABCD'[oi]}.</span>
+        <span>${inlineOption(opt)}</span>
+      </button>`).join('');
+  box.innerHTML = `
+      <p class="q-text">${number ? `${number}. ` : ''}${inlineOption(q.q)}</p>
+      <div class="quiz-opts">${opts}</div>
+      <div class="q-result" data-role="qr"></div>
+      <div class="q-explain" hidden></div>`;
+  hostEl.appendChild(box);
+
+  let solved = false;
+  let missed = false;
+  const explain = box.querySelector('.q-explain');
+  const qr = box.querySelector('[data-role="qr"]');
+  box.querySelectorAll('.quiz-opt').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const oi = Number(btn.dataset.o);
+      if (solved) return;
+      play('tick');
+      if (oi === q.answer) {
+        solved = true;
+        btn.classList.add('sel-right');
+        box.querySelectorAll('.quiz-opt').forEach((b) => { b.disabled = true; });
+        qr.textContent = missed ? 'Correct — at last.' : 'Correct.';
+        qr.className = 'q-result ok';
+        explain.hidden = false;
+        explain.innerHTML = inlineOption(q.explain);
+        burst(btn);
+        onSolved(missed);
+      } else {
+        missed = true;
+        btn.classList.add('sel-wrong');
+        btn.disabled = true;
+        qr.textContent = 'Wrong. The Codex remembers. Try again.';
+        qr.className = 'q-result bad';
+      }
+    });
+  });
+  return box;
+}
+
 // ---------------- boss ----------------
 
 export function renderBoss(root, actId) {
@@ -582,6 +691,8 @@ export function renderBoss(root, actId) {
 
   preboot();
 
+  S.setResume(`#/boss/${act.id}`, `${boss.title} · warden of Act ${act.numeral}`);
+
   root.innerHTML = `
     <div class="crumbs"><a href="#/">The Map</a> / <a href="#/act/${act.id}">Act ${escapeHtml(act.numeral)}</a> / Boss</div>
     <div class="boss-arena" id="arena"></div>`;
@@ -591,10 +702,26 @@ export function renderBoss(root, actId) {
     lives: 3,
     idx: 0,
     flawless: true,
-    order: boss.gauntlet.map((_, i) => i),
-    maxHp: boss.gauntlet.length + 1, // questions + the final working
-    hp: boss.gauntlet.length + 1,
+    strikeFails: 0,
+    items: [],
+    order: [],
+    maxHp: 0,
+    hp: 0,
   };
+  // The gauntlet's items are fixed for this mount: the act's own
+  // questions plus, from Act III on, two wounds read from the ledger
+  // of earlier acts. Retries reshuffle order but keep the same items.
+  battle.items = boss.gauntlet.map((q, i) => ({ ...q, qid: `${act.id}-boss:g${i}` }));
+  if (actIndex >= 2) {
+    for (const entry of pickReviewForBoss(S.getState(), actIndex, 2)) {
+      battle.items.push({ ...entry.q, qid: entry.qid, review: true });
+    }
+  }
+  battle.order = battle.items.map((_, i) => i);
+  battle.maxHp = battle.items.length + 1; // questions + the final working
+  battle.hp = battle.maxHp;
+  const hasReview = battle.items.some((it) => it.review);
+  let narrated = false; // the warden's tale is told once per fresh encounter
 
   // The stage (figure + health) persists across gauntlet steps so the
   // strike animations and HP transitions play against a stable target.
@@ -631,16 +758,23 @@ export function renderBoss(root, actId) {
       <span class="challenge-label">☠ Warden of Act ${escapeHtml(act.numeral)}</span>
       <h1 class="boss-title">${escapeHtml(boss.title)}</h1>
       <div class="narrative">${prose(boss.narrative)}</div>
-      <p class="prose">The trial has two movements: a <strong>gauntlet of ${boss.gauntlet.length} questions</strong>
+      <p class="prose">The trial has two movements: a <strong>gauntlet of ${battle.items.length} questions</strong>
       (you carry three lives — each wrong answer feeds one to the dark), then a
       <strong>final working of code</strong>. Every true answer wounds the warden;
-      fall, and you begin the gauntlet anew.</p>
+      fall, and you begin the gauntlet anew. The final working is no sanctuary:
+      after one spared misstep, every failed casting feeds a candle to the dark.${hasReview
+        ? ' This warden has read the ledger of your old wounds — two of its questions are drawn from acts you thought closed.'
+        : ''}</p>
       ${alreadyDown ? '<p class="prose"><em>You have already broken this warden. Fight again for pride, not power — no further XP awaits.</em></p>' : ''}
       <button class="btn btn-danger" id="begin">Begin the trial</button>
       <a class="btn btn-ghost" href="#/act/${act.id}">Withdraw</a>`;
     bossReveal(arena.querySelector('.boss-stage'), boss.title);
-    typewriter(flowEl().querySelector('.narrative'));
+    if (!narrated && !alreadyDown) {
+      typewriter(flowEl().querySelector('.narrative'));
+    }
+    narrated = true;
     flowEl().querySelector('#begin').addEventListener('click', () => {
+      play('bell');
       battle.lives = 3;
       battle.idx = 0;
       battle.flawless = true;
@@ -663,7 +797,7 @@ export function renderBoss(root, actId) {
 
   function gauntletStep() {
     if (battle.idx >= battle.order.length) { finalChallenge(); return; }
-    const q = boss.gauntlet[battle.order[battle.idx]];
+    const q = battle.items[battle.order[battle.idx]];
     flowEl().innerHTML = `
       <span class="challenge-label">☠ ${escapeHtml(boss.title)}</span>
       ${livesHtml()}
@@ -687,6 +821,8 @@ export function renderBoss(root, actId) {
     flow.querySelectorAll('.quiz-opt').forEach((btn) => {
       btn.addEventListener('click', () => {
         const oi = Number(btn.dataset.o);
+        play('tick');
+        S.recordQuestionOutcome(q.qid, oi === q.answer, qHash(q.q));
         flow.querySelectorAll('.quiz-opt').forEach((b) => { b.disabled = true; });
         explain.hidden = false;
         explain.innerHTML = inlineOption(q.explain);
@@ -708,6 +844,7 @@ export function renderBoss(root, actId) {
           qr.className = 'q-result bad';
           flow.querySelector('.lives').outerHTML = livesHtml();
           bossStrike(figureEl());
+          play('bell');
           if (battle.lives <= 0) { fallen(); return; }
         }
         battle.idx += 1;
@@ -738,6 +875,7 @@ export function renderBoss(root, actId) {
   }
 
   function finalChallenge() {
+    battle.strikeFails = 0;
     const ch = boss.finalChallenge;
     flowEl().innerHTML = `
       <span class="challenge-label">☠ The Final Working</span>
@@ -753,12 +891,31 @@ export function renderBoss(root, actId) {
       xp: 0,
       challenge: { ...ch, successText: 'The warden kneels.' },
     };
-    mountBossForge(flowEl().querySelector('#boss-forge'), pseudo, () => victory());
+    mountBossForge(flowEl().querySelector('#boss-forge'), pseudo, {
+      onPass: () => victory(),
+      // The ward bites back: the first failed Strike per attempt is
+      // spared; every one after costs a candle. Any failed Strike
+      // breaks flawless.
+      onFail: () => {
+        battle.flawless = false;
+        battle.strikeFails += 1;
+        if (battle.strikeFails === 1) return { free: true, fallen: false };
+        battle.lives -= 1;
+        const livesEl = flowEl().querySelector('.lives');
+        if (livesEl) livesEl.outerHTML = livesHtml();
+        bossStrike(figureEl());
+        play('bell');
+        if (battle.lives <= 0) { fallen(); return { free: false, fallen: true }; }
+        return { free: false, fallen: false };
+      },
+    });
   }
 
   async function victory() {
     if (battle.won) return; // a second killing blow lands on nothing
     battle.won = true;
+    // The Economy of Awe: no toast speaks before the banner stands.
+    holdToasts();
     const first = S.markBossDefeated(act.id);
     const bonus = battle.flawless ? boss.flawlessBonus : 0;
     // The killing blow: strength to zero, then the warden burns away.
@@ -781,15 +938,25 @@ export function renderBoss(root, actId) {
       countUp(arena.querySelector('[data-role="spoils"]'), 0, boss.xp + bonus, { duration: 1300 });
       grantXp(boss.xp + bonus, `Warden defeated — ${boss.title}`);
       emit({ type: 'boss-defeated', actId: act.id });
+      if (S.grantEmber('warden')) {
+        toast({
+          icon: '🜂',
+          title: 'An ember is banked against the dark',
+          sub: 'A warden’s fall buys one night of grace.',
+        });
+      }
     }
+    releaseToasts();
   }
 
   intro();
 }
 
 // A trimmed forge for boss final challenges (no hints, no solution reveal —
-// wardens grant nothing).
-function mountBossForge(host, pseudo, onPass) {
+// wardens grant nothing). handlers: { onPass, onFail } — onFail returns
+// { free, fallen } so the forge can render the verdict of each misstep.
+function mountBossForge(host, pseudo, handlers) {
+  const { onPass, onFail } = handlers;
   const ch = pseudo.challenge;
   host.innerHTML = `
     <div class="forge">
@@ -835,6 +1002,7 @@ function mountBossForge(host, pseudo, onPass) {
   });
 
   runBtn.addEventListener('click', async () => {
+    play('cast');
     runBtn.disabled = true;
     runBtn.textContent = '⏳ Striking…';
     consoleBox.hidden = false;
@@ -853,22 +1021,47 @@ function mountBossForge(host, pseudo, onPass) {
     emit({ type: 'run' });
     if (result.ok) {
       // Leave Strike disabled: the blow has landed and victory owns the stage.
+      play('yield');
       consoleBox.innerHTML = out;
       clearDraft(pseudo.id);
       burst(runBtn);
       onPass();
-    } else {
+      return;
+    }
+    consoleBox.innerHTML = `${out}\n<span class="con-err">${escapeHtml(result.error || '')}</span>`;
+    const diag = result.stage === 'validate'
+      ? 'Your code ran, but it does not satisfy the working. The ward’s message lies below your output.'
+      : 'Your code broke before it could wound anything. Read the error’s last line.';
+    // Failures of the interpreter itself cost nothing and break nothing:
+    // the learner's code never ran.
+    if (result.stage === 'engine' || !onFail) {
       runBtn.disabled = false;
       runBtn.textContent = '▶ Strike';
-      consoleBox.innerHTML = `${out}\n<span class="con-err">${escapeHtml(result.error || '')}</span>`;
       verdictBox.innerHTML = `
         <div class="verdict verdict-fail">
           <span class="verdict-title">The warden still stands.</span>
-          ${result.stage === 'validate'
-    ? 'Your code ran, but it does not satisfy the working. The ward’s message lies below your output.'
-    : 'Your code broke before it could wound anything. Read the error’s last line.'}
+          ${diag}
         </div>`;
+      return;
     }
+    play('collapse');
+    const outcome = onFail();
+    // When the learner falls, fallen() owns the stage — write nothing.
+    if (outcome.fallen || !document.body.contains(host)) return;
+    runBtn.disabled = false;
+    runBtn.textContent = '▶ Strike';
+    verdictBox.innerHTML = outcome.free
+      ? `
+        <div class="verdict verdict-fail">
+          <span class="verdict-title">The warden toys with you.</span>
+          Your working failed, and the warden let it pass — once.
+          The next misstep feeds a candle to the dark.<br>${diag}
+        </div>`
+      : `
+        <div class="verdict verdict-fail">
+          <span class="verdict-title">The warden strikes back — a candle gutters out.</span>
+          ${diag}
+        </div>`;
   });
 }
 
@@ -935,6 +1128,7 @@ export function renderProfile(root) {
         <div class="stat-row"><span class="stat-k">Hints begged</span><span class="stat-v">${st.stats.hintsUsed}</span></div>
         <div class="stat-row"><span class="stat-k">Solutions peeked</span><span class="stat-v">${st.stats.solutionsViewed}</span></div>
         <div class="stat-row"><span class="stat-k">Current streak</span><span class="stat-v">${st.streak.count} day${st.streak.count === 1 ? '' : 's'} (best ${st.streak.best})</span></div>
+        <div class="stat-row"><span class="stat-k">Embers banked</span><span class="stat-v">${st.streak.embers} / 2</span></div>
       </div>
       <div class="panel">
         <h2 class="panel-h">The Ascension</h2>
@@ -964,6 +1158,74 @@ export function renderProfile(root) {
       window.location.reload();
     }
   });
+}
+
+// ---------------- the night vigil ----------------
+// Six questions drawn only from wards the learner has raised, chosen
+// by the Leitner scheduler in review.js. First completion each day
+// pays a fixed 25 XP; repeat walks sharpen but do not pay.
+
+export function renderVigil(root) {
+  const st = S.getState();
+  const pool = eligiblePool(st);
+  if (!pool.length) {
+    root.innerHTML = `
+      <h1 class="map-title">The Night Vigil</h1>
+      <div class="panel center">
+        <p class="prose">No wards stand yet. Complete a trial, then return after dark.</p>
+        <p><a class="btn" href="#/">Return to the map</a></p>
+      </div>`;
+    return;
+  }
+
+  const walked = st.vigil.lastDay === S.todayStamp();
+  root.innerHTML = `
+    <h1 class="map-title">The Night Vigil</h1>
+    <p class="map-sub">Each night the wards you have raised must be walked.
+    What you do not revisit, the dark reclaims.</p>
+    <div class="panel">
+      <p class="prose vigil-status">${walked
+    ? 'The wards are already walked tonight.'
+    : 'The wards await.'}</p>
+      <button class="btn" id="vigil-begin">Walk the wards</button>
+    </div>
+    <section class="vigil-flow" id="vigil-flow"></section>
+    <div id="vigil-result"></div>`;
+
+  const beginBtn = root.querySelector('#vigil-begin');
+  beginBtn.addEventListener('click', () => {
+    beginBtn.disabled = true;
+    const items = buildVigil(st, 6);
+    const flow = root.querySelector('#vigil-flow');
+    let answered = 0;
+    items.forEach((entry, i) => {
+      renderQuizQuestion(flow, entry.q, (missed) => {
+        S.recordQuestionOutcome(entry.qid, !missed, qHash(entry.q.q));
+        answered += 1;
+        if (answered === items.length) vigilComplete();
+      }, { number: i + 1 });
+    });
+  });
+
+  function vigilComplete() {
+    const resultHost = root.querySelector('#vigil-result');
+    if (S.markVigilWalked()) {
+      grantXp(25, 'The wards are walked');
+      emit({ type: 'vigil-complete' });
+      play('crackle');
+      resultHost.innerHTML = `
+        <div class="verdict verdict-pass">
+          <span class="verdict-title">The wards are walked.</span>
+          What is learned before rest is kept. The Codex will open to your page tomorrow.
+        </div>`;
+    } else {
+      resultHost.innerHTML = `
+        <div class="verdict verdict-pass">
+          <span class="verdict-title">The wards were already walked tonight.</span>
+          This walk sharpens; it does not pay.
+        </div>`;
+    }
+  }
 }
 
 // ---------------- codex (glossary) ----------------

@@ -126,18 +126,59 @@ export function codeBlock(code) {
 }
 
 // ---------------- toasts ----------------
+// The Economy of Awe: rewards speak one at a time, 600 ms apart. Plain
+// XP toasts queued in the same beat coalesce into one line, and toasts
+// queued while a hold is active (a boss kill) are deferred, never
+// dropped — the aria-live region receives one utterance at a time.
+
+const toastQueue = [];
+let toastsHeld = false;
+let toastShowing = false;
+
+const XP_TITLE = /^\+(\d+) XP$/;
+
+function isPlainXp(t) {
+  return !t.kind && XP_TITLE.test(t.title);
+}
 
 export function toast({ icon = '✦', title, sub = '', kind = '' }) {
+  const entry = { icon, title: String(title ?? ''), sub: String(sub ?? ''), kind };
+  const tail = toastQueue[toastQueue.length - 1];
+  if (tail && isPlainXp(entry) && isPlainXp(tail)) {
+    const sum = Number(tail.title.match(XP_TITLE)[1]) + Number(entry.title.match(XP_TITLE)[1]);
+    tail.title = `+${sum} XP`;
+    tail.sub = [tail.sub, entry.sub].filter(Boolean).join(' · ');
+    return;
+  }
+  toastQueue.push(entry);
+  // Pump on a fresh tick so same-beat XP toasts coalesce before showing.
+  setTimeout(pumpToasts, 0);
+}
+
+function pumpToasts() {
+  if (toastsHeld || toastShowing || !toastQueue.length) return;
+  const t = toastQueue.shift();
   const host = document.getElementById('toasts');
-  if (!host) return;
-  const node = document.createElement('div');
-  node.className = `toast ${kind}`;
-  node.innerHTML = `
-    <span class="t-icon">${escapeHtml(icon)}</span>
-    <span><span class="t-title">${escapeHtml(title)}</span><br>
-    <span class="t-sub">${escapeHtml(sub)}</span></span>`;
-  host.appendChild(node);
-  setTimeout(() => node.remove(), 5200);
+  if (host) {
+    const node = document.createElement('div');
+    node.className = `toast ${t.kind}`;
+    node.innerHTML = `
+      <span class="t-icon">${escapeHtml(t.icon)}</span>
+      <span><span class="t-title">${escapeHtml(t.title)}</span><br>
+      <span class="t-sub">${escapeHtml(t.sub)}</span></span>`;
+    host.appendChild(node);
+    setTimeout(() => node.remove(), 5200);
+  }
+  toastShowing = true;
+  setTimeout(() => { toastShowing = false; pumpToasts(); }, 600);
+}
+
+// A boss victory holds the queue until the defeat banner owns the stage.
+export function holdToasts() { toastsHeld = true; }
+
+export function releaseToasts() {
+  toastsHeld = false;
+  pumpToasts();
 }
 
 // Small element factory for imperative view code.

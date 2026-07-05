@@ -117,6 +117,20 @@ button { font-family: inherit; }
 .xp-text { font-size: 0.75rem; color: var(--ink-dim); white-space: nowrap; }
 .streak { font-size: 0.85rem; color: var(--ink-dim); }
 
+.sound-rune {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink-dim);
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
+}
+.sound-rune:hover { border-color: var(--accent); color: var(--accent-bright); }
+.sound-rune:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
+.sound-rune[aria-pressed="false"] { opacity: 0.55; }
+
 .site-nav { display: flex; gap: 1.1rem; }
 .site-nav a {
   color: var(--ink-dim); font-size: 0.9rem; letter-spacing: 0.05em;
@@ -604,6 +618,25 @@ details.solution-reveal .solution-warning {
 .allegiance-card[aria-checked="true"] h2::after { content: ' ✓'; color: var(--accent-bright); }
 .allegiance-card p { font-size: 0.82rem; color: var(--ink-dim); margin: 0; }
 .ob-submit { margin-top: 2rem; text-align: center; }
+
+/* ---------------- the candle you left burning ---------------- */
+
+.return-panel { margin-bottom: 2rem; }
+.return-lead {
+  font-family: var(--serif); font-style: italic;
+  color: var(--ink-dim); margin: 0 0 0.45rem;
+}
+.return-target {
+  font-family: var(--serif); font-size: 1.15rem;
+  color: var(--parchment); margin: 0.2rem 0 0.9rem;
+}
+.return-facts { font-size: 0.82rem; color: var(--ink-dim); margin: 0.6rem 0 0; }
+
+/* ---------------- the night vigil ---------------- */
+
+.vigil-status { font-style: italic; }
+.vigil-flow .quiz-q { margin-top: 1.4rem; }
+#vigil-result .verdict { margin-top: 1.4rem; }
 
 /* ---------------- toasts ---------------- */
 

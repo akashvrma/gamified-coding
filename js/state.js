@@ -5,9 +5,18 @@
 
 const SAVE_KEY = 'darkcodex.save.v1';
 
-function todayStamp() {
-  const d = new Date();
+function stampOf(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+export function todayStamp() {
+  return stampOf(new Date());
+}
+
+function offsetStamp(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return stampOf(d);
 }
 
 function defaultState() {
@@ -17,12 +26,17 @@ function defaultState() {
     allegiance: '',            // 'wand' | 'ring'
     createdAt: Date.now(),
     xp: 0,
-    // lessonId -> { challenge: bool, quiz: bool, perfectQuiz: bool, usedSolution: bool }
+    // lessonId -> { challenge, quiz, perfectQuiz, usedSolution, seen }
     lessons: {},
     // actId -> true when its boss has fallen
     bosses: {},
     achievements: [],
-    streak: { last: '', count: 0, best: 0 },
+    streak: { last: '', count: 0, best: 0, embers: 0, emberLog: [] },
+    settings: { sfx: true, volume: 0.5, voiceNoticed: false },
+    resume: { route: '', label: '', at: 0 },
+    // qid -> { seen, missed, box, lastDay, dueDay, hash } — the question ledger
+    questions: {},
+    vigil: { lastDay: '', count: 0 },
     stats: {
       runs: 0,
       failedRuns: 0,
@@ -48,6 +62,9 @@ function load() {
       ...parsed,
       streak: { ...base.streak, ...(parsed.streak || {}) },
       stats: { ...base.stats, ...(parsed.stats || {}) },
+      settings: { ...base.settings, ...(parsed.settings || {}) },
+      resume: { ...base.resume, ...(parsed.resume || {}) },
+      vigil: { ...base.vigil, ...(parsed.vigil || {}) },
     };
     // Coerce numerics so a hand-edited save can't smuggle markup into
     // render paths that interpolate these values.
@@ -55,6 +72,19 @@ function load() {
     for (const k of Object.keys(base.stats)) merged.stats[k] = Number(merged.stats[k]) || 0;
     merged.streak.count = Number(merged.streak.count) || 0;
     merged.streak.best = Number(merged.streak.best) || 0;
+    merged.streak.embers = Number(merged.streak.embers) || 0;
+    if (!Array.isArray(merged.streak.emberLog)) merged.streak.emberLog = [];
+    merged.settings.volume = Number(merged.settings.volume) || 0.5;
+    merged.settings.sfx = Boolean(merged.settings.sfx);
+    merged.settings.voiceNoticed = Boolean(merged.settings.voiceNoticed);
+    merged.resume.route = String(merged.resume.route || '');
+    merged.resume.label = String(merged.resume.label || '');
+    merged.resume.at = Number(merged.resume.at) || 0;
+    merged.vigil.lastDay = String(merged.vigil.lastDay || '');
+    merged.vigil.count = Number(merged.vigil.count) || 0;
+    if (typeof merged.questions !== 'object' || !merged.questions || Array.isArray(merged.questions)) {
+      merged.questions = {};
+    }
     return merged;
   } catch {
     return defaultState();
@@ -90,18 +120,37 @@ export function hasProfile() {
 
 // ---------------- streak ----------------
 
-// Returns true when today extended the streak (first activity of the day).
+// Returns 0 when today was already touched (falsy — callers unchanged),
+// 1 when the streak extended or reset as before, and 2 when a banked
+// ember was silently burned to bridge exactly one missed day.
 export function touchStreak() {
   const today = todayStamp();
-  if (state.streak.last === today) return false;
-  const yesterday = (() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 1);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  })();
-  state.streak.count = state.streak.last === yesterday ? state.streak.count + 1 : 1;
+  if (state.streak.last === today) return 0;
+  const yesterday = offsetStamp(-1);
+  const dayBefore = offsetStamp(-2);
+  let result = 1;
+  if (state.streak.last === yesterday) {
+    state.streak.count += 1;
+  } else if (state.streak.last === dayBefore && state.streak.embers > 0) {
+    state.streak.embers -= 1;
+    state.streak.emberLog.push({ day: today, kind: 'burned' });
+    state.streak.count += 1;
+    result = 2;
+  } else {
+    state.streak.count = 1;
+  }
   state.streak.best = Math.max(state.streak.best, state.streak.count);
   state.streak.last = today;
+  save();
+  return result;
+}
+
+// Bank an ember (cap 2). Embers are earned, never bought: a warden's
+// first fall, or every seventh unbroken night.
+export function grantEmber(reason) {
+  if (state.streak.embers >= 2) return false;
+  state.streak.embers += 1;
+  state.streak.emberLog.push({ day: todayStamp(), kind: reason });
   save();
   return true;
 }
@@ -119,7 +168,7 @@ export function addXp(amount) {
 function lessonRec(lessonId) {
   if (!state.lessons[lessonId]) {
     state.lessons[lessonId] = {
-      challenge: false, quiz: false, perfectQuiz: false, usedSolution: false,
+      challenge: false, quiz: false, perfectQuiz: false, usedSolution: false, seen: false,
     };
   }
   return state.lessons[lessonId];
@@ -127,8 +176,18 @@ function lessonRec(lessonId) {
 
 export function getLessonProgress(lessonId) {
   return state.lessons[lessonId] || {
-    challenge: false, quiz: false, perfectQuiz: false, usedSolution: false,
+    challenge: false, quiz: false, perfectQuiz: false, usedSolution: false, seen: false,
   };
+}
+
+// The grimoire writes itself once: after the first visit the narrative
+// renders instantly on every return.
+export function markSeen(lessonId) {
+  const rec = lessonRec(lessonId);
+  if (!rec.seen) {
+    rec.seen = true;
+    save();
+  }
 }
 
 export function markChallenge(lessonId) {
@@ -229,4 +288,62 @@ export function unlockAchievement(id) {
 
 export function hasAchievement(id) {
   return state.achievements.includes(id);
+}
+
+// ---------------- settings ----------------
+
+export function setSfx(on) {
+  state.settings.sfx = Boolean(on);
+  save();
+}
+
+export function markVoiceNoticed() {
+  if (!state.settings.voiceNoticed) {
+    state.settings.voiceNoticed = true;
+    save();
+  }
+}
+
+// ---------------- resume (the candle you left burning) ----------------
+
+export function setResume(route, label) {
+  state.resume = { route: String(route), label: String(label), at: Date.now() };
+  save();
+}
+
+// ---------------- the question ledger (Leitner boxes) ----------------
+
+const BOX_INTERVALS = [1, 2, 4, 9, 16];
+
+export function recordQuestionOutcome(qid, correct, hash) {
+  if (typeof state.questions !== 'object' || !state.questions) state.questions = {};
+  let rec = state.questions[qid];
+  // A rewritten question orphans its old scars cleanly.
+  if (!rec || rec.hash !== hash) {
+    rec = { seen: 0, missed: 0, box: 0, lastDay: '', dueDay: '', hash };
+    state.questions[qid] = rec;
+  }
+  rec.seen += 1;
+  if (!correct) rec.missed += 1;
+  const today = todayStamp();
+  // Boxes move at most once per day: repeats sharpen, they do not promote.
+  if (rec.lastDay !== today) {
+    rec.box = correct ? Math.min(rec.box + 1, 4) : 0;
+    rec.dueDay = offsetStamp(BOX_INTERVALS[rec.box]);
+  }
+  rec.lastDay = today;
+  save();
+}
+
+// ---------------- the night vigil ----------------
+
+// Returns true only on the first completed walk of the day — the sole
+// gate on the vigil's fixed 25 XP.
+export function markVigilWalked() {
+  const today = todayStamp();
+  if (state.vigil.lastDay === today) return false;
+  state.vigil.lastDay = today;
+  state.vigil.count += 1;
+  save();
+  return true;
 }

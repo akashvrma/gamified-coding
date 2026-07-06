@@ -910,6 +910,104 @@ details.working-stage.sealed > summary:hover { background: transparent; }
   .av-spark, .av-eyes, .asc-shards { animation: none !important; }
 }
 
+/* ---------------- sigils of mastery (heraldic, zero XP) ---------------- */
+
+.node-sigils { display: flex; gap: 0.4rem; flex-shrink: 0; font-size: 1.05rem; align-items: center; }
+.sigil { color: var(--accent-bright); text-shadow: 0 0 8px var(--accent-glow); }
+.sigil.unearned { opacity: 0.22; filter: grayscale(1); text-shadow: none; }
+
+/* ---------------- the re-forge ---------------- */
+
+.reforge-panel {
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-inset);
+  padding: 1rem 1.2rem;
+  margin-top: 1.2rem;
+}
+.reforge-lead { font-family: var(--serif); color: var(--accent-bright); margin: 0 0 0.35rem; }
+.reforge-text { font-size: 0.92rem; color: var(--ink-dim); margin: 0 0 0.6rem; }
+
+/* ---------------- the sealed prophecy ---------------- */
+
+.prophecy-panel {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  background: var(--bg-inset);
+  padding: 0.85rem 1.1rem;
+  margin: 1rem 0;
+}
+.prophecy-line { font-family: var(--serif); color: var(--parchment); margin: 0 0 0.6rem; }
+.prophecy-panel .prophecy-line:only-child { margin-bottom: 0; }
+.prophecy-chips { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+.prophecy-chip { padding: 0.35rem 0.85rem; }
+.prophecy-note { font-size: 0.78rem; color: var(--ink-faint); margin: 0.6rem 0 0; }
+.prophecy-verdict { font-family: var(--serif); font-style: italic; color: var(--ink-dim); margin: 0.8rem 0 0; }
+
+/* ---------------- the fading wards ---------------- */
+
+.act-sigil.ward-fading {
+  border-color: var(--danger);
+  cursor: pointer;
+  animation: ward-flicker 3.4s ease-in-out infinite;
+}
+.act-sigil.ward-fading:hover { box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.6), 0 0 14px var(--danger-dim); }
+.act-sigil.ward-fading:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
+@keyframes ward-flicker {
+  0%, 100% { opacity: 1; }
+  42% { opacity: 0.45; }
+  58% { opacity: 0.8; }
+  70% { opacity: 0.5; }
+}
+
+/* ---------------- the kept nights (votive grid) ---------------- */
+
+.votive-grid {
+  display: grid;
+  grid-template-columns: repeat(14, 1fr);
+  gap: 2px;
+  max-width: 340px;
+  margin-top: 0.8rem;
+}
+.votive { text-align: center; font-size: 0.8rem; line-height: 1.4; color: var(--ink-faint); opacity: 0.35; }
+.votive.lit { color: var(--accent-bright); opacity: 1; text-shadow: 0 0 6px var(--accent-glow); }
+.votive-note { font-size: 0.82rem; color: var(--ink-dim); margin: 0.6rem 0 0; }
+
+/* ---------------- the book of scars ---------------- */
+
+.scar-group { margin-top: 1rem; }
+.scar-act-h { font-size: 1.05rem; margin: 0 0 0.3rem; }
+.scar-list { list-style: none; padding: 0; margin: 0; }
+.scar-item {
+  display: flex; gap: 0.7rem; align-items: baseline;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 0.9rem;
+}
+.scar-item:last-child { border-bottom: none; }
+.scar-kind {
+  color: var(--ink-faint); font-size: 0.7rem;
+  letter-spacing: 0.1em; text-transform: uppercase; flex-shrink: 0;
+}
+.scar-count { margin-left: auto; color: var(--danger); font-size: 0.78rem; white-space: nowrap; flex-shrink: 0; }
+details.scar-faded { opacity: 0.55; margin-top: 1.25rem; }
+details.scar-faded summary { cursor: pointer; color: var(--ink-faint); font-family: var(--serif); }
+details.scar-faded summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---------------- the rekindling & the vigil's bargain ---------------- */
+
+.rekindle-rite { margin-top: 1rem; }
+.verdict-warm { background: var(--accent-dim); border: 1px solid var(--accent); color: var(--ink); }
+.vigil-lengths { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.vigil-filter { margin-bottom: 1rem; }
+.vigil-bargain { font-size: 0.92rem; color: var(--ink-dim); }
+
+@media (prefers-reduced-motion: reduce) {
+  /* A fading ward must not flicker — it dims and holds still. */
+  .act-sigil.ward-fading { animation: none !important; opacity: 0.55; }
+}
+
 /* ---------------- misc ---------------- */
 
 .empty-note { color: var(--ink-faint); font-style: italic; }

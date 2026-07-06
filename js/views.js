@@ -13,7 +13,10 @@ import { castBolt, burst, hitFlash, bossStrike, dissolve } from './fx.js';
 import { typewriter, bossReveal, countUp } from './cinema.js';
 import { setAmbient } from './ambient.js';
 import { play } from './sound.js';
-import { qHash, buildVigil, eligiblePool, pickReviewForBoss } from './review.js';
+import {
+  qHash, buildVigil, eligiblePool, pickReviewForBoss,
+  actHealth, scarBook, rekindlePool, buildRekindle,
+} from './review.js';
 
 const QUIZ_XP = 35;
 const QUIZ_PERFECT_BONUS = 15;
@@ -51,6 +54,63 @@ function wireEditorKeys(editor, afterEdit) {
 }
 
 const EDITOR_LABEL = 'Python code editor. Tab inserts four spaces; press Escape then Tab to move focus out.';
+
+// ---------------- day arithmetic (local, calendar-day granularity) ----------------
+
+function dayStampOf(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function dayStampAgo(days) {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return dayStampOf(d);
+}
+
+// Whole days between two ISO day-stamps (noon-anchored to dodge DST).
+function daysBetweenStamps(a, b) {
+  const parse = (s) => {
+    const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12) : null;
+  };
+  const da = parse(a);
+  const db = parse(b);
+  if (!da || !db) return null;
+  return Math.round((db - da) / 86400000);
+}
+
+function truncateText(s, n = 90) {
+  const t = String(s);
+  return t.length > n ? `${t.slice(0, n - 1)}…` : t;
+}
+
+// ---------------- sigils of mastery (heraldic, zero XP) ----------------
+// Three distinct glyphs — never color alone — on act-page lesson rows
+// and tallied in the Sanctum. Semantics live in state.js sigilsFor.
+
+const SIGILS = [
+  { key: 'oneCast', glyph: '🜁', name: 'One-Cast', desc: 'the trial fell to the very first casting' },
+  { key: 'flawless', glyph: '🜄', name: 'Flawless', desc: 'the interrogation never cracked' },
+  { key: 'unaided', glyph: '🜃', name: 'Unaided', desc: 'no whisper, no notes — your hand alone' },
+];
+
+function sigilRowHtml(sig) {
+  const label = SIGILS.map((s) => `${s.name} ${sig[s.key] ? 'earned' : 'not earned'}`).join(', ');
+  const runes = SIGILS.map((s) => `<span class="sigil ${sig[s.key] ? 'earned' : 'unearned'}"
+      title="${escapeHtml(`${s.name} — ${sig[s.key] ? s.desc : 'not earned'}`)}">${s.glyph}</span>`).join('');
+  return `<span class="node-sigils" role="img" aria-label="${escapeHtml(`Sigils: ${label}`)}">${runes}</span>`;
+}
+
+function sigilTally() {
+  let earned = 0;
+  let lessons = 0;
+  curriculum.acts.forEach((act) => act.lessons.forEach((lesson) => {
+    lessons += 1;
+    const sig = S.sigilsFor(lesson.id);
+    earned += (sig.oneCast ? 1 : 0) + (sig.flawless ? 1 : 0) + (sig.unaided ? 1 : 0);
+  }));
+  return { earned, possible: lessons * 3 };
+}
 
 // Curly quotes and no-break spaces (OS autocorrect, pasted prose) are
 // invisible Python-killers: `print(“hi”)` dies of SyntaxError with no
@@ -247,8 +307,111 @@ function returnPanelHtml(st) {
     </section>`;
 }
 
+// ---------------- the rekindling ----------------
+// A lapsed return (≥7 days) with proven ground (≥10 twice-true ledger
+// items) opens on a three-question rite drawn from the learner's
+// STRONGEST material — competence first, never a scolding. Offered at
+// most once per calendar day; always passable; an ember on 3 of 3.
+
+// The most recent activity day BEFORE today: the kept-nights history
+// (dailyTouch has already stamped today by the time the map renders),
+// falling back to the resume timestamp for saves that predate history.
+function daysSinceLastActivity(st) {
+  const today = S.todayStamp();
+  const hist = Array.isArray(st.streak.history) ? st.streak.history : [];
+  let last = '';
+  for (const stamp of hist) {
+    if (typeof stamp === 'string' && stamp < today && stamp > last) last = stamp;
+  }
+  if (st.resume && Number(st.resume.at)) {
+    const rstamp = dayStampOf(new Date(Number(st.resume.at)));
+    if (rstamp < today && rstamp > last) last = rstamp;
+  }
+  if (!last) return null;
+  return daysBetweenStamps(last, today);
+}
+
+// Renders the rite and returns true when it owns the screen.
+function maybeRekindle(root, st) {
+  const today = S.todayStamp();
+  if (st.rekindle && st.rekindle.lastOffered === today) return false;
+  const lapse = daysSinceLastActivity(st);
+  if (lapse === null || lapse < 7) return false;
+  if (rekindlePool(st).length < 10) return false;
+  const items = buildRekindle(st, 3);
+  if (items.length < 3) return false;
+  S.markRekindleOffered();
+
+  root.innerHTML = `
+    <section class="rekindle-rite panel" aria-labelledby="rekindle-title">
+      <h1 class="map-title" id="rekindle-title">🜂 The Rekindling</h1>
+      <p class="map-sub">${lapse} nights have passed since the watch was last kept.
+      What you learned has not left you. Three pages you once held cold — read them again.</p>
+      <div class="center">
+        <button class="btn" id="rekindle-begin">Face the three</button>
+        <button class="btn btn-ghost" id="rekindle-pass">Pass on</button>
+      </div>
+      <div id="rekindle-flow"></div>
+      <div id="rekindle-result" role="status" aria-live="polite"></div>
+    </section>`;
+
+  const enterMap = () => renderHome(root); // lastOffered is stamped — the map renders
+  root.querySelector('#rekindle-pass').addEventListener('click', enterMap);
+  root.querySelector('#rekindle-begin').addEventListener('click', () => {
+    root.querySelector('#rekindle-begin').disabled = true;
+    root.querySelector('#rekindle-pass').disabled = true;
+    const flow = root.querySelector('#rekindle-flow');
+    let answered = 0;
+    let allTrue = true;
+    items.forEach((item, i) => {
+      let host = flow;
+      if (item.entry.code) {
+        host = el('div', { class: 'trace-item' }, codeBlock(item.entry.code));
+        flow.appendChild(host);
+      }
+      renderQuizQuestion(host, item.entry.q, (missed) => {
+        S.recordQuestionOutcome(item.qid, !missed, qHash(item.entry.q.q));
+        if (missed) allTrue = false;
+        answered += 1;
+        if (answered === items.length) conclude();
+      }, { number: i + 1 });
+    });
+    function conclude() {
+      const resultHost = root.querySelector('#rekindle-result');
+      if (allTrue) {
+        const banked = S.grantEmber('rekindled');
+        resultHost.innerHTML = `
+          <div class="verdict verdict-pass">
+            <span class="verdict-title">The fire remembers you.</span>
+            Three of three, after ${lapse} nights away.
+            ${banked ? 'An ember is banked against the dark.' : 'Your embers already stand at their cap; the proof stands on its own.'}
+          </div>
+          <p class="center mt"><button class="btn" data-act="enter">Enter the Codex</button></p>`;
+        if (banked) {
+          toast({
+            icon: '🜂',
+            title: 'An ember is banked against the dark',
+            sub: 'The fire remembers you.',
+          });
+        }
+        emit({ type: 'rekindle-complete' });
+      } else {
+        resultHost.innerHTML = `
+          <div class="verdict verdict-warm">
+            <span class="verdict-title">The embers stir. The watch resumes.</span>
+            Nothing is owed and nothing is lost — the pages are where you left them.
+          </div>
+          <p class="center mt"><button class="btn" data-act="enter">Enter the Codex</button></p>`;
+      }
+      resultHost.querySelector('[data-act="enter"]').addEventListener('click', enterMap);
+    }
+  });
+  return true;
+}
+
 export function renderHome(root) {
   const st = S.getState();
+  if (maybeRekindle(root, st)) return; // the rite owns the screen today
   const cards = curriculum.acts.map((act, i) => {
     const unlocked = S.isActUnlocked(curriculum, i);
     const { done, total } = S.actProgress(act);
@@ -258,9 +421,17 @@ export function renderHome(root) {
       : (done === total
         ? '<span class="tag tag-done">Conquered</span>'
         : `<span class="tag tag-accent">${done ? 'In progress' : 'Open'}</span>`);
+    // The Fading Wards: below half health the act's rune gutters and
+    // becomes a door into that act's vigil. A cue, never a punishment.
+    const fading = unlocked && actHealth(st, act.id) < 0.5;
+    const sigilEl = fading
+      ? `<div class="act-sigil ward-fading" role="link" tabindex="0" data-ward-link="#/vigil/act-${i + 1}"
+           aria-label="The wards of Act ${escapeHtml(act.numeral)} are fading — walk their vigil"
+           title="The wards of this act burn low. Walk a vigil over them.">${escapeHtml(act.sigil)}</div>`
+      : `<div class="act-sigil" aria-hidden="true">${escapeHtml(act.sigil)}</div>`;
     const inner = `
       <article class="act-card ${unlocked ? '' : 'locked'}">
-        <div class="act-sigil" aria-hidden="true">${escapeHtml(act.sigil)}</div>
+        ${sigilEl}
         <div class="act-info">
           <div class="act-num">Act ${escapeHtml(act.numeral)} — ${escapeHtml(act.arc)}</div>
           <h2 class="act-name">${escapeHtml(act.title)}</h2>
@@ -296,6 +467,20 @@ export function renderHome(root) {
     Each must be survived in turn.</p>
     <div class="map-wrap" aria-hidden="true">${mapSvg(progress)}</div>
     <div class="act-road">${cards}</div>`;
+
+  // A fading ward's rune is a door of its own: it must not follow the
+  // card's link to the act page, but into that act's filtered vigil.
+  root.querySelectorAll('.act-sigil[data-ward-link]').forEach((rune) => {
+    const go = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      window.location.hash = rune.dataset.wardLink;
+    };
+    rune.addEventListener('click', go);
+    rune.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') go(e);
+    });
+  });
 }
 
 // ---------------- act page ----------------
@@ -323,6 +508,9 @@ export function renderAct(root, actId) {
     const status = complete
       ? '<span class="tag tag-done">Done</span>'
       : (unlocked ? '<span class="tag tag-accent">Open</span>' : '<span class="tag tag-locked">Sealed</span>');
+    // Sigils appear once the trial has left a record — heraldry, not homework.
+    const rec = S.getLessonProgress(lesson.id);
+    const sigils = (rec.challenge || rec.quiz) ? sigilRowHtml(S.sigilsFor(lesson.id)) : '';
     return `
       <a class="${cls}" href="#/lesson/${lesson.id}" ${unlocked ? '' : 'aria-disabled="true" tabindex="-1"'}>
         <span class="node-marker">${marker}</span>
@@ -330,6 +518,7 @@ export function renderAct(root, actId) {
           <span class="node-title">${escapeHtml(lesson.title)}</span><br>
           <span class="node-concept">${escapeHtml(lesson.concept)}</span>
         </span>
+        ${sigils}
         <span class="node-status">${status}</span>
       </a>`;
   }).join('');
@@ -831,8 +1020,12 @@ export function renderLesson(root, lessonId) {
 // lessons and extras — the Codex's own rescue. recordKey keys drafts and
 // persistence (a lesson id, or an extra's stable id). Boss forges do NOT
 // use this: the arena keeps its own merciless forge (mountBossForge).
+// showSolution hides the dead apprentice's notes (the Re-forge offers
+// none); onAid(kind) fires the moment any aid is taken — a whisper or
+// the notes — so a running Re-forge attempt can be dirtied at once.
 function mountForge(host, {
   recordKey, challenge: ch, passed, onPass, onFail = null, rescue = true,
+  showSolution = true, onAid = null,
 }) {
   const hints = Array.isArray(ch.hints) ? ch.hints : [];
   host.innerHTML = `
@@ -856,12 +1049,12 @@ function mountForge(host, {
       <div class="rescue-box" data-role="rescue"></div>
       <div class="console" data-role="console" role="status" aria-live="polite" hidden></div>
       <div data-role="verdict" role="status" aria-live="polite"></div>
-      <details class="solution-reveal">
+      ${showSolution ? `<details class="solution-reveal">
         <summary>☠ Open the dead apprentice’s notes</summary>
         <p class="solution-warning">Study it, close it, and rewrite it from nothing —
         apprentices have always learned so.</p>
         ${codeBlock(ch.solution)}
-      </details>
+      </details>` : ''}
     </div>`;
 
   const editor = host.querySelector('textarea.editor');
@@ -920,6 +1113,7 @@ function mountForge(host, {
       }
       appendHint(revealed);
       S.markHintRevealed(recordKey, revealed + 1);
+      if (onAid) onAid('hint');
     });
   }
 
@@ -929,12 +1123,15 @@ function mountForge(host, {
     syncGutter();
   });
 
-  solutionDetails.addEventListener('toggle', (e) => {
-    if (e.target.open) {
-      S.markSolutionViewed(recordKey);
-      emit({ type: 'solution-viewed', lessonId: recordKey });
-    }
-  });
+  if (solutionDetails) {
+    solutionDetails.addEventListener('toggle', (e) => {
+      if (e.target.open) {
+        S.markSolutionViewed(recordKey);
+        emit({ type: 'solution-viewed', lessonId: recordKey });
+        if (onAid) onAid('solution');
+      }
+    });
+  }
 
   // The 6-fail tier: a kindred working when the content provides one,
   // else the Codex offers the notes itself. Its initiative, never a plea.
@@ -950,6 +1147,7 @@ function mountForge(host, {
         </div>`;
       return;
     }
+    if (!solutionDetails) return; // a forge without notes rescues with nothing
     if (rescueBox.querySelector('[data-act="open-notes"]')) return;
     rescueBox.innerHTML = `
       <div class="rescue-panel">
@@ -971,6 +1169,7 @@ function mountForge(host, {
       if (revealed < hints.length) {
         appendHint(revealed, { stirred: true });
         S.markHintRevealed(recordKey, revealed + 1);
+        if (onAid) onAid('hint');
       }
     }
     if (fails >= 6) showDeepRescue();
@@ -1043,22 +1242,96 @@ function mountChallenge(host, lesson, onChange) {
     <span class="challenge-label">⚔ The Trial</span>
     <h2>${escapeHtml(ch.title)}</h2>
     <div class="prose">${prose(ch.prompt)}</div>
-    <div data-role="forge-host"></div>`;
+    <div data-role="forge-host"></div>
+    <div data-role="reforge-zone"></div>`;
+  const reforgeZone = host.querySelector('[data-role="reforge-zone"]');
   mountForge(host.querySelector('[data-role="forge-host"]'), {
     recordKey: lesson.id,
     challenge: ch,
     passed: rec.challenge,
+    // Aid taken in THIS forge during a running Re-forge attempt (the
+    // notes sit right here, after all) dirties that attempt at once.
+    onAid: () => S.dirtyReforge(lesson.id),
     onPass: () => {
       const first = S.markChallenge(lesson.id);
       if (first) {
         grantXp(ch.xp, `Trial passed — ${lesson.title}`);
         emit({ type: 'challenge-solved', lessonId: lesson.id });
         maybeLessonComplete(lesson);
+        mountReforgeZone(reforgeZone, lesson, ch);
       }
       onChange();
     },
     onFail: () => onChange(),
   });
+  mountReforgeZone(reforgeZone, lesson, ch);
+}
+
+// ---------------- the re-forge (sigil redemption, zero XP) ----------------
+// A conquered trial may be forged again from nothing. No XP, no record
+// downgrade — the only stake is the Unaided sigil, earned ONLY when the
+// re-attempt takes no whisper and no notes. The attempt's cleanliness is
+// persisted the moment it starts and broken the moment aid is taken, so
+// reloading mid-attempt changes nothing. One-Cast is not on offer here:
+// history does not re-forge.
+function mountReforgeZone(zone, lesson, ch) {
+  const rec = S.getLessonProgress(lesson.id);
+  if (!rec.challenge) { zone.innerHTML = ''; return; }
+  const sig = S.sigilsFor(lesson.id);
+  const active = S.getReforge(lesson.id);
+  const reforgeKey = `reforge.${lesson.id}`;
+  zone.innerHTML = `
+    <div class="reforge-panel">
+      <p class="reforge-lead">⚒ The Re-forge</p>
+      <p class="reforge-text">A conquered trial may be cast again from nothing — no XP,
+      nothing to lose. ${sig.unaided
+    ? 'The <strong>Unaided</strong> sigil is already yours; re-forge for the craft alone.'
+    : 'Pass with no whisper and no notes, and the <strong>Unaided</strong> sigil is yours.'}</p>
+      <div data-role="reforge-host"></div>
+    </div>`;
+  const hostEl = zone.querySelector('[data-role="reforge-host"]');
+
+  const mountAttempt = () => {
+    mountForge(hostEl, {
+      recordKey: reforgeKey,
+      challenge: ch,
+      passed: false,
+      rescue: false,
+      showSolution: false,
+      onAid: () => S.dirtyReforge(lesson.id),
+      onPass: () => {
+        const hadUnaided = S.sigilsFor(lesson.id).unaided;
+        const clean = S.finishReforge(lesson.id);
+        if (clean === null) return; // no attempt standing — nothing closes twice
+        if (clean && !hadUnaided) {
+          toast({
+            icon: '🜃',
+            title: 'Sigil earned — Unaided',
+            sub: 'Re-forged with no whisper and no notes. The mark is yours.',
+          });
+        } else if (!clean) {
+          toast({
+            icon: '⚒',
+            title: 'Re-forged',
+            sub: 'Aid was taken along the way — the Unaided sigil waits for a cleaner casting.',
+          });
+        }
+        emit({ type: 'reforge-complete', lessonId: lesson.id, clean });
+      },
+    });
+  };
+
+  if (active) {
+    // An attempt in flight survives reloads — its clean flag came with it.
+    mountAttempt();
+  } else {
+    hostEl.innerHTML = '<button class="btn btn-ghost" data-act="begin-reforge">⚒ Re-forge this working</button>';
+    hostEl.querySelector('[data-act="begin-reforge"]').addEventListener('click', () => {
+      S.beginReforge(lesson.id);
+      clearDraft(reforgeKey); // the fresh attempt opens on the bare starter
+      mountReforgeZone(zone, lesson, ch);
+    });
+  }
 }
 
 // ---------------- the scrying (trace prediction) ----------------
@@ -1169,11 +1442,15 @@ function mountQuiz(host, lesson, onChange) {
     <p class="prose">${done
       ? 'You have already withstood this questioning. Answer again if you wish to test the scar.'
       : 'Answer truly. Wrong answers cost nothing here — but the wardens will not be so kind.'}</p>
+    <div data-role="prophecy"></div>
     <div data-role="questions"></div>
     <div data-role="quiz-result"></div>`;
 
   const qHost = host.querySelector('[data-role="questions"]');
   const resultHost = host.querySelector('[data-role="quiz-result"]');
+  const repaintProphecy = mountProphecy(
+    host.querySelector('[data-role="prophecy"]'), lesson, lesson.quiz.length, done,
+  );
 
   lesson.quiz.forEach((q, qi) => {
     renderQuizQuestion(qHost, q, (missed) => {
@@ -1192,6 +1469,12 @@ function mountQuiz(host, lesson, onChange) {
       <div class="verdict verdict-pass">
         <span class="verdict-title">${perfect ? 'Flawless. Not a single crack for the dark to enter.' : 'You survived the questioning.'}</span>
       </div>`;
+    // The sealed prophecy resolves exactly once, against the count of
+    // first-pick true answers. An exact reading pays its 10 XP here.
+    const trueCount = state.filter((s) => !s.missed).length;
+    const resolved = S.resolveProphecy(lesson.id, trueCount);
+    if (resolved && resolved.hit) grantXp(10, 'The prophecy held.');
+    repaintProphecy();
     if (first) {
       grantXp(QUIZ_XP + (perfect ? QUIZ_PERFECT_BONUS : 0),
         perfect ? 'Interrogation — flawless' : 'Interrogation survived');
@@ -1200,6 +1483,58 @@ function mountQuiz(host, lesson, onChange) {
     }
     onChange();
   }
+}
+
+// ---------------- the sealed prophecy (calibration, +10 XP on exact) ----------------
+// One tap before the questioning begins: how many of the N will fall
+// true? The guess persists the moment it is made (no re-rolls after a
+// reload), resolves once at completion, and may always be left sealed
+// with no penalty of any kind. Returns a repaint handle.
+function mountProphecy(hostEl, lesson, total, quizDoneAtMount) {
+  function paint() {
+    // Live read: once the interrogation is done there is nothing left
+    // to foresee, even within the same mount.
+    const quizDone = quizDoneAtMount || Boolean(S.getLessonProgress(lesson.id).quiz);
+    const p = S.getProphecy(lesson.id);
+    if (p && typeof p.guess === 'number') {
+      let line;
+      if (typeof p.actual === 'number') {
+        line = p.hit
+          ? `The prophecy held: you foretold ${p.guess} of ${total}, and so it fell.`
+          : `The prophecy broke: you foretold ${p.guess} of ${total}; the truth was ${p.actual}.`;
+      } else {
+        line = `The prophecy is sealed: ${p.guess} of ${total}.`;
+      }
+      hostEl.innerHTML = `
+        <div class="prophecy-panel">
+          <p class="prophecy-line" role="status">🜄 ${escapeHtml(line)}</p>
+        </div>`;
+      return;
+    }
+    if (quizDone) { hostEl.innerHTML = ''; return; } // nothing left to foresee
+    const chips = Array.from({ length: total + 1 }, (_, k) => `
+        <button class="btn btn-ghost prophecy-chip" data-guess="${k}">${k}</button>`).join('');
+    hostEl.innerHTML = `
+      <div class="prophecy-panel" role="group" aria-label="The sealed prophecy">
+        <p class="prophecy-line">🜄 The Codex seals a prophecy: how many of the ${total} will you answer true?</p>
+        <div class="prophecy-chips">
+          ${chips}
+          <button class="btn btn-ghost prophecy-skip" data-skip>Leave it sealed</button>
+        </div>
+        <p class="prophecy-note">An exact reading pays 10 XP, once. A wrong one costs nothing — the Codex only measures.</p>
+      </div>`;
+    hostEl.querySelectorAll('[data-guess]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        S.setProphecy(lesson.id, Number(btn.dataset.guess));
+        paint();
+      });
+    });
+    hostEl.querySelector('[data-skip]').addEventListener('click', () => {
+      hostEl.innerHTML = ''; // left sealed — no penalty, ever
+    });
+  }
+  paint();
+  return paint;
 }
 
 // Quiz strings render the full inline markdown subset (`code`, **bold**,
@@ -1655,6 +1990,106 @@ function mountBossForge(host, pseudo, handlers) {
 
 // ---------------- profile / sanctum ----------------
 
+// The calibration gauge over every resolved prophecy: mean absolute
+// error plus a one-line verdict on which way the readings lean.
+function prophecyGaugeHtml() {
+  const resolved = [];
+  curriculum.acts.forEach((act) => act.lessons.forEach((lesson) => {
+    const p = S.getProphecy(lesson.id);
+    if (p && typeof p.guess === 'number' && typeof p.actual === 'number') resolved.push(p);
+  }));
+  if (!resolved.length) {
+    return '<p class="empty-note">No prophecy has resolved yet. Before an interrogation, the Codex will ask what you foresee.</p>';
+  }
+  const mae = resolved.reduce((s, p) => s + Math.abs(p.guess - p.actual), 0) / resolved.length;
+  const bias = resolved.reduce((s, p) => s + (p.guess - p.actual), 0) / resolved.length;
+  const hits = resolved.filter((p) => p.hit).length;
+  let verdict;
+  if (mae <= 0.5) verdict = 'Well-calibrated: you read yourself as the Codex reads you.';
+  else if (bias > 0) verdict = 'The Codex reads you darker than you read yourself.';
+  else if (bias < 0) verdict = 'The Codex reads you brighter than you read yourself.';
+  else verdict = 'Your readings scatter, but they do not lean.';
+  return `
+    <div class="stat-row"><span class="stat-k">Prophecies resolved</span><span class="stat-v">${resolved.length}</span></div>
+    <div class="stat-row"><span class="stat-k">Held true</span><span class="stat-v">${hits}</span></div>
+    <div class="stat-row"><span class="stat-k">Mean error</span><span class="stat-v">${mae.toFixed(1)}</span></div>
+    <p class="prophecy-verdict">${escapeHtml(verdict)}</p>`;
+}
+
+// The Kept Nights: a votive candle for every touched day of the last
+// twelve weeks. Pure render of streak.history — a broken streak never
+// puts a lit candle out.
+function keptNightsHtml(st) {
+  const kept = new Set(Array.isArray(st.streak.history) ? st.streak.history : []);
+  const days = 84;
+  let lit = 0;
+  const cells = [];
+  for (let back = days - 1; back >= 0; back -= 1) {
+    const stamp = dayStampAgo(back);
+    const on = kept.has(stamp);
+    if (on) lit += 1;
+    cells.push(`<span class="votive ${on ? 'lit' : ''}" title="${stamp}${on ? ' — the watch was kept' : ''}">${on ? '🕯' : '·'}</span>`);
+  }
+  return `
+    <p class="prose">A candle for every night the watch was kept, over the last twelve weeks.
+    Once lit, a candle cannot be put out — a broken streak takes nothing from this shelf.</p>
+    <div class="votive-grid" aria-hidden="true">${cells.join('')}</div>
+    <p class="votive-note">${lit} of the last ${days} nights kept.</p>`;
+}
+
+// The Book of Scars: every question with a recorded miss, bound by act
+// and linked back to where the wound was taken. Faded scars — twice
+// answered true, day-spaced, since the last miss — rest dimmer, below.
+const SCAR_KINDS = {
+  quiz: 'Interrogation', trace: 'Scrying', boss: 'Gauntlet', rite: 'Rite',
+};
+
+function scarGroupsHtml(scars) {
+  const byAct = new Map();
+  scars.forEach((s) => {
+    if (!byAct.has(s.entry.actIndex)) byAct.set(s.entry.actIndex, []);
+    byAct.get(s.entry.actIndex).push(s);
+  });
+  return [...byAct.keys()].sort((a, b) => a - b).map((ai) => {
+    const act = curriculum.acts[ai];
+    const items = byAct.get(ai).map((s) => `
+      <li class="scar-item">
+        <a href="${escapeHtml(s.entry.route)}">${escapeHtml(truncateText(s.entry.q.q))}</a>
+        <span class="scar-kind">${SCAR_KINDS[s.entry.kind] || 'Working'}</span>
+        <span class="scar-count">missed ×${Number(s.rec.missed) || 0}</span>
+      </li>`).join('');
+    return `
+      <div class="scar-group">
+        <h3 class="scar-act-h">Act ${escapeHtml(act.numeral)} — ${escapeHtml(act.title)}</h3>
+        <ul class="scar-list">${items}</ul>
+      </div>`;
+  }).join('');
+}
+
+function scarBookHtml(st) {
+  const book = scarBook(st);
+  if (!book.length) {
+    return '<p class="empty-note">The book lies open, unwritten. No question has drawn blood yet.</p>';
+  }
+  const open = book.filter((s) => !s.faded);
+  const faded = book.filter((s) => s.faded);
+  const openHtml = open.length
+    ? scarGroupsHtml(open)
+    : '<p class="empty-note">Every scar has faded. The dark finds no fresh wound to press.</p>';
+  const fadedHtml = faded.length
+    ? `<details class="scar-faded">
+        <summary>Faded scars — ${faded.length} (twice answered true, day-spaced, since the last wound)</summary>
+        ${scarGroupsHtml(faded)}
+      </details>`
+    : '';
+  return `
+    <p class="prose">Every question that has drawn blood, bound by act. Answer a scar true
+    on two separate days with no fresh wound between, and it fades — nothing here is owed,
+    only remembered.</p>
+    ${openHtml}
+    ${fadedHtml}`;
+}
+
 export function renderProfile(root) {
   const st = S.getState();
   const rank = rankFor(st.xp);
@@ -1663,6 +2098,7 @@ export function renderProfile(root) {
     (n, a) => n + a.lessons.filter((l) => S.isLessonComplete(l.id)).length, 0,
   );
   const bossesDown = curriculum.acts.filter((a) => S.isBossDefeated(a.id)).length;
+  const sigils = sigilTally();
 
   const achCards = ACHIEVEMENTS.map((a) => {
     const got = S.hasAchievement(a.id);
@@ -1717,12 +2153,25 @@ export function renderProfile(root) {
         <div class="stat-row"><span class="stat-k">Notes studied</span><span class="stat-v">${st.stats.solutionsViewed}</span></div>
         <div class="stat-row"><span class="stat-k">Current streak</span><span class="stat-v">${st.streak.count} day${st.streak.count === 1 ? '' : 's'} (best ${st.streak.best})</span></div>
         <div class="stat-row"><span class="stat-k">Embers banked</span><span class="stat-v">${st.streak.embers} / 2</span></div>
+        <div class="stat-row"><span class="stat-k">Sigils of Mastery</span><span class="stat-v">${sigils.earned} of ${sigils.possible}</span></div>
       </div>
       <div class="panel">
         <h2 class="panel-h">The Ascension</h2>
         <div class="rank-ladder">${ladder}</div>
       </div>
     </div>
+    <div class="sanctum-grid">
+      <div class="panel">
+        <h2 class="panel-h">🜄 The Sealed Prophecies</h2>
+        ${prophecyGaugeHtml()}
+      </div>
+      <div class="panel">
+        <h2 class="panel-h">🕯 The Kept Nights</h2>
+        ${keptNightsHtml(st)}
+      </div>
+    </div>
+    <h2 class="section-h">📖 The Book of Scars</h2>
+    ${scarBookHtml(st)}
     <h2 class="section-h">Marks of the Dark</h2>
     <div class="ach-grid">${achCards}</div>
     <div class="mt-2 center">
@@ -1749,12 +2198,24 @@ export function renderProfile(root) {
 }
 
 // ---------------- the night vigil ----------------
-// Six questions drawn only from wards the learner has raised, chosen
-// by the Leitner scheduler in review.js. First completion each day
-// pays a fixed 25 XP; repeat walks sharpen but do not pay.
+// Questions drawn only from wards the learner has raised, chosen by
+// the Leitner scheduler in review.js. The Vigil's Bargain: a Short (4),
+// Full (6), or Long (9) watch — the choice never changes the pay, which
+// stays a fixed 25 XP for the first completed walk of the day. A fading
+// ward's deep-link narrows the watch to a single act.
 
 export function renderVigil(root) {
   const st = S.getState();
+
+  // The act filter arrives as '#/vigil/act-N' (the route the current
+  // router already carries) or '#/vigil?act=N' (accepted for the same
+  // meaning if the router is ever taught to pass queries through).
+  const hash = window.location.hash || '';
+  const m = hash.match(/[?&]act=(\d+)/) || hash.match(/\/act-(\d+)(?:\D|$)/);
+  let actFilter = m ? Number(m[1]) - 1 : null;
+  if (actFilter !== null && !curriculum.acts[actFilter]) actFilter = null;
+  const act = actFilter !== null ? curriculum.acts[actFilter] : null;
+
   const pool = eligiblePool(st);
   if (!pool.length) {
     root.innerHTML = `
@@ -1765,35 +2226,67 @@ export function renderVigil(root) {
       </div>`;
     return;
   }
+  if (act && !pool.some((e) => e.actIndex === actFilter)) {
+    root.innerHTML = `
+      <h1 class="map-title">The Night Vigil</h1>
+      <div class="panel center">
+        <p class="prose">No wards of Act ${escapeHtml(act.numeral)} stand to be walked yet.</p>
+        <p><a class="btn" href="#/vigil">Walk the full watch instead</a></p>
+      </div>`;
+    return;
+  }
 
   const walked = st.vigil.lastDay === S.todayStamp();
   root.innerHTML = `
     <h1 class="map-title">The Night Vigil</h1>
     <p class="map-sub">Each night the wards you have raised must be walked.
     What you do not revisit, the dark reclaims.</p>
+    ${act ? `
+    <div class="panel vigil-filter">
+      <p class="prose">The watch narrows to <strong>Act ${escapeHtml(act.numeral)} — ${escapeHtml(act.title)}</strong>,
+      where the wards burn low. <a href="#/vigil">Walk the full watch instead.</a></p>
+    </div>` : ''}
     <div class="panel">
       <p class="prose vigil-status">${walked
     ? 'The wards are already walked tonight.'
     : 'The wards await.'}</p>
-      <button class="btn" id="vigil-begin">Walk the wards</button>
+      <p class="prose vigil-bargain">Choose the measure of the watch. The night pays its 25 XP
+      once, whatever the length — the bargain buys depth, never coin.</p>
+      <div class="vigil-lengths" role="group" aria-label="The length of the watch">
+        <button class="btn" data-len="4">Short — 4 wards</button>
+        <button class="btn" data-len="6">Full — 6 wards</button>
+        <button class="btn" data-len="9">Long — 9 wards</button>
+      </div>
     </div>
     <section class="vigil-flow" id="vigil-flow"></section>
     <div id="vigil-result"></div>`;
 
-  const beginBtn = root.querySelector('#vigil-begin');
-  beginBtn.addEventListener('click', () => {
-    beginBtn.disabled = true;
-    const items = buildVigil(st, 6);
+  const lengthBtns = [...root.querySelectorAll('.vigil-lengths [data-len]')];
+  lengthBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      lengthBtns.forEach((b) => { b.disabled = true; });
+      beginWalk(Number(btn.dataset.len) || 6);
+    });
+  });
+
+  function beginWalk(n) {
+    const items = buildVigil(st, n, actFilter);
     const flow = root.querySelector('#vigil-flow');
     let answered = 0;
     items.forEach((entry, i) => {
-      renderQuizQuestion(flow, entry.q, (missed) => {
+      // Trace wards carry the working being read: code above, question below.
+      let host = flow;
+      if (entry.code) {
+        host = el('div', { class: 'trace-item' }, codeBlock(entry.code));
+        flow.appendChild(host);
+      }
+      renderQuizQuestion(host, entry.q, (missed) => {
         S.recordQuestionOutcome(entry.qid, !missed, qHash(entry.q.q));
         answered += 1;
         if (answered === items.length) vigilComplete();
       }, { number: i + 1 });
     });
-  });
+  }
 
   function vigilComplete() {
     const resultHost = root.querySelector('#vigil-result');

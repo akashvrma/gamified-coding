@@ -34,7 +34,9 @@ function defaultState() {
     // actId -> true when its boss has fallen
     bosses: {},
     achievements: [],
-    streak: { last: '', count: 0, best: 0, embers: 0, emberLog: [] },
+    // history: ISO day-stamps of every touched day (cap 90, FIFO) — the
+    // Kept Nights. A streak reset never clears it: unlosable by design.
+    streak: { last: '', count: 0, best: 0, embers: 0, emberLog: [], history: [] },
     settings: { sfx: true, volume: 0.5, voiceNoticed: false },
     resume: { route: '', label: '', at: 0 },
     // qid -> { seen, missed, box, lastDay, dueDay, hash } — the question ledger
@@ -44,6 +46,8 @@ function defaultState() {
     // riteId -> { checks: {checkId: true}, quizPassed, done }
     rites: {},
     vigil: { lastDay: '', count: 0 },
+    // The Rekindling: the return-rite is offered at most once per calendar day.
+    rekindle: { lastOffered: '' },
     stats: {
       runs: 0,
       failedRuns: 0,
@@ -73,6 +77,7 @@ function load() {
       settings: { ...base.settings, ...(parsed.settings || {}) },
       resume: { ...base.resume, ...(parsed.resume || {}) },
       vigil: { ...base.vigil, ...(parsed.vigil || {}) },
+      rekindle: { ...base.rekindle, ...(parsed.rekindle || {}) },
     };
     // Coerce numerics so a hand-edited save can't smuggle markup into
     // render paths that interpolate these values.
@@ -82,6 +87,7 @@ function load() {
     merged.streak.best = Number(merged.streak.best) || 0;
     merged.streak.embers = Number(merged.streak.embers) || 0;
     if (!Array.isArray(merged.streak.emberLog)) merged.streak.emberLog = [];
+    if (!Array.isArray(merged.streak.history)) merged.streak.history = [];
     merged.settings.volume = Number(merged.settings.volume) || 0.5;
     merged.settings.sfx = Boolean(merged.settings.sfx);
     merged.settings.voiceNoticed = Boolean(merged.settings.voiceNoticed);
@@ -90,6 +96,10 @@ function load() {
     merged.resume.at = Number(merged.resume.at) || 0;
     merged.vigil.lastDay = String(merged.vigil.lastDay || '');
     merged.vigil.count = Number(merged.vigil.count) || 0;
+    if (typeof merged.rekindle !== 'object' || !merged.rekindle || Array.isArray(merged.rekindle)) {
+      merged.rekindle = { ...base.rekindle };
+    }
+    merged.rekindle.lastOffered = String(merged.rekindle.lastOffered || '');
     if (typeof merged.questions !== 'object' || !merged.questions || Array.isArray(merged.questions)) {
       merged.questions = {};
     }
@@ -157,6 +167,13 @@ export function touchStreak() {
   }
   state.streak.best = Math.max(state.streak.best, state.streak.count);
   state.streak.last = today;
+  // The Kept Nights: every touched day leaves a candle that no broken
+  // streak can put out. Capped at 90 stamps, oldest first out.
+  if (!Array.isArray(state.streak.history)) state.streak.history = [];
+  state.streak.history.push(today);
+  if (state.streak.history.length > 90) {
+    state.streak.history.splice(0, state.streak.history.length - 90);
+  }
   save();
   return result;
 }
@@ -222,6 +239,9 @@ export function markChallenge(lessonId) {
     if (!rec.usedSolution) {
       state.stats.unaidedStreak = (Number(state.stats.unaidedStreak) || 0) + 1;
     }
+    // The Unaided sigil is judged at the moment of first conquest and
+    // frozen: studying whispers or notes afterwards downgrades nothing.
+    rec.sigilUnaided = (Number(rec.hintsRevealed) || 0) === 0 && !rec.usedSolution;
   }
   save();
   return first;
@@ -397,6 +417,10 @@ export function getFails(recordKey) {
 export function recordFail(recordKey) {
   const rec = lessonRec(recordKey);
   rec.fails = (Number(rec.fails) || 0) + 1;
+  // The One-Cast sigil is history-honest: the first failed cast on a
+  // trial not yet conquered is written down forever. Fails AFTER the
+  // conquest (refinement, Re-forge) rewrite nothing — upgrades only.
+  if (!rec.challenge && !rec.failedBefore) rec.failedBefore = true;
   save();
   return rec.fails;
 }
@@ -425,6 +449,120 @@ export function markHintRevealed(recordKey, count) {
   state.stats.hintsUsed += count - prev;
   save();
   return true;
+}
+
+// ---------------- sigils of mastery (heraldic, zero XP) ----------------
+// SIGIL SEMANTICS — history-honest, upgrade-only, never a currency:
+// • One-Cast: the trial fell to the very first casting. `failedBefore`
+//   is written on the first failed cast while the trial is still
+//   unconquered and is NEVER cleared — a Re-forge cannot rewrite history.
+// • Flawless: the interrogation withstood on the first attempt without
+//   a single wrong pick (perfectQuiz is already first-attempt-only).
+// • Unaided: the trial fell with no whisper and no notes. Judged and
+//   frozen at first conquest (`sigilUnaided`); records from before this
+//   field existed fall back to the derived rule. A later CLEAN Re-forge
+//   may earn it — `reforge.clean` is persisted the moment the attempt
+//   starts and broken the moment any aid is taken, so a reload can
+//   never launder a dirtied attempt.
+
+export function sigilsFor(lessonId) {
+  const rec = state.lessons[lessonId];
+  if (!rec) return { oneCast: false, flawless: false, unaided: false };
+  const passed = Boolean(rec.challenge);
+  let unaided = false;
+  if (passed) {
+    unaided = typeof rec.sigilUnaided === 'boolean'
+      ? rec.sigilUnaided
+      : (Number(rec.hintsRevealed) || 0) === 0 && !rec.usedSolution;
+  }
+  return {
+    oneCast: passed && !rec.failedBefore,
+    flawless: Boolean(rec.perfectQuiz),
+    unaided,
+  };
+}
+
+// A Re-forge attempt on a conquered trial. Its forge keeps its own
+// ledger under `reforge.<lessonId>` (the extras pattern), so the fresh
+// attempt's hint ladder and misfire tally start cold every time.
+export function beginReforge(lessonId) {
+  const rec = lessonRec(lessonId);
+  rec.reforge = { clean: true };
+  const sub = lessonRec(`reforge.${lessonId}`);
+  sub.fails = 0;
+  sub.hintsRevealed = 0;
+  save();
+}
+
+export function getReforge(lessonId) {
+  const rec = state.lessons[lessonId];
+  const r = rec && rec.reforge;
+  return (typeof r === 'object' && r && !Array.isArray(r)) ? r : null;
+}
+
+// Any aid — a whisper, the notes — dirties the running attempt at once.
+export function dirtyReforge(lessonId) {
+  const r = getReforge(lessonId);
+  if (r && r.clean) {
+    r.clean = false;
+    save();
+  }
+}
+
+// Close the running attempt on a passing cast. Returns the attempt's
+// cleanliness (true earns the Unaided sigil), or null when no attempt
+// stands — a second pass on the same mount closes nothing twice.
+export function finishReforge(lessonId) {
+  const rec = state.lessons[lessonId];
+  const r = getReforge(lessonId);
+  if (!rec || !r) return null;
+  const clean = Boolean(r.clean);
+  if (clean) rec.sigilUnaided = true;
+  rec.reforge = null;
+  save();
+  return clean;
+}
+
+// ---------------- the sealed prophecy (calibration) ----------------
+// lessons[id].prophecy = { guess, actual?, hit } — sealed once per
+// lesson, resolved once at the interrogation's first completion.
+// An exact reading pays 10 XP, exactly once; skipping costs nothing.
+
+export function setProphecy(lessonId, guess) {
+  const rec = lessonRec(lessonId);
+  if (rec.prophecy) return false; // the seal is set once
+  rec.prophecy = { guess: Number(guess) || 0, hit: false };
+  save();
+  return true;
+}
+
+export function getProphecy(lessonId) {
+  const rec = state.lessons[lessonId];
+  const p = rec && rec.prophecy;
+  return (typeof p === 'object' && p && !Array.isArray(p)) ? p : null;
+}
+
+// Resolve against the true count. Returns { hit } the one time the
+// prophecy resolves; null when there is nothing (left) to resolve.
+export function resolveProphecy(lessonId, actual) {
+  const p = getProphecy(lessonId);
+  if (!p || typeof p.guess !== 'number' || typeof p.actual === 'number') return null;
+  p.actual = Number(actual) || 0;
+  p.hit = p.guess === p.actual;
+  save();
+  return { hit: p.hit };
+}
+
+// ---------------- the rekindling ----------------
+
+// Stamp the return-rite as offered today; it fires at most once per
+// calendar day whether walked, failed, or passed on.
+export function markRekindleOffered() {
+  if (typeof state.rekindle !== 'object' || !state.rekindle || Array.isArray(state.rekindle)) {
+    state.rekindle = { lastOffered: '' };
+  }
+  state.rekindle.lastOffered = todayStamp();
+  save();
 }
 
 export function markBossDefeated(actId) {

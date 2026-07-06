@@ -73,12 +73,15 @@ print("The shelves lean in to listen.")`,
 print("Second: the dark behind it.")
 print("Third: this line always speaks last.")`,
           note: 'Wounds you will take at this threshold, in the machine’s own words: a quote '
-            + 'opened and never closed dies of `SyntaxError: unterminated string literal`. Curly '
+            + 'opened and never closed dies of `SyntaxError: unterminated string literal '
+            + '(detected at line 1)` — the interpreter even names the line where the wound was '
+            + 'found. Curly '
             + 'quotes — the kind tablet keyboards and pasted documents smuggle in — die of '
             + '`SyntaxError: invalid character \'“\' (U+201C)`; the Forge straightens curly quotes '
             + 'as you type, but code you write anywhere less merciful will not be healed, so know '
             + 'the mark. And `Print(` with a capital dies of `NameError: name \'Print\' is not '
-            + 'defined` — the marks are exact, and a capital letter is a different name.',
+            + 'defined. Did you mean: \'print\'?` — the machine itself offering the mend — for the '
+            + 'marks are exact, and a capital letter is a different name.',
         },
         {
           heading: 'Margin notes the machine ignores',
@@ -649,7 +652,9 @@ print(len(cleansed))`,
         ],
         validation: py`assert "cleansed" in dir(), "There is no vessel named cleansed. Bind it to whisper.strip()."
 assert cleansed == "the chamber is open", "cleansed still carries dead air. Strip the spaces from both ends of whisper with .strip()."
+assert "proclaimed" in dir(), "There is no vessel named proclaimed. Bind it to cleansed.upper()."
 assert proclaimed == "THE CHAMBER IS OPEN", "proclaimed must be cleansed in ALL capitals - use .upper()."
+assert "sealed" in dir(), "There is no vessel named sealed. Bind it to cleansed.replace(\"open\", \"sealed\")."
 assert sealed == "the chamber is sealed", "sealed must be cleansed with the word open exchanged for sealed - use .replace(\"open\", \"sealed\")."
 assert "THE CHAMBER IS OPEN" in _stdout, "The proclamation was never printed. Print proclaimed."
 assert "the chamber is sealed" in _stdout, "The countermand was never printed. Print sealed."
@@ -742,6 +747,7 @@ print(len(hushed))`,
           ],
           validation: py`assert "hushed" in dir(), "There is no vessel named hushed. Bind it to order.strip().lower()."
 assert hushed == "bar the west door", "hushed is not fully cleansed. It must be order stripped of its outer spaces AND lowered: bar the west door"
+assert "redirected" in dir(), "There is no vessel named redirected. Bind it to hushed.replace(\"west\", \"north\")."
 assert redirected == "bar the north door", "redirected must be hushed with west exchanged for north - use .replace(\"west\", \"north\")."
 _lines = [ln.strip() for ln in _stdout.splitlines() if ln.strip()]
 assert "bar the west door" in _lines, "The hushed order was never printed on its own line. Print hushed."
@@ -784,7 +790,9 @@ print(len(herb))`,
           ],
           validation: py`assert "dark" in dir(), "There is no vessel named dark. Bind it to the first five characters: herb[:5]."
 assert dark == "night", "dark holds the wrong cut. The first five characters of nightshade are night - slice herb[:5]."
+assert "veil" in dir(), "There is no vessel named veil. Bind it to everything from position 5 onward: herb[5:]."
 assert veil == "shade", "veil holds the wrong cut. Position 5 onward of nightshade is shade - slice herb[5:]."
+assert "last" in dir(), "There is no vessel named last. Bind it to the final character: herb[-1]."
 assert last == "e", "last must be the final character, e - reach it with herb[-1]."
 _live = "\n".join(ln for ln in _source.splitlines() if not ln.lstrip().startswith("#"))
 assert "[" in _live, "The ledger accepts only pieces CUT from herb - slice with herb[start:stop], never retype the letters."
@@ -1798,7 +1806,7 @@ print("The aisle continues.")`,
 
 # The mark this leaves:
 #   Traceback (most recent call last):
-#     File "<spell>", line 1, in <module>
+#     File "<your-spell>", line 1, in <module>
 #   NameError: name 'candel' is not defined
 #
 # Last line first: a NameError, because nothing was ever bound

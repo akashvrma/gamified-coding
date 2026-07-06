@@ -1701,6 +1701,14 @@ def _impostor_boundary(herbs, moon_phase):
         strength = strength + 5
     return strength
 
+def _impostor_wrongbase(herbs, moon_phase):
+    if herbs < 0:
+        raise ValueError("herbs below zero")
+    strength = herbs * 2
+    if moon_phase == "full":
+        strength = strength + 5
+    return strength
+
 assert callable(ward), "The Codex finds no ward(candidate) function to judge with."
 
 try:
@@ -1709,12 +1717,15 @@ except AssertionError as e:
     raise AssertionError("Your ward bit the one lawful brewer (" + str(e) + ") — recheck your expected values against the contract: herbs * 3, plus 5 only under a full moon.")
 except ValueError:
     raise AssertionError("A refusal escaped your ward uncontained — call the candidate with negative herbs inside try/except ValueError, so a lawful refusal is caught, not fatal.")
+except TypeError:
+    raise AssertionError("Your ward mis-called the candidate — brew_strength takes BOTH herbs and moon_phase, so summon it with two offerings, e.g. candidate(2, 'dark'), never candidate(2) alone.")
 
 _impostors = [
     (_impostor_moonblind, "your ward admitted the impostor that ignores the moon — assert an exact full-moon value, e.g. candidate(4, 'full') == 17, not just dark-night brews"),
     (_impostor_offbyone, "your ward admitted the impostor that is off by one under the full moon — assert the exact full-moon value: candidate(4, 'full') == 17, no looser"),
     (_impostor_neverraises, "your ward admitted the impostor that never raises — test the forbidden offering: call candidate(-1, ...) in try/except ValueError and assert the refusal truly came"),
     (_impostor_boundary, "your ward admitted the impostor that is wrong at zero herbs — test the boundary: candidate(0, 'dark') must be 0"),
+    (_impostor_wrongbase, "your ward admitted the impostor that mis-brews the base draught — assert a plain dark-night value, e.g. candidate(2, 'dark') == 6"),
 ]
 for _imp, _msg in _impostors:
     _caught = False
@@ -1725,7 +1736,7 @@ for _imp, _msg in _impostors:
     except ValueError:
         raise AssertionError("your ward let a candidate's ValueError fly uncaught — wrap the negative-herbs call in try/except ValueError and assert on a flag instead")
     assert _caught, _msg`,
-          successText: 'Four impostors bitten, one lawful brewer admitted in silence — the judging is yours now, and it was always the harder craft.',
+          successText: 'Five impostors bitten, one lawful brewer admitted in silence — the judging is yours now, and it was always the harder craft.',
           xp: 50,
         },
       ],
@@ -2036,7 +2047,11 @@ assert first_etched("drowned.txt") == "Bode", "The first name etched must come b
 etch_roll("drowned.txt", ["Selwyn"])
 assert first_etched("drowned.txt") == "Selwyn", "Write mode replaces — after a second etching, only the new roll remains."
 assert etch_roll("empty.txt", []) == 0, "Etching no names returns 0."
-assert first_etched("empty.txt") == "", "An empty roll answers with the empty string, not an error."`,
+try:
+    _first = first_etched("empty.txt")
+except IndexError:
+    raise AssertionError("An empty roll answers with the empty string, not an error.")
+assert _first == "", "An empty roll answers with the empty string, not an error."`,
           successText: 'The roll takes the names without complaint. It has taken many.',
           xp: 20,
         },

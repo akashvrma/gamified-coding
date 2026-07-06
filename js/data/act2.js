@@ -2150,34 +2150,46 @@ assert lines[2] == "K", "The third printed line must be first_marks['KHAZAD'] --
           kind: 'echo',
           title: 'Numbered and Posted',
           prompt: 'The night watch must be read out twice: once numbered, once '
-            + 'posted. The starter gives you `names` and `posts` — and there is one '
-            + 'more post than there are dwarves left to fill it.\n\n'
+            + 'posted — and the wall demands the smiths’ economy here too: each roll '
+            + 'folded in **one comprehension line** before it is spoken. The starter '
+            + 'gives you `names` and `posts` — and there is one more post than there '
+            + 'are dwarves left to fill it.\n\n'
             + 'Write a program that:\n\n'
-            + '- Using a `for` loop and `enumerate(names, start=1)`, prints each name numbered from 1: `1. Frar`, `2. Loni`, `3. Nali`.\n'
-            + '- Using a `for` loop and `zip(names, posts)`, prints one line per pair in the form `Frar guards the gate` (an f-string: the name, ` guards the `, the post).\n\n'
-            + 'Six lines in all — the fourth post goes unguarded, and unspoken.',
-          starter: py`# Three dwarves, four posts. Number them; post them; say nothing of the gap.
+            + '- Builds `numbered` with ONE list comprehension over `enumerate(names, start=1)`: the strings `1. Frar`, `2. Loni`, `3. Nali`, in order.\n'
+            + '- Builds `posted` with ONE list comprehension over `zip(names, posts)`: one string per pair in the form `Frar guards the gate`.\n'
+            + '- Prints every line of `numbered`, then every line of `posted` — six lines in all; the fourth post goes unguarded, and unspoken.',
+          starter: py`# Three dwarves, four posts. Fold each roll in ONE line; say nothing of the gap.
 names = ["Frar", "Loni", "Nali"]
 posts = ["gate", "bridge", "stair", "well"]
+
+# TODO 1: numbered = one list comprehension over enumerate(names, start=1)
+# TODO 2: posted = one list comprehension over zip(names, posts)
+# TODO 3: print each numbered line, then each posted line -- six in all
 `,
           solution: py`names = ["Frar", "Loni", "Nali"]
 posts = ["gate", "bridge", "stair", "well"]
 
-for number, name in enumerate(names, start=1):
-    print(f"{number}. {name}")
+numbered = [f"{n}. {name}" for n, name in enumerate(names, start=1)]
+posted = [f"{name} guards the {post}" for name, post in zip(names, posts)]
 
-for name, post in zip(names, posts):
-    print(f"{name} guards the {post}")`,
+for line in numbered:
+    print(line)
+for line in posted:
+    print(line)`,
           hints: [
-            'enumerate(names, start=1) hands two loop variables per pass -- the number and the name -- with no hand-fed counter to forget.',
-            'zip(names, posts) pairs first with first and stops with the shorter roll: for name, post in zip(names, posts): print(f"{name} guards the {post}").',
+            'A comprehension can unpack pairs just as a loop does: [f"{n}. {name}" for n, name in enumerate(names, start=1)] -- two loop variables inside one fold, no hand-fed counter.',
+            'posted folds the same way over zip(names, posts): [f"{name} guards the {post}" for name, post in zip(names, posts)] -- zip stops with the shorter roll. Then print each line of both lists.',
           ],
-          validation: py`lines = [l.strip() for l in _stdout.splitlines() if l.strip()]
-assert len(lines) == 6, f"The reading spoke {len(lines)} lines, not 6 -- three numbered, three posted. zip stops with the shorter roll."
-assert lines[0] == "1. Frar", "Numbering starts at 1 -- give enumerate its start=1."
-assert lines[1] == "2. Loni" and lines[2] == "3. Nali", "The numbered reading must run: 1. Frar, 2. Loni, 3. Nali."
-assert lines[3] == "Frar guards the gate", "The posted reading begins: Frar guards the gate -- zip pairs first with first."
-assert lines[4] == "Loni guards the bridge" and lines[5] == "Nali guards the stair", "The postings must pair in step: Loni to the bridge, Nali to the stair."
+          validation: py`assert "numbered" in dir(), "The wall finds no numbered. Fold it in one line: a list comprehension over enumerate(names, start=1)."
+assert numbered == ["1. Frar", "2. Loni", "3. Nali"], f"numbered reads {numbered} -- one comprehension over enumerate(names, start=1), each entry in the form 1. Frar. Numbering starts at 1."
+assert "posted" in dir(), "The wall finds no posted. Fold it in one line: a list comprehension over zip(names, posts)."
+assert posted == ["Frar guards the gate", "Loni guards the bridge", "Nali guards the stair"], f"posted reads {posted} -- one comprehension over zip(names, posts), each entry in the form Frar guards the gate. zip pairs first with first."
+_live = "\n".join(ln for ln in _source.splitlines() if not ln.lstrip().startswith("#"))
+assert any("[" in ln and " for " in ln for ln in _live.splitlines()), "The wall wants the fold itself -- build the rolls as comprehensions, [expression for ... in ...], not an unfolded loop of appends."
+lines = [l.strip() for l in _stdout.splitlines() if l.strip()]
+assert len(lines) == 6, f"The reading spoke {len(lines)} lines, not 6 -- three numbered, then three posted."
+assert lines[:3] == ["1. Frar", "2. Loni", "3. Nali"], "The numbered reading comes first, one line each: 1. Frar, 2. Loni, 3. Nali."
+assert lines[3:] == ["Frar guards the gate", "Loni guards the bridge", "Nali guards the stair"], "The posted reading must follow in step: Frar to the gate, Loni to the bridge, Nali to the stair."
 assert "well" not in _stdout, "No one guards the well -- zip pairs only while BOTH rolls last; the leftover post goes unspoken."`,
           successText: 'Three numbered, three posted, and one well left to guard itself. It has managed so far.',
           xp: 20,

@@ -449,6 +449,9 @@ details.extra-panel > summary:focus-visible { outline: 2px solid var(--accent); 
 .quiz-opt .opt-key {
   font-family: var(--serif); color: var(--ink-faint); flex-shrink: 0;
 }
+/* Option text may hold real newlines (trace options quoting multi-line
+   output) — honour them instead of collapsing to one line. */
+.quiz-opt span:last-child { white-space: pre-wrap; }
 .quiz-opt code { font-family: var(--mono); font-size: 0.85em; color: var(--accent-bright); }
 .quiz-opt.sel-right { border-color: var(--success); background: var(--success-dim); }
 .quiz-opt.sel-wrong { border-color: var(--danger); background: var(--danger-dim); }

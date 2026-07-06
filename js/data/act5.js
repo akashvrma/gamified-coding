@@ -149,14 +149,14 @@ class WandLineage:
         #       or raise StopIteration when the ledger is spent
         pass`,
         solution: py`class WandLineage:
-    def __init__(self, masters):
+    def __init__(self, masters: list):
         self.masters = masters
         self.position = 0
 
     def __iter__(self):
         return self
 
-    def __next__(self):
+    def __next__(self) -> str:
         if self.position >= len(self.masters):
             raise StopIteration
         master = self.masters[self.position]
@@ -242,6 +242,116 @@ assert _source == ["Gregorovitch", "Grindelwald"], "walking the lineage must not
           explain: 'The iterable is the source; the iterator is the walker with the '
             + 'bookmark. A list has no __next__ of its own — iter(list) creates a fresh '
             + 'iterator each time, which is why you can loop over a list twice.',
+        },
+      ],
+      extras: [
+        {
+          id: 'a5l1x1',
+          kind: 'echo',
+          title: 'Echo: The Roll of the Dead',
+          prompt: 'The Cloak keeps its own ledger — not of masters, but of the dead who '
+            + 'wore it — and it recites them newest grave first.\n\n'
+            + 'Write a class `GraveRoll`:\n\n'
+            + '- `__init__(self, names)` — accept a list of names and track a position. '
+            + 'Do **not** modify the list.\n'
+            + '- `__iter__(self)` — return `self`.\n'
+            + '- `__next__(self)` — return the names from the **end** of the list toward '
+            + 'the start; once the first name has been spoken, raise `StopIteration`.\n\n'
+            + 'So a `for` loop over `GraveRoll(["a", "b", "c"])` visits `c`, then `b`, then '
+            + '`a`; an empty roll raises `StopIteration` on the first ask.',
+          starter: py`# The roll of the dead, recited newest grave first.
+
+class GraveRoll:
+    def __init__(self, names):
+        # TODO: store names and a position marker at the LAST index
+        pass
+
+    # TODO: __iter__ returns self
+    # TODO: __next__ returns names from the end toward the start,
+    #       raising StopIteration once it walks past the first name`,
+          solution: py`class GraveRoll:
+    def __init__(self, names: list):
+        self.names = names
+        self.position = len(names) - 1
+
+    def __iter__(self):
+        return self
+
+    def __next__(self) -> str:
+        if self.position < 0:
+            raise StopIteration
+        name = self.names[self.position]
+        self.position -= 1
+        return name`,
+          hints: [
+            'In __init__ store the list and a position marker at the last index: self.position = len(names) - 1. __iter__ just returns self.',
+            'In __next__: if self.position < 0, raise StopIteration; otherwise read self.names[self.position], subtract 1 from the position, and return the name. Never pop from the list.',
+          ],
+          validation: py`_roll = GraveRoll(["first", "second", "third"])
+assert iter(_roll) is _roll, "iter() on a GraveRoll must return the same object — __iter__ should return self"
+assert next(_roll) == "third", "the roll is read newest-first — the first next() must yield the LAST name"
+assert next(_roll) == "second", "the second next() must yield the middle name"
+assert next(_roll) == "first", "the third next() must yield the first name"
+_ended = False
+try:
+    next(_roll)
+except StopIteration:
+    _ended = True
+assert _ended, "when the roll is spent, __next__ must raise StopIteration — not return None"
+assert [n for n in GraveRoll(["a", "b", "c"])] == ["c", "b", "a"], "a for loop over a fresh GraveRoll must visit every name, newest to oldest"
+_empty = False
+try:
+    next(GraveRoll([]))
+except StopIteration:
+    _empty = True
+assert _empty, "an empty roll must raise StopIteration on the very first next()"
+_src = ["Ignotus", "Iolanthe"]
+list(GraveRoll(_src))
+assert _src == ["Ignotus", "Iolanthe"], "walking the roll must not mutate the original list — move a position, never pop"`,
+          successText: 'The Cloak names its dead from the freshest grave backward, and falls silent on the first of them.',
+          xp: 18,
+        },
+      ],
+      trace: [
+        {
+          id: 'a5l1t1',
+          code: py`nums = iter([7, 8])
+print(next(nums))
+print(next(nums))
+next(nums)`,
+          q: 'The scrying: what happens when this runs?',
+          options: [
+            'It prints 7 and 8, then raises StopIteration',
+            'It prints 7, 8, then None',
+            'It prints 7, 8, 9',
+            'It prints 7 and 8, then raises IndexError',
+          ],
+          answer: 0,
+          raises: 'StopIteration',
+          explain: 'The list iterator holds exactly two values. The third next() has nothing '
+            + 'left and signals it by raising StopIteration — not by returning None (a for '
+            + 'loop would quietly catch that signal), not IndexError, and there is no third '
+            + 'value to reach.',
+        },
+        {
+          id: 'a5l1t2',
+          code: py`from itertools import chain, islice
+
+tide = chain([1, 2], [3, 4, 5])
+print(list(islice(tide, 3)))
+print(list(tide))`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            '[1, 2, 3]\n[1, 2, 3, 4, 5]',
+            '[1, 2, 3]\n[4, 5]',
+            '[1, 2, 3, 4, 5]\n[]',
+            '[1, 2, 3]\n[]',
+          ],
+          answer: 1,
+          explain: 'chain walks the two lists lazily as one stream. islice draws the first '
+            + 'three values — 1, 2, 3 — from that single shared iterator, leaving 4 and 5 '
+            + 'behind. The iterator is never rewound, so the second draw sees only what '
+            + 'islice did not take.',
         },
       ],
     },
@@ -349,14 +459,14 @@ def river_depths(limit):
 def first_beyond(limit):
     # TODO: return the first power of two STRICTLY greater than limit
     pass`,
-        solution: py`def river_depths(limit):
+        solution: py`def river_depths(limit: int):
     depth = 1
     while depth <= limit:
         yield depth
         depth = depth * 2
 
 
-def first_beyond(limit):
+def first_beyond(limit: int) -> int:
     depth = 1
     while depth <= limit:
         depth = depth * 2
@@ -434,6 +544,191 @@ assert first_beyond(0) == 1, "first_beyond(0) must be 1 — the first power of t
           explain: 'Parentheses make a generator expression — lazy until drawn. Square '
             + 'brackets build a list eagerly, and wrapping any genexp in list() or tuple() '
             + 'drains it into a container on the spot.',
+        },
+      ],
+      extras: [
+        {
+          id: 'a5l2x1',
+          kind: 'echo',
+          title: 'Echo: The Cairn Rises',
+          prompt: 'A cairn is raised one stone at a time, each course wider than the last, '
+            + 'and the Codex forbids you to quarry the whole hill at once.\n\n'
+            + 'Write two things:\n\n'
+            + '- A **generator function** `cairn(limit)` that yields the running heights '
+            + '1, 3, 6, 10, 15, … — each height adds the next step (1, then 2, then 3, …) '
+            + 'to the one before. Yield every height that is `<=` limit. Use `yield`; do '
+            + 'not build a list.\n'
+            + '- A plain function `first_over(limit)` that **returns** the first cairn '
+            + 'height **strictly greater than** limit.\n\n'
+            + 'Examples: `list(cairn(10))` is `[1, 3, 6, 10]`; `cairn(0)` yields nothing; '
+            + '`first_over(10)` is `15`; `first_over(15)` is `21`.',
+          starter: py`# The cairn rises one stone at a time. Do not quarry it all at once.
+
+def cairn(limit):
+    # TODO: yield the running sums 1, 3, 6, 10, ... (each adds the next
+    # step: 1, then 2, then 3, ...) while the height stays <= limit. Use yield.
+    pass
+
+
+def first_over(limit):
+    # TODO: return the first cairn height STRICTLY greater than limit
+    pass`,
+          solution: py`def cairn(limit: int):
+    height = 0
+    step = 1
+    while height + step <= limit:
+        height += step
+        yield height
+        step += 1
+
+
+def first_over(limit: int) -> int:
+    height = 0
+    step = 1
+    while height <= limit:
+        height += step
+        step += 1
+    return height`,
+          hints: [
+            'cairn mirrors river_depths: keep a running height and a step that grows 1, 2, 3, .... Add the next step to the height and yield it while it stays within the limit.',
+            'Let the loop condition stop you: while height + step <= limit: height += step, yield height, step += 1. first_over is the same climb with no yield — keep adding until a height passes the limit, then return it.',
+          ],
+          validation: py`import types
+_g = cairn(10)
+assert isinstance(_g, types.GeneratorType), "cairn must be a generator — use yield, never build and return a list"
+assert list(_g) == [1, 3, 6, 10], "cairn(10) must yield the cairn heights 1, 3, 6, 10 — running sums of 1, 2, 3, ..."
+assert list(cairn(15)) == [1, 3, 6, 10, 15], "a height equal to the limit still belongs to the cairn: 15 must be yielded"
+assert list(cairn(1)) == [1], "cairn(1) must yield exactly one stone: 1"
+assert list(cairn(0)) == [], "cairn(0) must yield nothing at all"
+assert next(cairn(50)) == 1, "the first stone is always 1"
+_deep = cairn(10 ** 18)
+assert next(_deep) == 1 and next(_deep) == 3, "the cairn must rise lazily — a vast limit must cost nothing until drawn"
+assert first_over(10) == 15, "first_over(10) must be 15 — the first height strictly above 10"
+assert first_over(15) == 21, "first_over(15) must be 21 — strictly greater, so 15 itself does not count"
+assert first_over(0) == 1, "first_over(0) must be 1"
+assert first_over(6) == 10, "first_over(6) must be 10"`,
+          successText: 'The cairn climbs course by course, no stone quarried before its place is ready to hold it.',
+          xp: 20,
+        },
+        {
+          id: 'a5l2x2',
+          kind: 'cursed',
+          title: 'Cursed Scroll: The Omen Ledger',
+          prompt: 'A scroll from the scrying-halls, still running, still wrong. It counts '
+            + 'the omens correctly — three seers, three warnings — yet the roll of those '
+            + 'warnings comes back **empty**, and the reading meant to speak them aloud '
+            + 'prints nothing at all. No error is raised. The scroll runs clean, and it '
+            + 'lies.\n\n'
+            + 'Mend it **in place** — do not rewrite the working from nothing. When mended:\n\n'
+            + '- the count of omens and the roll of omens must agree\n'
+            + '- the roll must hold every omen, in order\n'
+            + '- the reading below must speak each omen exactly once',
+          starter: py`# The Omen Ledger. It runs without error — and it lies.
+# The count of omens is right, yet the roll that follows comes up
+# empty, and the reading below it prints nothing at all.
+# Mend the working IN PLACE; do not rewrite it from nothing.
+
+def omens(seers):
+    for seer in seers:
+        yield seer + " foresaw ruin"
+
+
+def report(seers):
+    foretold = omens(seers)
+    count = sum(1 for _ in foretold)      # count the omens
+    roll = [omen for omen in foretold]    # ...then gather them
+    return count, roll
+
+
+seers = ["Cassandra", "Trelawney", "Cheiron"]
+number, roll = report(seers)
+print(number)          # 3
+print(len(roll))       # 0  -- the roll is empty
+for omen in roll:
+    print(omen)        # nothing is read aloud`,
+          solution: py`# The Omen Ledger - mended in place.
+
+def omens(seers):
+    for seer in seers:
+        yield seer + " foresaw ruin"
+
+
+def report(seers):
+    foretold = list(omens(seers))         # draw the whole river ONCE, into a list
+    count = sum(1 for _ in foretold)
+    roll = [omen for omen in foretold]
+    return count, roll
+
+
+seers = ["Cassandra", "Trelawney", "Cheiron"]
+number, roll = report(seers)
+print(number)
+print(len(roll))
+for omen in roll:
+    print(omen)`,
+          hints: [
+            'Observe: after the count line, add print(list(foretold)) and run it. The list is empty — the river was already drawn dry. A generator has no water left once something has walked it to the end.',
+            'The false model: "a generator holds its values and can be walked as many times as I like." It cannot. Like every iterator it is single-use; sum(1 for _ in foretold) walks it to exhaustion, and the roll that follows meets only a dry bed.',
+            'Draw the river once into a real container: foretold = list(omens(seers)). A list can be counted and walked any number of times, so the count and the roll then read the same three omens.',
+          ],
+          validation: py`_n, _roll = report(["Cassandra", "Trelawney", "Cheiron"])
+assert _n == 3, "the count of omens must be 3"
+assert len(_roll) == 3, "the roll came back empty — the generator was drained by the count before the roll could read it. Draw it into a list once."
+assert _roll == ["Cassandra foresaw ruin", "Trelawney foresaw ruin", "Cheiron foresaw ruin"], "the roll must hold every omen, in order, each read exactly once"
+_n1, _roll1 = report(["Mopsus"])
+assert _n1 == 1 and _roll1 == ["Mopsus foresaw ruin"], "a single seer must give a count of 1 and a roll of one omen"
+_n0, _roll0 = report([])
+assert _n0 == 0 and _roll0 == [], "no seers must give a count of 0 and an empty roll"
+_lines = [l for l in _stdout.splitlines() if l.strip()]
+assert _lines[:2] == ["3", "3"], "the program must print 3 (the count) then 3 (the length of the roll) — the roll is no longer empty"
+assert "Cassandra foresaw ruin" in _lines, "the reading below must actually speak the omens aloud, one per line"`,
+          successText: 'Named and broken: the exhausted generator — a single-use river drunk dry by the first pass, silent on the second. When you must read it twice, pour it into a list first.',
+          xp: 30,
+        },
+      ],
+      trace: [
+        {
+          id: 'a5l2t1',
+          code: py`def spring():
+    print("the spring stirs")
+    yield 1
+    print("the spring floods")
+    yield 2
+
+water = spring()
+print("conjured")
+print(next(water))`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            'the spring stirs\nconjured\n1',
+            'conjured\nthe spring stirs\n1',
+            'the spring stirs\nthe spring floods\nconjured\n1',
+            'conjured\n1',
+          ],
+          answer: 1,
+          explain: 'Calling spring() runs no body code, so "conjured" prints first. The first '
+            + 'next() then runs the body up to the first yield, printing "the spring stirs" and '
+            + 'handing out 1. Only one stir — the flood line waits for a second draw that never '
+            + 'comes.',
+        },
+        {
+          id: 'a5l2t2',
+          code: py`def relics():
+    for name in ["cup", "ring", "crown"]:
+        yield name.upper()
+
+print(list(relics()))`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            "['cup', 'ring', 'crown']",
+            "['CUP', 'RING', 'CROWN']",
+            'CUP\nRING\nCROWN',
+            "['CROWN', 'RING', 'CUP']",
+          ],
+          answer: 1,
+          explain: 'The generator yields each name uppercased, in the order the loop visits '
+            + 'them; list() collects the three into a list, printed with its repr quotes. It '
+            + 'does not lowercase, print line-by-line, or reverse the order.',
         },
       ],
     },
@@ -576,7 +871,7 @@ def veiled(func):
 
 
 @veiled
-def unlock(name):
+def unlock(name: str) -> str:
     "Opens a counted door."
     return f"The way opens for {name}."`,
         hints: [
@@ -665,6 +960,129 @@ assert unlock.calls == _before + 1, "one call to unlock must raise its count by 
           explain: 'The wrapper cannot know the signature of every function it may cloak, '
             + 'so it accepts everything and forwards everything. The names args/kwargs are '
             + 'convention, not law — the stars do the work.',
+        },
+      ],
+      extras: [
+        {
+          id: 'a5l3x1',
+          kind: 'echo',
+          title: 'Echo: The Tolling Bell',
+          prompt: 'The vault has a bell that must remember every word it has ever '
+            + 'spoken — without the ringing knowing it is recorded.\n\n'
+            + 'Write a decorator `tolled(func)`:\n\n'
+            + '- Its wrapper accepts any arguments (`*args, **kwargs`), calls `func` with '
+            + 'them, and returns the result unchanged.\n'
+            + '- The wrapper carries a list attribute `tally`, starting empty, to which '
+            + 'every returned result is appended, in call order.\n'
+            + '- Apply `@functools.wraps(func)` so the decorated function keeps its '
+            + '`__name__` and docstring.\n\n'
+            + 'Then decorate `strike(bell)` — which returns `f"{bell} tolls."` — with '
+            + '`@tolled`.',
+          starter: py`import functools
+
+# TODO: write the decorator tolled(func).
+#   - wrapper(*args, **kwargs) calls func, records the result, returns it
+#   - wrapper.tally is a list, starting empty, appended to on every call
+#   - use @functools.wraps(func) so the true name survives
+
+
+# TODO: decorate strike with @tolled
+def strike(bell):
+    "Rings a named bell."
+    return f"{bell} tolls."`,
+          solution: py`import functools
+
+
+def tolled(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        result = func(*args, **kwargs)
+        wrapper.tally.append(result)
+        return result
+    wrapper.tally = []
+    return wrapper
+
+
+@tolled
+def strike(bell: str) -> str:
+    "Rings a named bell."
+    return f"{bell} tolls."`,
+          hints: [
+            'Skeleton: def tolled(func): with @functools.wraps(func) directly above an inner def wrapper(*args, **kwargs); return wrapper at the end. Set wrapper.tally = [] after the wrapper is defined, before you return it.',
+            'Inside the wrapper: result = func(*args, **kwargs), then wrapper.tally.append(result), then return result. Put @tolled on the line above def strike.',
+          ],
+          validation: py`assert callable(tolled), "tolled must be a function that takes a function and returns a wrapper"
+
+def _probe(x, y=0):
+    "Reaches into the dark."
+    return x + y
+
+_c = tolled(_probe)
+assert _c is not _probe, "tolled must return a NEW wrapper, not the function it was handed"
+assert _c.__name__ == "_probe", "the wrapper stole the name — apply functools.wraps(func) to it"
+assert _c.__doc__ == "Reaches into the dark.", "the docstring was lost in the veil — functools.wraps preserves it"
+assert hasattr(_c, "tally") and _c.tally == [], "the wrapper must begin with an empty tally list — set wrapper.tally = [] after its def, before return"
+assert _c(3, y=4) == 7, "the wrapper must forward positional and keyword arguments and return the true result"
+assert _c(10) == 10, "default arguments must still work through the veil"
+assert _c.tally == [7, 10], "the tally must record every result, in call order — expected [7, 10]"
+assert strike("the deep bell") == "the deep bell tolls.", "strike must be decorated with @tolled and still return its exact sentence"
+assert strike.__name__ == "strike", "strike must keep its name via functools.wraps"
+_n = len(strike.tally)
+strike("a lesser bell")
+assert len(strike.tally) == _n + 1, "each call to strike must append exactly one result to its tally"`,
+          successText: 'The bell tolls, the bell remembers — and the ringing never once feels the ledger being kept beneath it.',
+          xp: 20,
+        },
+      ],
+      trace: [
+        {
+          id: 'a5l3t1',
+          code: py`def outer(f):
+    print("outer wraps")
+    return f
+def inner(f):
+    print("inner wraps")
+    return f
+@outer
+@inner
+def spell():
+    return "cast"
+print(spell())`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            'outer wraps\ninner wraps\ncast',
+            'inner wraps\nouter wraps\ncast',
+            'inner wraps\nouter wraps',
+            'cast',
+          ],
+          answer: 1,
+          explain: 'Stacked decorators apply bottom-up: spell = outer(inner(spell)), so '
+            + 'inner runs first and prints "inner wraps", then outer prints "outer wraps" — '
+            + 'both at definition time, before any call. The call then prints "cast".',
+        },
+        {
+          id: 'a5l3t2',
+          code: py`def veil(f):
+    def wrapper(*a, **k):
+        return f(*a, **k)
+    return wrapper
+
+@veil
+def summon():
+    return "here"
+
+print(summon.__name__)`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            'summon',
+            'wrapper',
+            'veil',
+            'here',
+          ],
+          answer: 1,
+          explain: 'Without functools.wraps, the name summon now points at the inner wrapper '
+            + 'function, so its __name__ is "wrapper" — not the original "summon", not the '
+            + 'decorator "veil", and certainly not "here", which is only the return value.',
         },
       ],
     },
@@ -783,7 +1201,7 @@ class VanishingCabinet:
     # TODO: __exit__(self, exc_type, exc, tb) - close it, record "sealed",
     #       and return False so any exception escapes`,
         solution: py`class VanishingCabinet:
-    def __init__(self, name):
+    def __init__(self, name: str):
         self.name = name
         self.open = False
         self.journal = []
@@ -876,6 +1294,184 @@ assert _boom.journal == ["opened", "sealed"], "the journal must still read opene
           explain: 'The yield marks where the with-block body executes. Code after it is '
             + 'the teardown; wrapping the yield in try/finally is what makes that teardown '
             + 'survive an exception in the body.',
+        },
+      ],
+      extras: [
+        {
+          id: 'a5l4x1',
+          kind: 'echo',
+          title: 'Echo: The Salt Circle',
+          prompt: 'A warding circle is drawn before a summoning and must be broken after '
+            + 'it — whether the working succeeds, or something claws its way through.\n\n'
+            + 'Write a class `WardingCircle`:\n\n'
+            + '- `__init__(self, name)` — store `name`; set `self.active = False`; set '
+            + '`self.rites = []`.\n'
+            + '- `__enter__(self)` — set `self.active = True`, append `"drawn"` to '
+            + '`rites`, and return `self`.\n'
+            + '- `__exit__(self, exc_type, exc, tb)` — set `self.active = False`, append '
+            + '`"broken"`, and return `False` so any exception escapes.\n\n'
+            + 'Whether the with-block finishes or raises, the circle must end inactive '
+            + 'with `rites` reading `["drawn", "broken"]`.',
+          starter: py`# The circle records its rites and never stays open.
+
+class WardingCircle:
+    def __init__(self, name):
+        self.name = name
+        self.active = False
+        self.rites = []
+
+    # TODO: __enter__ - activate, record "drawn", return self
+
+    # TODO: __exit__(self, exc_type, exc, tb) - deactivate, record "broken",
+    #       and return False so any exception escapes`,
+          solution: py`class WardingCircle:
+    def __init__(self, name: str):
+        self.name = name
+        self.active = False
+        self.rites = []
+
+    def __enter__(self):
+        self.active = True
+        self.rites.append("drawn")
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        self.active = False
+        self.rites.append("broken")
+        return False`,
+          hints: [
+            '__enter__ takes only self: set active True, append "drawn" to rites, and return self — or the as-clause receives None.',
+            '__exit__ takes self, exc_type, exc, tb: set active False, append "broken", and return False so exceptions pass through. Never return True.',
+          ],
+          validation: py`_circle = WardingCircle("the salt ring")
+assert _circle.active is False, "a circle must begin inactive — set active to False in __init__"
+assert _circle.rites == [], "the rites log must begin empty"
+with _circle as _held:
+    assert _held is _circle, "__enter__ must return self so the with-statement hands back the circle"
+    assert _circle.active is True, "inside the with-block the circle must stand active"
+    assert _circle.rites == ["drawn"], "entering must record exactly the string 'drawn'"
+assert _circle.active is False, "leaving the block must deactivate the circle — __exit__ sets active to False"
+assert _circle.rites == ["drawn", "broken"], "exiting must record 'broken' after 'drawn'"
+
+_boom = WardingCircle("the sundered ring")
+_escaped = False
+try:
+    with _boom:
+        raise RuntimeError("something clawed through")
+except RuntimeError:
+    _escaped = True
+assert _escaped, "__exit__ must return False so the error escapes the circle instead of being swallowed"
+assert _boom.active is False, "even when the working inside fails, the circle must break — that is the guarantee of with"
+assert _boom.rites == ["drawn", "broken"], "the rites must read drawn then broken even after a failure"`,
+          successText: 'The circle breaks itself the instant the working ends — cleanly, or over the body of whatever came through.',
+          xp: 20,
+        },
+        {
+          id: 'a5l4x2',
+          kind: 'cursed',
+          title: 'Cursed Scroll: The Silent Sentinel',
+          prompt: 'A scroll left running since the vault was last sealed. Its sentinel '
+            + 'decorator guards every working that passes through — the guard fires, the '
+            + 'watch-count climbs — and yet every guarded call now hands its caller an '
+            + 'empty `None` where a real answer should stand. No error is raised. The '
+            + 'scroll runs clean, and it lies.\n\n'
+            + 'Mend it **in place** — do not rewrite the working from nothing. When '
+            + 'mended:\n\n'
+            + '- a guarded working must hand back its true result, not `None`\n'
+            + '- positional, keyword and default arguments must all survive the guard\n'
+            + '- the watch-count must still rise by one on every call',
+          starter: py`# The Sentinel guards every passage into the vault. Each guarded
+# working fires, the watch count climbs -- and yet every call hands
+# its caller an empty None where the true answer should be.
+# Mend the working IN PLACE; do not rewrite it from nothing.
+import functools
+
+
+def sentinel(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        wrapper.watches += 1
+        func(*args, **kwargs)       # the working is called...
+    wrapper.watches = 0
+    return wrapper
+
+
+@sentinel
+def toll(bell, count):
+    return f"{bell} tolls {count} times"
+
+
+print(toll("the deep bell", 3))     # None -- the words are lost
+print(toll.watches)                 # 1`,
+          solution: py`# The Sentinel - mended in place.
+import functools
+
+
+def sentinel(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        wrapper.watches += 1
+        return func(*args, **kwargs)    # ...and its answer carried back
+    wrapper.watches = 0
+    return wrapper
+
+
+@sentinel
+def toll(bell, count):
+    return f"{bell} tolls {count} times"
+
+
+print(toll("the deep bell", 3))
+print(toll.watches)`,
+          hints: [
+            'Observe: store a guarded call in a variable and print it — answer = toll("x", 1); print(answer). It is None, though toll plainly ends in a return. The words are computed inside, then dropped on the way out.',
+            'The false model: "calling func(*args, **kwargs) inside the wrapper is enough; its return value flows out on its own." It does not. A function gives its result only to whoever returns it. The wrapper calls func, receives the answer, then falls off its own end returning None.',
+            'Carry the answer back: return func(*args, **kwargs). The counter line above it stays exactly as it is; only the call must become a returned call.',
+          ],
+          validation: py`assert callable(sentinel), "sentinel must be a function that takes a function and returns a wrapper"
+
+def _probe(x, y=1):
+    return x * 10 + y
+
+_guarded = sentinel(_probe)
+assert _guarded(3, 4) == 34, "the guarded working returned None — the wrapper fires func but never carries its answer back. Put return before func(*args, **kwargs)."
+assert _guarded(5) == 51, "a default argument must survive too — return the result of func(*args, **kwargs)"
+assert _guarded.watches == 2, "the watch counter must still rise once per call — after two calls it should be 2"
+assert toll("the deep bell", 3) == "the deep bell tolls 3 times", "the decorated toll must hand back its words, not None"
+assert toll.__name__ == "toll", "functools.wraps must keep toll's true name through the mend"
+_before = toll.watches
+toll("a lesser bell", 1)
+assert toll.watches == _before + 1, "each call to toll must raise its watch count by exactly one"`,
+          successText: 'Named and broken: the decorator pass-through — a wrapper that fires the true working but forgets to return its answer, handing every caller a silent None. One word, return, mends it.',
+          xp: 30,
+        },
+      ],
+      trace: [
+        {
+          id: 'a5l4t1',
+          code: py`class Circle:
+    def __enter__(self):
+        print("enter")
+        return self
+    def __exit__(self, *a):
+        print("exit")
+        return False
+
+with Circle():
+    print("inside")
+print("after")`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            'enter\ninside\nexit\nafter',
+            'inside\nenter\nexit\nafter',
+            'enter\ninside\nafter\nexit',
+            'enter\nexit\ninside\nafter',
+          ],
+          answer: 0,
+          explain: '__enter__ runs at the with-line, printing "enter"; then the block body '
+            + 'prints "inside"; then __exit__ runs as the block is left, printing "exit"; only '
+            + 'after the whole statement does "after" print. Teardown happens on the way out of '
+            + 'the block, not after the rest of the program.',
         },
       ],
     },
@@ -977,6 +1573,49 @@ class Evidence:
 
 print(Evidence(9).relics is Evidence(9).relics)  # False - each record its own`,
         },
+        {
+          heading: 'match/case — judging a value by its shape',
+          body: 'An `if`/`elif` ladder asks a value one yes-or-no question at a time. '
+            + 'Since Python 3.10 there is a second way to branch — `match`/`case` — that '
+            + 'reads a value by its **shape** and pulls pieces out of it in the same '
+            + 'stroke. You will meet it often in modern code; here is enough to recognise '
+            + 'it and use it once.\n\n'
+            + 'A `match` compares the subject against each `case` from top to bottom and '
+            + 'runs the **first** that fits:\n\n'
+            + '- A **literal pattern** matches a constant: `case 0:` or `case "gold":`.\n'
+            + '- A **capture pattern** is a bare name that matches anything and binds it: '
+            + '`case other:`. The wildcard `case _:` matches anything and binds nothing — '
+            + 'the catch-all.\n'
+            + '- A **class pattern** matches by type and reads attributes: '
+            + '`case Coin(metal="gold"):` fits any `Coin` whose `metal` is `"gold"`; '
+            + '`case Coin(weight=w):` fits any `Coin` and captures its weight into `w`.\n\n'
+            + 'A `case` may add a **guard** — an `if` after the pattern — that must also '
+            + 'hold: `case Coin(weight=w) if w > 100:`. A dataclass is an ideal subject, '
+            + 'because its fields become the attributes a class pattern reads.',
+          code: py`from dataclasses import dataclass
+
+@dataclass
+class Coin:
+    metal: str
+    weight: int
+
+def worth(coin):
+    match coin:
+        case Coin(metal="gold"):
+            return "a fortune"
+        case Coin(weight=0):
+            return "a forgery"
+        case Coin(metal=m, weight=w):
+            return f"{w} of {m}"
+
+print(worth(Coin("gold", 5)))      # a fortune
+print(worth(Coin("lead", 0)))      # a forgery
+print(worth(Coin("silver", 3)))    # 3 of silver`,
+          note: 'One trap: a bare name in a `case` is a *capture*, not a comparison. '
+            + '`case gold:` matches everything and binds it to a new name `gold` — it never '
+            + 'compares against some variable called `gold`. To test against a constant, use '
+            + 'a literal (`case "gold":`) or a dotted name (`case Metal.GOLD:`).',
+        },
       ],
       challenge: {
         title: 'Strike the Record',
@@ -1019,11 +1658,11 @@ class VaultRecord:
     galleons: int = 0
     relics: list = field(default_factory=list)
 
-    def deposit(self, amount):
+    def deposit(self, amount: int) -> int:
         self.galleons += amount
         return self.galleons
 
-    def deposit_relic(self, name):
+    def deposit_relic(self, name: str) -> int:
         self.relics.append(name)
         return len(self.relics)`,
         hints: [
@@ -1108,6 +1747,112 @@ assert _a.relics is not _b.relics, "two records must never share one relics list
           explain: 'One list object as a class-level default would be shared by every '
             + 'record — a classic corruption. dataclasses raises ValueError instead, and '
             + 'default_factory mints a fresh list per instance.',
+        },
+      ],
+      extras: [
+        {
+          id: 'a5l5x1',
+          kind: 'echo',
+          title: 'Echo: The Appraiser',
+          prompt: 'The confiscations office does not merely file relics — it **judges** '
+            + 'them, and the judgment reads each relic by its shape.\n\n'
+            + 'Write a dataclass `Relic` and a function `appraise`:\n\n'
+            + '- `@dataclass class Relic` with fields, in order: `name: str`, '
+            + '`power: int`, `cursed: bool = False`.\n'
+            + '- `appraise(relic)` returns exactly one verdict string:\n'
+            + '  - `"destroy it"` if the relic is `cursed` (whatever its power);\n'
+            + '  - else `"worthless"` if its `power` is `0`;\n'
+            + '  - else `"a crown jewel"` if its `power` is `100` or more;\n'
+            + '  - else `"keep it"`.\n\n'
+            + 'The cursed test outranks every other. This reads most cleanly as a '
+            + '`match` on the relic — the section above showed the form — though a plain '
+            + '`if`/`elif` chain is judged no differently.',
+          starter: py`from dataclasses import dataclass
+
+# TODO: make Relic a dataclass with fields, in order:
+#   name: str
+#   power: int
+#   cursed: bool = False
+class Relic:
+    pass
+
+
+def appraise(relic):
+    # TODO: return the verdict for this relic:
+    #   "destroy it"    if it is cursed (whatever its power)
+    #   "worthless"     if its power is 0
+    #   "a crown jewel" if its power is 100 or more
+    #   "keep it"       otherwise
+    pass`,
+          solution: py`from dataclasses import dataclass
+
+
+@dataclass
+class Relic:
+    name: str
+    power: int
+    cursed: bool = False
+
+
+def appraise(relic) -> str:
+    match relic:
+        case Relic(cursed=True):
+            return "destroy it"
+        case Relic(power=0):
+            return "worthless"
+        case Relic(power=p) if p >= 100:
+            return "a crown jewel"
+        case _:
+            return "keep it"`,
+          hints: [
+            'Relic is a dataclass exactly like VaultRecord: @dataclass above it, then name: str, power: int, cursed: bool = False as bare type-hinted lines.',
+            'appraise reads cleanly as a match on the relic: case Relic(cursed=True): first (cursed outranks all), then case Relic(power=0):, then a guarded case Relic(power=p) if p >= 100:, then case _: "keep it". A plain if/elif chain works too — test cursed before power.',
+          ],
+          validation: py`import dataclasses
+assert dataclasses.is_dataclass(Relic), "Relic must be a dataclass — decorate it with @dataclass and declare its fields"
+_names = [f.name for f in dataclasses.fields(Relic)]
+assert _names == ["name", "power", "cursed"], "Relic's fields must be name, power, cursed — in exactly that order"
+_r = Relic("charm", 5)
+assert _r.cursed is False, "cursed must default to False when omitted"
+assert Relic("charm", 5) == Relic("charm", 5), "two identical relics must compare equal — @dataclass writes __eq__ for you"
+assert appraise(Relic("dragon hide", 200)) == "a crown jewel", "a relic of power 100 or more is a crown jewel"
+assert appraise(Relic("dust", 0)) == "worthless", "a relic of power 0 (and not cursed) is worthless"
+assert appraise(Relic("charm", 40)) == "keep it", "an ordinary relic — power below 100, not cursed — is one to keep"
+assert appraise(Relic("the ring", 300, True)) == "destroy it", "a cursed relic must be destroyed — cursed outranks any power"
+assert appraise(Relic("cursed dust", 0, True)) == "destroy it", "cursed is judged before power — a cursed, powerless relic is still 'destroy it', not 'worthless'"
+assert appraise(Relic("crown", 100)) == "a crown jewel", "power of exactly 100 counts as a crown jewel — the boundary is inclusive"
+assert appraise(Relic("spark", 99)) == "keep it", "power 99 is below the crown-jewel line — keep it"`,
+          successText: 'Each relic is read by its shape and given its verdict — a fortune, a forgery, or a fire to be fed.',
+          xp: 22,
+        },
+      ],
+      trace: [
+        {
+          id: 'a5l5t1',
+          code: py`from dataclasses import dataclass, field
+
+@dataclass
+class Bag:
+    items: list = field(default_factory=list)
+
+a = Bag()
+b = Bag()
+a.items.append("gold")
+print(b.items)
+print(a.items is b.items)`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            "['gold']\nTrue",
+            '[]\nFalse',
+            "['gold']\nFalse",
+            '[]\nTrue',
+          ],
+          answer: 1,
+          explain: 'field(default_factory=list) mints a fresh list for every instance, so '
+            + 'appending to a’s list never touches b’s — b.items is still empty, and '
+            + 'the two are different objects, so is returns False. A bare = [] would be refused '
+            + 'precisely to prevent the shared-list trap that would print ['
+            + "'gold'] and True.",
         },
       ],
     },
@@ -1236,24 +1981,24 @@ print(BloodRite().perform())`,
 
 
 class Vow(ABC):
-    def __init__(self, sworn_by):
+    def __init__(self, sworn_by: str):
         self.sworn_by = sworn_by
 
     @abstractmethod
-    def price(self):
+    def price(self) -> str:
         ...
 
-    def bind(self):
+    def bind(self) -> str:
         return f"{self.sworn_by} pays {self.price()}."
 
 
 class LifeVow(Vow):
-    def price(self):
+    def price(self) -> str:
         return "with a life"
 
 
 class MemoryVow(Vow):
-    def price(self):
+    def price(self) -> str:
         return "with a stolen memory"`,
         hints: [
           'Begin with: from abc import ABC, abstractmethod — then class Vow(ABC): with an ordinary __init__.',
@@ -1348,6 +2093,120 @@ assert _Borrowed("Barty").bind() == "Barty pays with borrowed time.", "bind must
           explain: 'This is the template method pattern: shared ceremony written once on '
             + 'the base, deferring only the missing verses to subclasses. Only methods '
             + 'marked @abstractmethod are obligations.',
+        },
+      ],
+      extras: [
+        {
+          id: 'a5l6x1',
+          kind: 'echo',
+          title: 'Echo: The Laid Curse',
+          prompt: 'A curse is a contract sworn against another. The form is fixed; only '
+            + 'the affliction changes.\n\n'
+            + 'Build the contract:\n\n'
+            + '- An abstract base class `Curse` (inherit from `ABC`):\n'
+            + '  - `__init__(self, target)` — store the name as `self.target`.\n'
+            + '  - `word(self)` — abstract; decorate it with `@abstractmethod`.\n'
+            + '  - `lay(self)` — concrete; return exactly '
+            + '`f"{self.target} suffers {self.word()}."`\n'
+            + '- `Withering(Curse)` — `word` returns `"the slow rot"`.\n'
+            + '- `Binding(Curse)` — `word` returns `"chains of silence"`.\n\n'
+            + 'So `Withering("Marvolo").lay()` is `"Marvolo suffers the slow rot."` — and '
+            + 'instantiating `Curse` itself must raise `TypeError`.',
+          starter: py`from abc import ABC, abstractmethod
+
+# TODO: the abstract base class Curse
+#   - __init__(self, target) stores self.target
+#   - word(self) is abstract
+#   - lay(self) is concrete: f"{self.target} suffers {self.word()}."
+
+# TODO: Withering(Curse) - word returns "the slow rot"
+
+# TODO: Binding(Curse) - word returns "chains of silence"`,
+          solution: py`from abc import ABC, abstractmethod
+
+
+class Curse(ABC):
+    def __init__(self, target: str):
+        self.target = target
+
+    @abstractmethod
+    def word(self) -> str:
+        ...
+
+    def lay(self) -> str:
+        return f"{self.target} suffers {self.word()}."
+
+
+class Withering(Curse):
+    def word(self) -> str:
+        return "the slow rot"
+
+
+class Binding(Curse):
+    def word(self) -> str:
+        return "chains of silence"`,
+          hints: [
+            'Begin with: from abc import ABC, abstractmethod — then class Curse(ABC): with an ordinary __init__ storing self.target.',
+            'Mark word abstract with @abstractmethod on the line above it; its body can be a bare .... lay lives on Curse alone and calls self.word() inside an f-string. Each subclass defines only its own word.',
+          ],
+          validation: py`_refused = False
+try:
+    Curse("the Nameless")
+except TypeError:
+    _refused = True
+assert _refused, "Curse must be abstract — instantiating it must raise TypeError. Inherit from ABC and mark word with @abstractmethod."
+
+class _Hollow(Curse):
+    pass
+
+_hollow_refused = False
+try:
+    _Hollow("Nobody")
+except TypeError:
+    _hollow_refused = True
+assert _hollow_refused, "a subclass that never implements word is still abstract — instantiating it must raise TypeError"
+
+_w = Withering("Marvolo")
+assert isinstance(_w, Curse), "Withering must inherit from Curse"
+assert _w.word() == "the slow rot", "Withering.word must return exactly: the slow rot"
+assert _w.lay() == "Marvolo suffers the slow rot.", "lay must weave target and word into: Marvolo suffers the slow rot."
+_b = Binding("Cadmus")
+assert _b.lay() == "Cadmus suffers chains of silence.", "Binding's lay must read: Cadmus suffers chains of silence."
+assert Withering("X").lay() != Binding("X").lay(), "the two curses must inflict different afflictions"
+
+class _Borrowed(Curse):
+    def word(self):
+        return "a borrowed grief"
+
+assert _Borrowed("Ariana").lay() == "Ariana suffers a borrowed grief.", "lay must call self.word() — never hard-code any affliction into it"`,
+          successText: 'The curse binds, the affliction takes — and a curse that named no affliction is simply not permitted to exist.',
+          xp: 20,
+        },
+      ],
+      trace: [
+        {
+          id: 'a5l6t1',
+          code: py`from abc import ABC, abstractmethod
+
+class Rite(ABC):
+    @abstractmethod
+    def toll(self):
+        ...
+
+Rite()`,
+          q: 'The scrying: what happens when this runs?',
+          options: [
+            'It creates a Rite whose toll() returns None',
+            'It raises TypeError — Rite is abstract and cannot be instantiated',
+            'It raises NotImplementedError',
+            'It prints nothing and succeeds silently',
+          ],
+          answer: 1,
+          raises: 'TypeError',
+          explain: 'A class with an unimplemented @abstractmethod cannot be instantiated; the '
+            + 'refusal is a TypeError at the moment of construction. It is not '
+            + 'NotImplementedError (the weaker convention ABCs replaced), and it certainly does '
+            + 'not quietly succeed.',
         },
       ],
     },
@@ -1493,31 +2352,31 @@ class Sorcerer:
     # TODO: cast(self, power) - call the stored doctrine with power
     # TODO: adopt(self, doctrine) - replace the stored doctrine
     pass`,
-        solution: py`def wildfire(power):
+        solution: py`def wildfire(power: int) -> int:
     return power * 2
 
 
-def siege(power):
+def siege(power: int) -> int:
     return power + 12
 
 
 class Leech:
-    def __init__(self, rate):
+    def __init__(self, rate: int):
         self.rate = rate
 
-    def __call__(self, power):
+    def __call__(self, power: int) -> int:
         return power * self.rate
 
 
 class Sorcerer:
-    def __init__(self, name, doctrine):
+    def __init__(self, name: str, doctrine):
         self.name = name
         self.doctrine = doctrine
 
-    def cast(self, power):
+    def cast(self, power: int) -> int:
         return self.doctrine(power)
 
-    def adopt(self, doctrine):
+    def adopt(self, doctrine) -> None:
         self.doctrine = doctrine`,
         hints: [
           'wildfire and siege are two-line functions. Leech needs __call__ so its instances can be used exactly like those functions.',
@@ -1597,6 +2456,99 @@ assert _a.cast(5) == 10 and _b.cast(5) == 17, "each Sorcerer must keep their own
           explain: 'That is the entire prize: behavior lives outside the host, so '
             + 'extension never requires modification. Subclassing per behavior would '
             + 'multiply classes for no gain; the elif is the rigidity you just unlearned.',
+        },
+      ],
+      extras: [
+        {
+          id: 'a5l7x1',
+          kind: 'echo',
+          title: 'Echo: The Interchangeable Cipher',
+          prompt: 'A cipher is only as good as the scheme it channels — and the scheme '
+            + 'must be swappable without rebuilding the cipher.\n\n'
+            + 'Write all of the following:\n\n'
+            + '- `reverse(text)` — a function returning `text` reversed (`text[::-1]`).\n'
+            + '- `shout(text)` — a function returning `text.upper()`.\n'
+            + '- class `Shift` — `__init__(self, by)` stores the shift; '
+            + '`__call__(self, text)` returns `text[by:] + text[:by]`.\n'
+            + '- class `Cipher`:\n'
+            + '  - `__init__(self, scheme)` — store the scheme.\n'
+            + '  - `encode(self, text)` — return the result of calling the stored scheme '
+            + 'on `text`.\n'
+            + '  - `rekey(self, scheme)` — replace the stored scheme.\n\n'
+            + '`Cipher(reverse).encode("codex")` is `"xedoc"`; after `rekey(shout)`, '
+            + '`encode("codex")` is `"CODEX"`. `encode` must call whatever scheme is '
+            + 'stored — never hard-code a transform.',
+          starter: py`# A cipher channels an interchangeable scheme. Swap the part, not the whole.
+
+def reverse(text):
+    # TODO: return text reversed
+    pass
+
+
+def shout(text):
+    # TODO: return text uppercased
+    pass
+
+
+class Shift:
+    # TODO: __init__(self, by) stores the shift
+    # TODO: __call__(self, text) returns text[by:] + text[:by]
+    pass
+
+
+class Cipher:
+    # TODO: __init__(self, scheme) stores the scheme
+    # TODO: encode(self, text) returns the stored scheme called on text
+    # TODO: rekey(self, scheme) replaces the stored scheme
+    pass`,
+          solution: py`def reverse(text: str) -> str:
+    return text[::-1]
+
+
+def shout(text: str) -> str:
+    return text.upper()
+
+
+class Shift:
+    def __init__(self, by: int):
+        self.by = by
+
+    def __call__(self, text: str) -> str:
+        return text[self.by:] + text[:self.by]
+
+
+class Cipher:
+    def __init__(self, scheme):
+        self.scheme = scheme
+
+    def encode(self, text: str) -> str:
+        return self.scheme(text)
+
+    def rekey(self, scheme) -> None:
+        self.scheme = scheme`,
+          hints: [
+            'reverse is text[::-1]; shout is text.upper(). Shift needs __call__ so its instances behave like those functions: return text[self.by:] + text[:self.by].',
+            'Cipher stores the scheme with no parentheses. Parentheses appear only inside encode: return self.scheme(text). rekey is a single line: self.scheme = scheme.',
+          ],
+          validation: py`assert reverse("codex") == "xedoc", "reverse must return its text backwards"
+assert shout("codex") == "CODEX", "shout must return its text uppercased"
+_s = Shift(1)
+assert callable(_s), "Shift instances must be callable — implement __call__"
+assert _s("codex") == "odexc", "Shift(1)('codex') must rotate one place: 'odexc'"
+assert Shift(2)("codex") == "dexco", "Shift(2)('codex') must be 'dexco' — the shift belongs to the instance"
+_c = Cipher(reverse)
+assert _c.encode("codex") == "xedoc", "Cipher(reverse).encode must delegate to the stored scheme"
+_c.rekey(shout)
+assert _c.encode("codex") == "CODEX", "after rekey(shout), encode must use the NEW scheme"
+_c.rekey(Shift(1))
+assert _c.encode("codex") == "odexc", "a Cipher must channel callable objects as readily as functions"
+_c.rekey(lambda t: t + "!")
+assert _c.encode("codex") == "codex!", "encode must call whatever scheme is stored — never hard-code the transform"
+_a = Cipher(reverse)
+_b = Cipher(shout)
+assert _a.encode("ab") == "ba" and _b.encode("ab") == "AB", "each Cipher must keep its own scheme, untangled from the others"`,
+          successText: 'One cipher, a hundred possible tongues — and never a line of it rewritten to learn a new one.',
+          xp: 22,
         },
       ],
     },
@@ -1739,28 +2691,28 @@ assert _a.cast(5) == 10 and _b.cast(5) == 17, "each Sorcerer must keep their own
 
 
 class Horcrux(ABC):
-    def __init__(self, vessel):
+    def __init__(self, vessel: str):
         self.vessel = vessel
 
     @abstractmethod
-    def destroy(self):
+    def destroy(self) -> str:
         ...
 
-    def describe(self):
+    def describe(self) -> str:
         return f"A fragment of the Dark Lord hides within {self.vessel}."
 
 
 class Locket(Horcrux):
-    def destroy(self):
+    def destroy(self) -> str:
         return f"{self.vessel} is cloven by goblin-forged silver."
 
 
 class Diary(Horcrux):
-    def destroy(self):
+    def destroy(self) -> str:
         return f"{self.vessel} is drowned in basilisk venom."
 
 
-def unmaking(horcruxes):
+def unmaking(horcruxes: list):
     for horcrux in horcruxes:
         yield horcrux.destroy()`,
       validation: py`import types
@@ -1822,6 +2774,51 @@ class _Ring(Horcrux):
 assert next(unmaking([_Ring("the ring")])) == "the ring cracks upon the hearth.", "unmaking must work for ANY Horcrux subclass — call destroy() polymorphically"`,
       xp: 0,
     },
+
+    barks: {
+      intro: [
+        'I am the hand that wrote this Codex, and the thing it was written to cage. Sit. Be measured.',
+        'Four wardens fell to you on the stairs below. They were my students. I kept the last death for myself.',
+      ],
+      hit: [
+        'Wrong. Each error you make writes one more letter of your name into my ledger of the spent.',
+        'The protocol did not obey you. This far down, only I am obeyed.',
+        'A flaw opens in your working. I have waited inside flaws like that for a very long time.',
+        'You reached for the law and closed your hand on air. The law was always mine to lend.',
+        'Another candle leans toward dark. I made this dark. I see through it perfectly well.',
+      ],
+      playerFail: [
+        'Your engine will not turn. I turned death itself inside out. Try again, or do not.',
+        'The forge spits your working back. I built my deathlessness from a thousand such refusals.',
+        'It does not run. The machinery of unmaking is unforgiving, exactly as I forged it to be.',
+      ],
+      lastCandle: [
+        'One flame left. I have watched brighter souls than yours go out between two words.',
+        'The dark leans close to read your final light. Make it worth the reading.',
+      ],
+      death: [
+        'So. A student became an author, and wrote me out of the world. It was always the ending I feared.',
+        'I mastered death and neglected to master you. Falling is not ending. But this, perhaps, is.',
+      ],
+    },
+    premortem: {
+      prompt: 'The first candle is not yet lit, and the Codex asks your plan. The Unmaking '
+        + 'Engine demands three things raised in order: an abstract `Horcrux` contract, two '
+        + 'incarnations that fulfil it, and a lazy `unmaking` generator that draws '
+        + 'destruction from them. Which do you forge and prove FIRST?',
+      options: [
+        'The abstract Horcrux contract — the subclasses inherit it and the generator leans on it, so it must stand, and be provably abstract, before anything is built upon it',
+        'The unmaking generator — it is the final output, so write it first and let the classes follow it into being',
+        'Both subclasses at once — settle the concrete work, then bolt an abstract base underneath them at the end',
+        'The describe() sentence — it is the shortest line in the trial, so bank an easy victory before the hard work begins',
+      ],
+      answer: 0,
+      explain: 'Raise the foundation the rest stands on. The subclasses override the '
+        + 'contract’s abstract method and the generator calls destroy() polymorphically, so a '
+        + 'base that is wrong — or not truly abstract — poisons all three. The generator has '
+        + 'nothing to draw on until the contract and its incarnations exist, and banking the '
+        + 'easiest line proves nothing that matters.',
+    },
   },
 
   // ----------------------------------------------------------------
@@ -1831,9 +2828,8 @@ assert next(unmaking([_Ring("the ring")])) == "the ring cracks upon the hearth."
     { term: 'iterator', def: 'An object that walks a sequence one value at a time via `__next__`, remembering its position and raising `StopIteration` when spent.' },
     { term: 'iterable', def: 'Anything that can produce an iterator when handed to `iter()` — lists, strings, dicts, files, generators.' },
     { term: 'StopIteration', def: 'The exception an iterator raises to signal exhaustion; `for` loops catch it silently to know when to stop.' },
-    { term: 'generator', def: 'An iterator built from a function containing `yield`; it computes each value on demand and freezes between draws.' },
+    { term: 'generator', def: 'An iterator built from a function containing `yield`, or its parenthesised twin the *generator expression* `(n * n for n in runes)`; it computes each value on demand and freezes between draws.' },
     { term: 'yield', def: 'The keyword that pauses a generator function, hands one value out, and preserves all local state for the next draw.' },
-    { term: 'generator expression', def: 'The lazy twin of a list comprehension, written with parentheses: `(n * n for n in runes)`.' },
     { term: 'lazy evaluation', def: 'Computing each value only at the moment it is actually needed, instead of paying for every value up front.' },
     { term: 'closure', def: 'An inner function that keeps access to variables of its enclosing scope even after the outer function has returned.' },
     { term: 'decorator', def: 'A function that takes a function and returns a replacement for it, applied with the `@name` line above a `def`.' },
@@ -1844,5 +2840,7 @@ assert next(unmaking([_Ring("the ring")])) == "the ring cracks upon the hearth."
     { term: 'type hint', def: 'An annotation such as `vault: int` documenting a value’s intended type; Python does not enforce it at runtime.' },
     { term: 'abc.ABC / @abstractmethod', def: 'The machinery of contracts: subclass `ABC`, mark required methods abstract, and any incomplete class raises `TypeError` at instantiation.' },
     { term: 'strategy pattern', def: 'A design in which an object holds an interchangeable callable — the strategy — and delegates behavior to it, so behavior can be swapped without editing the class.' },
+    { term: 'generator exhaustion', def: 'A generator, like any iterator, yields each value once; a second pass over the same generator object finds it spent and silently yields nothing. Pour it into a `list` when you must read it twice.' },
+    { term: 'decorator pass-through', def: 'A wrapper bug: the inner function calls the wrapped function but forgets to `return` its result (or to forward `*args`/`**kwargs`), so every call silently hands back `None` or drops its arguments.' },
   ],
 };

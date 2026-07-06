@@ -204,6 +204,138 @@ assert step == 8, "When the loop breaks, step should still be 8 -- break fires b
             + 'the counter pattern has three parts: create, test, change.',
         },
       ],
+
+      extras: [
+        {
+          id: 'a2l1x1',
+          kind: 'echo',
+          title: 'The Hall of Doors',
+          prompt: 'The stair was not the last thing that must be counted. Twelve doors '
+            + 'line the eastern hall, and each must be tested aloud — save the third, '
+            + 'which wiser hands bricked shut, and the tenth, where the testing ends.\n\n'
+            + 'Write a program that:\n\n'
+            + '- Creates a variable `door` set to `1`.\n'
+            + '- Runs a `while` loop while `door` is less than or equal to `12`.\n'
+            + '- Inside, if `door` equals `10`: prints exactly `Something knocks back.` and ends the loop with `break`.\n'
+            + '- Otherwise, if `door` equals `3`: adds 1 to `door` and skips the rest of the pass with `continue` — the bricked door is passed in silence.\n'
+            + '- Otherwise: prints `Door ` then the number then ` holds` (`Door 1 holds`, `Door 2 holds`, and so on), and adds 1 to `door`.\n\n'
+            + 'Nine lines in all: eight doors that hold, and the answer from behind the tenth.',
+          starter: py`# Twelve doors. Test each aloud -- with two exceptions.
+door = 1
+
+# TODO: while door <= 12 -- at door 10, print "Something knocks back." and break;
+# at door 3, move on in silence with continue; otherwise print f"Door {door} holds"
+`,
+          solution: py`door = 1
+while door <= 12:
+    if door == 10:
+        print("Something knocks back.")
+        break
+    if door == 3:
+        door += 1
+        continue
+    print(f"Door {door} holds")
+    door += 1`,
+          hints: [
+            'The shape is the stair you have already counted: the breaking check first (print, then break), the skipping check second (add 1, then continue), and only then the ordinary print-and-add.',
+            'Inside the loop: if door == 10, print "Something knocks back." and break; if door == 3, door += 1 then continue; the last two lines print f"Door {door} holds" and add 1.',
+          ],
+          validation: py`lines = [l.strip() for l in _stdout.splitlines() if l.strip()]
+assert len(lines) == 9, f"The hall heard {len(lines)} lines, not 9 -- eight doors hold, then the tenth answers. Check the silent third door and the break at the tenth."
+assert lines[0] == "Door 1 holds", "The testing begins at the first door, with the line: Door 1 holds"
+assert "Door 3" not in _stdout, "The third door is bricked shut -- pass it with continue and print nothing for it."
+assert lines[2] == "Door 4 holds", "After the silent third door, the next spoken line must be: Door 4 holds"
+assert "Door 10" not in _stdout and "Door 11" not in _stdout and "Door 12" not in _stdout, "The testing must stop at the tenth door -- break before any later door is named."
+assert lines[-1] == "Something knocks back.", "The final line must be exactly: Something knocks back."
+assert door == 10, "When the loop breaks, door should still be 10 -- break fires before the counter moves again."`,
+          successText: 'Eight doors hold. The tenth you leave to whatever is holding it from the other side.',
+          xp: 20,
+        },
+        {
+          id: 'a2l1x2',
+          kind: 'echo',
+          title: 'The Oil Ration',
+          prompt: 'Light is arithmetic down here. Five flasks of oil remain, and the '
+            + 'dark must be told the count as each one burns.\n\n'
+            + 'Write a program that:\n\n'
+            + '- Creates a variable `flasks` set to `5`.\n'
+            + '- Runs a `while` loop while `flasks` is greater than `0`.\n'
+            + '- Inside, prints `Flasks left: ` followed by the current count (`Flasks left: 5` first), then subtracts 1 from `flasks`.\n'
+            + '- After the loop — outside it — prints exactly `The dark takes the rest.`\n\n'
+            + 'Six lines: five counts falling from 5 to 1, then the closing line once.',
+          starter: py`# Five flasks. Count each one down into the dark.
+flasks = 5
+
+# TODO: while flasks > 0 -> print f"Flasks left: {flasks}", then burn one
+# TODO: after the loop -> print "The dark takes the rest."
+`,
+          solution: py`flasks = 5
+while flasks > 0:
+    print(f"Flasks left: {flasks}")
+    flasks -= 1
+print("The dark takes the rest.")`,
+          hints: [
+            'The counter pattern, walked downward: created at 5, tested with > 0, changed with flasks -= 1 inside the body.',
+            'The body is two lines -- print(f"Flasks left: {flasks}") then flasks -= 1 -- and the closing print stands AFTER the loop, unindented, so it runs exactly once.',
+          ],
+          validation: py`lines = [l.strip() for l in _stdout.splitlines() if l.strip()]
+assert len(lines) == 6, f"The dark heard {len(lines)} lines, not 6 -- five counted flasks, then the closing line once."
+assert lines[0] == "Flasks left: 5", "The count begins at the full ration: Flasks left: 5"
+assert lines[4] == "Flasks left: 1", "The last counted flask must be: Flasks left: 1"
+assert "Flasks left: 0" not in _stdout, "Zero is never announced -- the condition flasks > 0 ends the loop before it can be."
+assert lines[-1] == "The dark takes the rest.", "The final line must be exactly: The dark takes the rest."
+assert flasks == 0, "After the loop, flasks should have burned down to exactly 0."`,
+          successText: 'The last flask gutters out on schedule. What follows is arithmetic of a different kind.',
+          xp: 15,
+        },
+      ],
+
+      trace: [
+        {
+          id: 'a2l1t1',
+          code: py`step = 1
+while step < 6:
+    if step == 3:
+        break
+    print(step)
+    step += 1
+print("out")`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            '1\n2',
+            '1\n2\n3\nout',
+            '1\n2\nout',
+            '1\n2\n3\n4\n5\nout',
+          ],
+          answer: 2,
+          explain: 'On the pass where step is 3, break fires BEFORE the print, so 3 is '
+            + 'never spoken — and break abandons only the loop, not the program, so the '
+            + 'line after the loop still runs. The first option kills too much; the '
+            + 'second breaks a line too late; the last mistakes break for continue.',
+        },
+        {
+          id: 'a2l1t2',
+          code: py`n = 0
+count = 0
+while n < 10:
+    n += 3
+    count += 1
+print(n)
+print(count)`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            '12\n4',
+            '9\n3',
+            '10\n4',
+            '12\n3',
+          ],
+          answer: 0,
+          explain: 'The condition is tested only at the top of each pass, never '
+            + 'mid-stride: when n is 9 the loop is admitted once more, and n strides to '
+            + '12 — past the wall. Four passes run (n becomes 3, 6, 9, 12). A counter '
+            + 'stops ON the boundary only when its strides happen to land there.',
+        },
+      ],
     },
 
     // ----------------------------------------------------------
@@ -358,6 +490,107 @@ assert lines[10:14] == ["d", "o", "o", "m"], "The word on the wall must be spell
             + 'it runs only 11. A while loop works, but you must feed and test it yourself.',
         },
       ],
+
+      extras: [
+        {
+          id: 'a2l2x1',
+          kind: 'echo',
+          title: 'The Levels and the Knells',
+          prompt: 'Below the second hall the levels must be sounded, and then the old '
+            + 'bell rope pulled — it still answers, at intervals of three.\n\n'
+            + 'Write a program with two movements, in this order:\n\n'
+            + '- Using a `for` loop and `range(2, 7)`, print `Level 2 is silent.` through `Level 6 is silent.` — five lines.\n'
+            + '- Using a `for` loop and a `range` that counts *down by threes*, print the numbers `12`, `9`, `6`, `3`, each on its own line.\n\n'
+            + 'Nine lines in all.',
+          starter: py`# Two movements: the silent levels, then the knells.
+
+# TODO 1: range(2, 7) -> print f"Level {n} is silent."
+
+# TODO 2: a range that tolls 12, 9, 6, 3 -> print each number
+`,
+          solution: py`for n in range(2, 7):
+    print(f"Level {n} is silent.")
+
+for n in range(12, 0, -3):
+    print(n)`,
+          hints: [
+            'range(2, 7) walks 2, 3, 4, 5, 6 -- the stop is a wall, never a member. One loop, one print.',
+            'The knells need all three numbers: range(12, 0, -3) -- start at 12, step by -3, stop anywhere past 3 (0 serves). Print the loop variable bare.',
+          ],
+          validation: py`lines = [l.strip() for l in _stdout.splitlines() if l.strip()]
+assert len(lines) == 9, f"The deep heard {len(lines)} lines, not 9 (five levels + four knells)."
+assert lines[0] == "Level 2 is silent." and lines[4] == "Level 6 is silent.", "The levels run 2 through 6, each announcing: Level N is silent."
+assert "Level 1" not in _stdout and "Level 7" not in _stdout, "Only levels 2 through 6 are sounded. Check the start and stop of your first range."
+assert lines[5:9] == ["12", "9", "6", "3"], "The knells must toll exactly 12, 9, 6, 3 -- a range starting at 12 with a step of -3."`,
+          successText: 'Five silences and four knells, in perfect order. Something below has learned your rhythm.',
+          xp: 20,
+        },
+        {
+          id: 'a2l2x2',
+          kind: 'echo',
+          title: 'The Word in the Arch',
+          prompt: 'A single word is scratched into the eastern arch, and beneath it a '
+            + 'line of even-numbered tally marks. Read both back to the dark.\n\n'
+            + 'Write a program that:\n\n'
+            + '- Using a `for` loop over the string `"bane"`, prints each of its four letters on its own line.\n'
+            + '- Using a `for` loop and a three-number `range`, prints the even numbers from `2` to `10` (2, 4, 6, 8, 10), each on its own line.\n\n'
+            + 'Nine lines in all.',
+          starter: py`# First the word, letter by letter. Then the even marks, 2 through 10.
+`,
+          solution: py`for letter in "bane":
+    print(letter)
+
+for n in range(2, 11, 2):
+    print(n)`,
+          hints: [
+            'A string is a procession of characters: for letter in "bane": hands you each one in turn -- print the loop variable.',
+            'To include 10, the wall must stand past it: range(2, 11, 2). The stop is never touched, so 11 lets 10 through.',
+          ],
+          validation: py`lines = [l.strip() for l in _stdout.splitlines() if l.strip()]
+assert len(lines) == 9, f"The arch heard {len(lines)} lines, not 9 (four letters + five even marks)."
+assert lines[0:4] == ["b", "a", "n", "e"], "The word must be spelled b, a, n, e -- loop over the string itself and print each letter."
+assert lines[4:9] == ["2", "4", "6", "8", "10"], "The marks must run 2, 4, 6, 8, 10 -- start at 2, step by 2, and stop PAST 10 (11 serves)."`,
+          successText: 'The word hangs in the air a moment longer than your voice should allow.',
+          xp: 15,
+        },
+      ],
+
+      trace: [
+        {
+          id: 'a2l2t1',
+          code: py`for n in range(10, 4, -2):
+    print(n)`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            '10\n8\n6\n4',
+            '10\n8\n6',
+            'Nothing — a range cannot walk downward',
+            '10\n9\n8\n7\n6\n5',
+          ],
+          answer: 1,
+          explain: 'A negative step walks down perfectly well: 10, 8, 6. The next stride '
+            + 'lands on 4 — the stop, which is never included, descending or not. The '
+            + 'last option forgets the step entirely and shuffles down by ones.',
+        },
+        {
+          id: 'a2l2t2',
+          code: py`total = 0
+for n in range(1, 5):
+    total += n
+print(total)`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            '15',
+            '6',
+            '0',
+            '10',
+          ],
+          answer: 3,
+          explain: 'range(1, 5) yields 1, 2, 3, 4 — never the stop — and their sum is 10. '
+            + 'The answer 15 lets the 5 in; 6 stops a stride too early (1+2+3); 0 forgets '
+            + 'that the loop body runs at all, gathering as it goes.',
+        },
+      ],
     },
 
     // ----------------------------------------------------------
@@ -433,6 +666,33 @@ print(fallen)                    # Gandalf`,
           note: '`.remove` wants a **value**; `.pop` wants an **index**. Confuse the two '
             + 'and the wrong name is struck from the roll — an error the mines rarely '
             + 'let you amend.',
+        },
+        {
+          heading: 'Autopsy: the box that never was',
+          body: 'You may believe, by now, that a variable is a **box** — that '
+            + '`roll = ["Balin", "Oin"]` puts a list inside a box named `roll`, and that '
+            + '`watch = roll` fills a second box with a copy of its own. The belief has '
+            + 'served you since your first line of Act I. The Codex keeps its failed '
+            + 'models preserved in jars, and it opens this one here, where it dies.\n\n'
+            + 'If the box-model were true, the working below would print `2` — only the '
+            + 'second box grew — and then `False`, two boxes being two separate things. '
+            + 'Commit to that prediction before you read past the code:',
+          code: py`roll = ["Balin", "Oin"]
+watch = roll                  # a second box, holding a copy?
+watch.append("Ori")
+print(len(roll))              # the box-model predicts: 2
+print(watch is roll)          # ...and predicts: False
+print(id(watch) == id(roll))  # every object bears one serial number`,
+          note: 'It prints `3`, then `True`, then `True`. The box-model is wrong twice, '
+            + 'and the truth is this: **names bind to objects; assignment copies the '
+            + 'binding, never the object.** There is exactly one list here wearing two '
+            + 'name-tags — `is` confirms it, and `id()`, the object’s serial number, '
+            + 'agrees. A change made through either name is seen through both, because '
+            + 'there is no "both". To truly copy a roll, say so deliberately: '
+            + '`watch = roll[:]` or `watch = list(roll)`. Honor the dead model as you '
+            + 'jar it: through all of Act I it never lied to you, for numbers and '
+            + 'strings are never changed in place, only replaced — binding and copying '
+            + 'looked identical until tonight, at the first vessel that can change.',
         },
       ],
       challenge: {
@@ -529,6 +789,197 @@ assert lines[-1] == "Frodo", "The last printed line must be the rearguard: Frodo
           explain: '.remove searches for the first equal value and deletes it, returning '
             + 'nothing. .pop takes an index, deletes what lives there, and hands it back '
             + 'to you — which is why you can catch it in a variable.',
+        },
+      ],
+
+      extras: [
+        {
+          id: 'a2l3x1',
+          kind: 'echo',
+          title: 'The Relic Chest',
+          prompt: 'The company’s chest is opened once, at the door of the deep, and '
+            + 'everything that enters or leaves it must be accounted for.\n\n'
+            + 'Write a program that:\n\n'
+            + '- Creates a list named `chest` containing exactly these four relics, in order: `"axe"`, `"lantern"`, `"rope"`, `"horn"`.\n'
+            + '- Appends `"map"`.\n'
+            + '- Inserts `"key"` at index `2`.\n'
+            + '- Removes `"rope"` by value.\n'
+            + '- Pops the LAST relic — `.pop()` with no index — and stores what it returns in a variable named `taken`.\n'
+            + '- Prints `taken`, then `len(chest)` on its own line, then `chest[0]` on its own line.',
+          starter: py`# The chest is opened once. Account for everything.
+
+# TODO: build chest (axe, lantern, rope, horn); append "map"; insert "key" at 2;
+# remove "rope"; taken = pop the LAST relic; print taken, len(chest), chest[0]
+`,
+          solution: py`chest = ["axe", "lantern", "rope", "horn"]
+chest.append("map")
+chest.insert(2, "key")
+chest.remove("rope")
+taken = chest.pop()
+print(taken)
+print(len(chest))
+print(chest[0])`,
+          hints: [
+            '.append adds at the end, .insert(2, "key") pushes in at index 2, .remove strikes a value by name -- and .pop() with empty parentheses takes the LAST thing in the chest, handing it back.',
+            'The rites in order: chest.append("map"), chest.insert(2, "key"), chest.remove("rope"), taken = chest.pop() -- then print taken, len(chest), and chest[0].',
+          ],
+          validation: py`assert isinstance(chest, list), "chest must be a list -- square brackets, four relics to start."
+assert chest == ["axe", "lantern", "key", "horn"], f"The chest holds {chest} -- expected ['axe', 'lantern', 'key', 'horn']. Walk the rites in order: build, append, insert at 2, remove, pop the last."
+assert taken == "map", "pop() with no index takes the LAST relic -- catch what it returns in a variable named taken."
+lines = [l.strip() for l in _stdout.splitlines() if l.strip()]
+assert len(lines) >= 3, "Three lines must be printed: what was taken, the count, the first relic."
+assert lines[0] == "map", "The first printed line must be taken -- the ledger records what left the chest."
+assert lines[1] == "4", "The second printed line must be len(chest) -- four relics remain."
+assert lines[2] == "axe", "The third printed line must be chest[0] -- the first relic, still in its place."`,
+          successText: 'Four relics, one taken, all accounted for. The dark audits carelessness at unkind rates.',
+          xp: 20,
+        },
+        {
+          id: 'a2l3x2',
+          kind: 'echo',
+          title: 'Vanguard and Rearguard',
+          prompt: 'The marching order is fixed and must not be disturbed — but the '
+            + 'watch-captain wants copies: who walks at the front, who guards the rear.\n\n'
+            + 'The starter gives you `line`. Write a program that:\n\n'
+            + '- Builds `vanguard` — the FIRST two names, cut with a slice.\n'
+            + '- Builds `rearguard` — the LAST two names, cut with a slice built on negative indexes.\n'
+            + '- Prints `vanguard`, then `rearguard`, then `line[3]` on its own line, then `len(line)` on its own line — which must still be `6`: a slice copies, it does not wound.',
+          starter: py`# The marching order. Cut copies; wound nothing.
+line = ["Gandalf", "Aragorn", "Sam", "Frodo", "Legolas", "Gimli"]
+
+# TODO: vanguard = first two (slice); rearguard = last two (negative slice);
+# print vanguard, rearguard, line[3], len(line)
+`,
+          solution: py`line = ["Gandalf", "Aragorn", "Sam", "Frodo", "Legolas", "Gimli"]
+vanguard = line[:2]
+rearguard = line[-2:]
+print(vanguard)
+print(rearguard)
+print(line[3])
+print(len(line))`,
+          hints: [
+            'A slice that omits its start begins at the front: line[:2]. Negative indexes slice too: line[-2:] runs from the second-from-last to the end.',
+            'Four prints, in order: print(vanguard), print(rearguard), print(line[3]), print(len(line)). The slices copied; the line still holds six.',
+          ],
+          validation: py`assert vanguard == ["Gandalf", "Aragorn"], f"vanguard reads {vanguard} -- it must be the first two, cut with a slice such as line[:2]."
+assert rearguard == ["Legolas", "Gimli"], f"rearguard reads {rearguard} -- the last two, cut with negative indexes: line[-2:]."
+assert line == ["Gandalf", "Aragorn", "Sam", "Frodo", "Legolas", "Gimli"], "The line itself has been disturbed -- a slice is a copy; the original must be untouched."
+lines = [l.strip() for l in _stdout.splitlines() if l.strip()]
+assert len(lines) >= 4, "Four lines must be printed: the vanguard, the rearguard, the fourth walker, the count."
+assert lines[0] == "['Gandalf', 'Aragorn']", "The first printed line must be the vanguard list itself."
+assert lines[1] == "['Legolas', 'Gimli']", "The second printed line must be the rearguard list itself."
+assert lines[2] == "Frodo", "The third printed line must be line[3] -- indexes count from 0, so the fourth walker is Frodo."
+assert lines[3] == "6", "The last printed line must be len(line): all six still march."`,
+          successText: 'The captain takes the copies. The line marches on, unwounded and unaware.',
+          xp: 20,
+        },
+        {
+          id: 'a2l3x3',
+          kind: 'cursed',
+          title: 'The Posting-Rite',
+          prompt: 'A scroll from the Second Hall, found still warm beside its keeper. '
+            + 'Its rite posts the mustered watch to their stations, and it runs without '
+            + 'a single error — yet the hall stands half-guarded. Six names were '
+            + 'mustered last night; the rite swears it walked the whole roll, but only '
+            + 'three dwarves stand at their posts, and the other three swear no one '
+            + 'ever called them. No exception. No warning. Just a watch that comes '
+            + 'back short.\n\n'
+            + 'Mend the rite **in place** — the wound is one line. When it is healed, '
+            + '`post_the_watch` must return EVERY mustered name, in muster order, and '
+            + 'must leave the muster list itself empty.',
+          starter: py`# THE POSTING-RITE -- found among the last keeper's effects.
+# It runs clean and it lies. Mend it IN PLACE; do not rewrite it from nothing.
+
+def post_the_watch(muster):
+    # Move every name from the muster to its post, in order.
+    # When the rite ends, the muster must be empty: everyone posted.
+    posted = []
+    for name in muster:
+        posted.append(name)
+        muster.remove(name)
+    return posted
+
+watch = ["Balin", "Frar", "Loni", "Nali", "Ori", "Floi"]
+posted = post_the_watch(watch)
+print(f"{len(posted)} stand at their posts")
+print(f"{len(watch)} names were never called")`,
+          solution: py`# THE POSTING-RITE -- mended.
+
+def post_the_watch(muster):
+    # Move every name from the muster to its post, in order.
+    # When the rite ends, the muster must be empty: everyone posted.
+    posted = []
+    for name in muster[:]:      # walk a COPY; strike from the original
+        posted.append(name)
+        muster.remove(name)
+    return posted
+
+watch = ["Balin", "Frar", "Loni", "Nali", "Ori", "Floi"]
+posted = post_the_watch(watch)
+print(f"{len(posted)} stand at their posts")
+print(f"{len(watch)} names were never called")`,
+          hints: [
+            'Make the rite confess before you cut: put print(name, muster) as the first line inside the loop and run it. Count how many names the loop actually greets, and watch what the muster looks like while it is being walked.',
+            'You are trusting the loop to walk the muster as it stood when the loop began. It does not. A for loop reads the LIVING list by position, and every .remove shifts what remains one place left -- the next name steps into the struck one’s place, and the loop strides straight over it.',
+            'Never mutate the procession you are walking. Walk a copy and strike from the original -- for name in muster[:]: -- or drain the list with while muster: posted.append(muster.pop(0)). Either mend is lawful; the loop head is the wounded line.',
+          ],
+          validation: py`squad = ["Oin", "Nain", "Frar", "Frar"]
+got = post_the_watch(squad)
+assert got == ["Oin", "Nain", "Frar", "Frar"], f"A muster of four posted {got} -- every name must be posted, in muster order. The rite still skips whoever follows a struck name."
+assert squad == [], f"The muster still holds {squad} -- when the rite ends, every name must have been struck from it."
+lone = ["Durin"]
+assert post_the_watch(lone) == ["Durin"] and lone == [], "A muster of one: the single name must be posted and the muster left empty."
+none_mustered = []
+assert post_the_watch(none_mustered) == [], "An empty muster posts no one -- and must not raise."
+lines = [l.strip() for l in _stdout.splitlines() if l.strip()]
+assert "6 stand at their posts" in lines, "The scroll's own casting must report: 6 stand at their posts"
+assert "0 names were never called" in lines, "The scroll's own casting must report: 0 names were never called"`,
+          successText: 'The rite is mended, and the bug has its true name — mutation while iterating: strike from a list while walking it, and the walk skips whoever steps into the struck one’s place.',
+          xp: 30,
+        },
+      ],
+
+      trace: [
+        {
+          id: 'a2l3t1',
+          code: py`roll = ["Balin", "Oin"]
+watch = roll
+watch.append("Ori")
+print(len(roll))
+print(watch is roll)`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            '2\nFalse',
+            '3\nTrue',
+            '2\nTrue',
+            '3\nFalse',
+          ],
+          answer: 1,
+          explain: 'The autopsy’s law: names bind to objects, and assignment copies the '
+            + 'binding, never the object. watch and roll are two name-tags on ONE list, '
+            + 'so the append is seen through both names (3) and `is` confirms a single '
+            + 'object (True). The box-model answers 2 and False — wrong twice.',
+        },
+        {
+          id: 'a2l3t2',
+          code: py`line = ["Gandalf", "Aragorn", "Legolas", "Gimli"]
+rear = line[1:3]
+rear.append("Frodo")
+print(rear)
+print(len(line))`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            "['Aragorn', 'Legolas', 'Frodo']\n4",
+            "['Aragorn', 'Legolas', 'Gimli', 'Frodo']\n4",
+            "['Aragorn', 'Legolas', 'Frodo']\n5",
+            "['Legolas', 'Gimli', 'Frodo']\n4",
+          ],
+          answer: 0,
+          explain: 'A slice is a COPY: line[1:3] takes indexes 1 and 2 — the stop is a '
+            + 'wall — giving a new list that grows to three when Frodo joins, while the '
+            + 'original still holds four. The second option lets the stop in; the third '
+            + 'imagines the slice aliasing the original; the fourth counts positions '
+            + 'from 1 instead of 0.',
         },
       ],
     },
@@ -705,6 +1156,130 @@ assert lines[-2:] == ["Ori", "Oin"], "The last two printed lines must be the swa
             + 'shrinks, or is amended wants a list.',
         },
       ],
+
+      extras: [
+        {
+          id: 'a2l4x1',
+          kind: 'echo',
+          title: 'The Second Stone',
+          prompt: 'Another slab waits in the Chamber of Records, and the chisel is '
+            + 'still warm from the first.\n\n'
+            + 'Write a program that:\n\n'
+            + '- Creates a tuple named `stone` holding exactly these three values, in order: `"Frar"`, `"warden of the bridge"`, `2989`.\n'
+            + '- Unpacks `stone` into three variables named `name`, `rank`, and `year`, in a single line.\n'
+            + '- Prints one line, exactly: `Frar, warden of the bridge` — built from `name` and `rank`.\n'
+            + '- Prints a second line, exactly: `Taken in the year 2989` — built from `year`, not retyped.\n'
+            + '- The two watches below stand at the wrong doors: swaps `gate_watch` and `deep_watch` in ONE line, with tuple packing — no third variable.\n'
+            + '- Prints `gate_watch`, then `deep_watch`, each on its own line.',
+          starter: py`# A second stone. Cut once; read forever.
+gate_watch = "Nali"
+deep_watch = "Loni"
+
+# TODO: stone = the three values; unpack into name, rank, year;
+# print the two carved lines; swap the watches in one line; print both
+`,
+          solution: py`gate_watch = "Nali"
+deep_watch = "Loni"
+
+stone = ("Frar", "warden of the bridge", 2989)
+name, rank, year = stone
+print(f"{name}, {rank}")
+print(f"Taken in the year {year}")
+gate_watch, deep_watch = deep_watch, gate_watch
+print(gate_watch)
+print(deep_watch)`,
+          hints: [
+            'Carve, then read: stone = ("Frar", "warden of the bridge", 2989) and name, rank, year = stone -- three names on the left for three parts, in order.',
+            'The swap needs no third hand: gate_watch, deep_watch = deep_watch, gate_watch. Python packs the right side before it touches the left.',
+          ],
+          validation: py`assert isinstance(stone, tuple), "stone must be a tuple -- parentheses, not square brackets. The stone does not bend."
+assert stone == ("Frar", "warden of the bridge", 2989), f"The stone reads {stone} -- it must be exactly ('Frar', 'warden of the bridge', 2989)."
+assert name == "Frar" and rank == "warden of the bridge" and year == 2989, "Unpack stone into name, rank, year in one line -- each takes its part, in order."
+assert gate_watch == "Loni" and deep_watch == "Nali", "The watches still stand at the wrong doors -- swap them in ONE line: gate_watch, deep_watch = deep_watch, gate_watch"
+lines = [l.strip() for l in _stdout.splitlines() if l.strip()]
+assert "Frar, warden of the bridge" in lines, "The first carved line must read exactly: Frar, warden of the bridge"
+assert "Taken in the year 2989" in lines, "The second carved line must read exactly: Taken in the year 2989 -- built from the year variable."
+assert lines[-2:] == ["Loni", "Nali"], "The last two printed lines must be the swapped watches: Loni, then Nali."`,
+          successText: 'The stone takes the words, and the doors take their proper wards. Neither will move again.',
+          xp: 20,
+        },
+        {
+          id: 'a2l4x2',
+          kind: 'echo',
+          title: 'The Marker in the Third Hall',
+          prompt: 'A waymarker must be recorded before the descent: where it stands, '
+            + 'and how deep. And one name must be carved alone — mind the comma.\n\n'
+            + 'Write a program that:\n\n'
+            + '- Creates a tuple named `post` by PACKING two values — `"third hall"` and `21` — the commas do the work; parentheses are optional.\n'
+            + '- Unpacks `post` into `hall` and `depth` in one line.\n'
+            + '- Prints exactly: `The marker stands in the third hall` — built from `hall` with an f-string.\n'
+            + '- Prints exactly: `21 fathoms down` — built from `depth`.\n'
+            + '- Creates `lone` — a tuple holding ONLY the value `"Durin"` — and prints `len(lone)` on its own line.',
+          starter: py`# One marker, one depth, one name carved alone.
+`,
+          solution: py`post = "third hall", 21
+hall, depth = post
+print(f"The marker stands in the {hall}")
+print(f"{depth} fathoms down")
+lone = ("Durin",)
+print(len(lone))`,
+          hints: [
+            'Packing is the commas: post = "third hall", 21. Unpacking mirrors it: hall, depth = post.',
+            'A one-value tuple keeps its comma: lone = ("Durin",). Without the comma the parentheses are mere grouping, and you have carved nothing but a string.',
+          ],
+          validation: py`assert isinstance(post, tuple) and post == ("third hall", 21), f"post reads {post!r} -- pack exactly 'third hall' and 21, in that order; the commas do the work."
+assert hall == "third hall" and depth == 21, "Unpack post into hall and depth in one line: hall, depth = post"
+assert isinstance(lone, tuple), "lone must be a tuple -- without its trailing comma, ('Durin') is only a string in parentheses."
+assert len(lone) == 1 and lone[0] == "Durin", f"lone reads {lone!r} -- a tuple of exactly ONE value: ('Durin',)."
+lines = [l.strip() for l in _stdout.splitlines() if l.strip()]
+assert "The marker stands in the third hall" in lines, "The first line must read exactly: The marker stands in the third hall"
+assert "21 fathoms down" in lines, "The second line must read exactly: 21 fathoms down -- built from depth."
+assert lines[-1] == "1", "The last printed line must be len(lone) -- one value, one member: 1."`,
+          successText: 'The marker is fixed, and the lone name keeps its comma like a held breath.',
+          xp: 15,
+        },
+      ],
+
+      trace: [
+        {
+          id: 'a2l4t1',
+          code: py`tomb = ("Balin", "Fundin", "Nain", "Durin")
+print(tomb[-2])
+print(tomb[1])`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            'Fundin\nNain',
+            'Nain\nBalin',
+            'Nain\nFundin',
+            'An IndexError — indexes cannot be negative',
+          ],
+          answer: 2,
+          explain: 'Negative indexes count backward from the end: -1 is Durin, so -2 is '
+            + 'Nain. Forward indexes count from 0, so tomb[1] is Fundin, the SECOND '
+            + 'name — the option answering Balin counts from 1. Python permits negative '
+            + 'indexes precisely so you need not know the length first.',
+        },
+        {
+          id: 'a2l4t2',
+          code: py`oath = ("stone", "silence", "iron")
+print(oath[0])
+oath[2] = "gold"
+print(oath)`,
+          q: 'The scrying: what becomes of this working?',
+          options: [
+            "It prints stone, then ('stone', 'silence', 'gold')",
+            "It prints stone, then ('stone', 'silence', 'iron') — the change is ignored",
+            'Nothing — Python refuses the program before any line runs',
+            'It prints stone — then dies of a TypeError: a tuple cannot be assigned to',
+          ],
+          answer: 3,
+          raises: 'TypeError',
+          explain: 'Python runs top to bottom, so the first print speaks before anything '
+            + 'goes wrong — then the item assignment raises TypeError, because tuples do '
+            + 'not bend. Nothing is ever silently ignored, and this is a runtime death, '
+            + 'not a refusal: the program is legal to read, fatal to run.',
+        },
+      ],
     },
 
     // ----------------------------------------------------------
@@ -877,6 +1452,134 @@ assert lines[-3:] == ["Balin: fallen", "Ori: alive", "Floi: fallen"], "The three
           answer: 1,
           explain: 'On a dictionary, `in` asks only about keys. To search the fates '
             + 'rather than the names, ask `"Balin" in book.values()`.',
+        },
+      ],
+
+      extras: [
+        {
+          id: 'a2l5x1',
+          kind: 'echo',
+          title: 'The Ledger of the Gates',
+          prompt: 'The Book of Mazarbul is not the only register in the deep. The '
+            + 'gate-ledger tracks every door the hold still claims, and keeping it '
+            + 'current has just become your duty too.\n\n'
+            + 'Write a program that:\n\n'
+            + '- Creates a dict named `gates` with exactly these three entries, in this order: `"west gate"` mapped to `"open"`, `"east gate"` mapped to `"open"`, `"north stair"` mapped to `"open"`.\n'
+            + '- Rewrites the entry for `"west gate"` to `"sealed"`.\n'
+            + '- Adds a new entry: `"deep gate"` mapped to `"sealed"`.\n'
+            + '- Deletes the `"north stair"` entry entirely, with `del`.\n'
+            + '- Asks the ledger safely about `"south door"` using `.get()` with the default `"unknown"`, and prints the answer.\n'
+            + '- Loops over `gates.items()` and prints one line per entry in the form `name: state`.\n\n'
+            + 'Four printed lines: the safe answer, then the three doors in the ledger’s own order.',
+          starter: py`# The gate-ledger. What it does not record, the hold does not hold.
+
+# TODO: build gates (three entries); reseal the west; add the deep gate;
+# del the north stair; print gates.get("south door", "unknown");
+# then print every entry as  name: state
+`,
+          solution: py`gates = {"west gate": "open", "east gate": "open", "north stair": "open"}
+gates["west gate"] = "sealed"
+gates["deep gate"] = "sealed"
+del gates["north stair"]
+print(gates.get("south door", "unknown"))
+for name, state in gates.items():
+    print(f"{name}: {state}")`,
+          hints: [
+            'Build once with braces, then edit: square brackets rewrite an existing key or add a new one, and del gates["north stair"] tears the page out.',
+            'The safe question is gates.get("south door", "unknown") -- and the reading is for name, state in gates.items(): print(f"{name}: {state}").',
+          ],
+          validation: py`assert isinstance(gates, dict), "gates must be a dictionary -- curly braces binding each door to a state."
+assert "north stair" not in gates, "The north stair page must be torn out with del, not rewritten."
+assert gates == {"west gate": "sealed", "east gate": "open", "deep gate": "sealed"}, f"The ledger reads {gates} -- expected west gate: sealed, east gate: open, deep gate: sealed, and no page for the north stair."
+lines = [l.strip() for l in _stdout.splitlines() if l.strip()]
+assert "unknown" in lines, "Ask after the south door with .get and the default 'unknown', and print what the ledger answers."
+assert lines[-3:] == ["west gate: sealed", "east gate: open", "deep gate: sealed"], "The three doors must be read in the ledger's own order -- west, east, deep -- by looping over gates.items()."`,
+          successText: 'Three doors, three verdicts, and one question the ledger could not answer. Yet.',
+          xp: 20,
+        },
+        {
+          id: 'a2l5x2',
+          kind: 'echo',
+          title: 'The Ration Count',
+          prompt: 'The stores must be counted against the winter below. Entries are '
+            + 'not only written and torn — they are *re-reckoned*, each new value '
+            + 'computed from the old one.\n\n'
+            + 'Write a program that:\n\n'
+            + '- Creates a dict named `stores` with exactly these entries, in this order: `"grain"` mapped to `40`, `"oil"` mapped to `12`, `"salt"` mapped to `9`.\n'
+            + '- The third deep draws its share: rewrites `"grain"` to its CURRENT value minus `15` — read the old value in the same line that stores the new.\n'
+            + '- Adds a new entry: `"waybread"` mapped to `6`.\n'
+            + '- Prints `len(stores)`, then prints whether `"oil"` is `in` `stores` (it should print `True`).\n'
+            + '- Loops over `stores.items()` and prints one line per entry in the form `name: count` — for example `oil: 12`.\n\n'
+            + 'Six printed lines in all.',
+          starter: py`# The winter count. The deep draws first; the ledger records all.
+
+# TODO: build stores; grain loses 15 (computed, not retyped); add waybread -> 6;
+# print len(stores), then "oil" in stores, then every entry as  name: count
+`,
+          solution: py`stores = {"grain": 40, "oil": 12, "salt": 9}
+stores["grain"] = stores["grain"] - 15
+stores["waybread"] = 6
+print(len(stores))
+print("oil" in stores)
+for name, count in stores.items():
+    print(f"{name}: {count}")`,
+          hints: [
+            'A value is rewritten through its own reading: stores["grain"] = stores["grain"] - 15 -- the right side reads the old number before the left side stores the new.',
+            'Then print(len(stores)), print("oil" in stores), and the items() loop printing f"{name}: {count}" for each entry.',
+          ],
+          validation: py`assert isinstance(stores, dict), "stores must be a dictionary -- braces, each provision bound to its count."
+assert stores.get("grain") == 25, f"grain reads {stores.get('grain')} -- it must be re-reckoned from its own value: 40 minus the deep's 15 is 25."
+assert stores == {"grain": 25, "oil": 12, "salt": 9, "waybread": 6}, f"The stores read {stores} -- expected grain: 25, oil: 12, salt: 9, waybread: 6."
+lines = [l.strip() for l in _stdout.splitlines() if l.strip()]
+assert len(lines) == 6, f"The count spoke {len(lines)} lines, not 6 -- the size, the oil question, and four entries."
+assert lines[0] == "4", "The first printed line must be len(stores) -- four provisions after the additions."
+assert lines[1] == "True", "The second line asks whether 'oil' is in stores -- in examines keys, and it should answer True."
+assert lines[2:] == ["grain: 25", "oil: 12", "salt: 9", "waybread: 6"], "Read every entry in the ledger's own order: name, colon, space, count."`,
+          successText: 'The winter is counted. Whether it is survivable is a different ledger.',
+          xp: 20,
+        },
+      ],
+
+      trace: [
+        {
+          id: 'a2l5t1',
+          code: py`book = {"Ori": "alive", "Balin": "alive"}
+book["Balin"] = "fallen"
+book["Floi"] = "lost"
+for name in book:
+    print(name)`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            'Ori\nBalin\nFloi',
+            'Balin\nFloi\nOri',
+            'alive\nfallen\nlost',
+            'Ori\nBalin\nBalin\nFloi',
+          ],
+          answer: 0,
+          explain: 'A dict keeps INSERTION order: Ori was written first, Balin second — '
+            + 'and rewriting Balin changes his fate, never his place, one entry per key. '
+            + 'Floi, the only new key, joins at the end. Dicts never alphabetize, and '
+            + 'looping one bare yields KEYS, not values — the fates go unspoken.',
+        },
+        {
+          id: 'a2l5t2',
+          code: py`fates = {"Balin": "fallen"}
+print(fates.get("Balin", "unrecorded"))
+print(fates.get("Oin"))
+print(len(fates))`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            'fallen\nunrecorded\n1',
+            'unrecorded\nNone\n1',
+            'fallen\nNone\n1',
+            'fallen\nA KeyError is raised for Oin',
+          ],
+          answer: 2,
+          explain: 'When the key exists, .get returns the stored value and the default is '
+            + 'never consulted; when it is missing and no default was given, .get answers '
+            + 'None. It NEVER raises — that is square-bracket lookup’s violence — and it '
+            + 'never writes: the book still holds one page. The first option imagines the '
+            + 'earlier default carrying over to a later question.',
         },
       ],
     },
@@ -1053,6 +1756,143 @@ assert lines[3] == "['cave troll']", "The fourth line must be sorted(west_only).
           answer: 3,
           explain: 'A set keeps no order, so indexing is meaningless and raises TypeError. '
             + 'To display one predictably, sort it into a list first: sorted(horde).',
+        },
+      ],
+
+      extras: [
+        {
+          id: 'a2l6x1',
+          kind: 'echo',
+          title: 'The Tally of the Bridge',
+          prompt: 'The bridge-watch shouts its sightings down the hall, and fear '
+            + 'repeats itself. The stair-watch keeps a cleaner slate. Weigh the two '
+            + 'against each other.\n\n'
+            + 'The starter gives you `reports` and `stair_watch`. Write a program that:\n\n'
+            + '- Builds a set named `bridge_watch` from the `reports` list, collapsing the duplicates.\n'
+            + '- Adds `"wight"` to `bridge_watch`.\n'
+            + '- Strikes `"bat"` from `bridge_watch` using `.discard()` — that report was withdrawn.\n'
+            + '- Builds `both` — the creatures on BOTH slates (intersection).\n'
+            + '- Builds `either` — the creatures on EITHER slate (union).\n'
+            + '- Builds `bridge_only` — the creatures the bridge alone saw (difference, bridge minus stair).\n'
+            + '- Prints four lines, in order: `len(bridge_watch)`, then `sorted(either)`, then `sorted(both)`, then `sorted(bridge_only)`.',
+          starter: py`# Raw shouts from the bridge; a clean slate from the stair.
+reports = ["orc", "bat", "orc", "wraith", "bat"]
+stair_watch = {"orc", "ghoul"}
+
+# TODO: bridge_watch = set of reports; add the wight; discard the bat;
+# both / either / bridge_only; print len, sorted either, sorted both, sorted bridge_only
+`,
+          solution: py`reports = ["orc", "bat", "orc", "wraith", "bat"]
+stair_watch = {"orc", "ghoul"}
+
+bridge_watch = set(reports)
+bridge_watch.add("wight")
+bridge_watch.discard("bat")
+both = bridge_watch & stair_watch
+either = bridge_watch | stair_watch
+bridge_only = bridge_watch - stair_watch
+print(len(bridge_watch))
+print(sorted(either))
+print(sorted(both))
+print(sorted(bridge_only))`,
+          hints: [
+            'set(reports) melts the repetitions on contact; .add and .discard then adjust the slate one shape at a time.',
+            'The weighings are operators: & for both, | for either, - for the bridge alone. Print each through sorted() so the unordered slate speaks in a fixed order.',
+          ],
+          validation: py`assert isinstance(bridge_watch, set), "bridge_watch must be a set -- build it with set(reports)."
+assert bridge_watch == {"orc", "wraith", "wight"}, f"The bridge slate holds {sorted(bridge_watch)} -- expected orc, wight, wraith. Dedupe the reports, add the wight, discard the bat."
+assert both == {"orc"}, "both must be the intersection of the two slates -- the & operator."
+assert either == {"orc", "wraith", "wight", "ghoul"}, "either must be the union of the two slates -- the | operator."
+assert bridge_only == {"wraith", "wight"}, "bridge_only must be the difference bridge_watch - stair_watch, in that order."
+lines = [l.strip() for l in _stdout.splitlines() if l.strip()]
+assert len(lines) >= 4, "Four lines must be printed: the count, the union, the intersection, the bridge's own."
+assert lines[0] == "3", "The first printed line must be len(bridge_watch) -- three shapes."
+assert lines[1] == "['ghoul', 'orc', 'wight', 'wraith']", "The second line must be sorted(either), printed as the list it returns."
+assert lines[2] == "['orc']", "The third line must be sorted(both) -- only the orc walks on both slates."
+assert lines[3] == "['wight', 'wraith']", "The fourth line must be sorted(bridge_only)."`,
+          successText: 'Two slates, one truth — and the bridge has seen something the stair has not.',
+          xp: 20,
+        },
+        {
+          id: 'a2l6x2',
+          kind: 'echo',
+          title: 'How Many Shapes',
+          prompt: 'Seven crossings were shouted from the causeway last night. The '
+            + 'gate-ward’s question is not how many shouts — it is how many *shapes*.\n\n'
+            + 'The starter gives you `crossings`. Write a program that:\n\n'
+            + '- Builds a set named `distinct` from the `crossings` list.\n'
+            + '- Prints `len(crossings)` — every shout, repetitions and all.\n'
+            + '- Prints `len(distinct)` — the shapes actually seen.\n'
+            + '- Prints whether `"balrog"` is `in` `distinct` (it should print `False`).\n'
+            + '- Adds `"balrog"` to `distinct` with `.add()`, then prints `len(distinct)` again.\n\n'
+            + 'Four printed lines: `7`, `3`, `False`, `4`.',
+          starter: py`# Seven shouts. Fewer shapes. Count both.
+crossings = ["orc", "orc", "warg", "orc", "troll", "warg", "orc"]
+`,
+          solution: py`crossings = ["orc", "orc", "warg", "orc", "troll", "warg", "orc"]
+distinct = set(crossings)
+print(len(crossings))
+print(len(distinct))
+print("balrog" in distinct)
+distinct.add("balrog")
+print(len(distinct))`,
+          hints: [
+            'The list counts shouts; the set counts shapes. distinct = set(crossings) is the whole first step.',
+            'Order matters at the end: ask "balrog" in distinct BEFORE the add, then distinct.add("balrog"), then the new length.',
+          ],
+          validation: py`assert isinstance(distinct, set), "distinct must be a set -- set(crossings) melts the duplicates."
+assert distinct == {"orc", "warg", "troll", "balrog"}, f"After the add, the slate must hold balrog, orc, troll, warg -- it reads {sorted(distinct)}."
+lines = [l.strip() for l in _stdout.splitlines() if l.strip()]
+assert len(lines) == 4, f"The ward heard {len(lines)} lines, not 4 -- shouts, shapes, the question, the new count."
+assert lines[0] == "7", "First print len(crossings) -- every shout, repetition and all: 7."
+assert lines[1] == "3", "Then len(distinct) -- three shapes were ever actually seen."
+assert lines[2] == "False", "Ask 'balrog' in distinct BEFORE the add -- the slate should answer False."
+assert lines[3] == "4", "After distinct.add('balrog'), the count must be 4."`,
+          successText: 'Three shapes became four. The ward does not thank you for the arithmetic.',
+          xp: 15,
+        },
+      ],
+
+      trace: [
+        {
+          id: 'a2l6t1',
+          code: py`marks = ["orc", "warg", "orc", "orc", "warg"]
+seen = set(marks)
+seen.add("warg")
+seen.discard("troll")
+print(len(seen))`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            '5',
+            '2',
+            '3',
+            'A KeyError — "troll" was never on the slate',
+          ],
+          answer: 1,
+          explain: 'set(marks) collapses five marks into two shapes: orc and warg. Adding '
+            + 'a warg the slate already knows changes nothing, and .discard keeps its '
+            + 'silence for the absent troll — it is .remove that answers absence with a '
+            + 'KeyError. Two shapes remain.',
+        },
+        {
+          id: 'a2l6t2',
+          code: py`west = {"orc", "troll"}
+east = {"orc", "warg"}
+print(sorted(west & east))
+print(sorted(west - east))`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            "['orc', 'troll', 'warg']\n['troll']",
+            "['orc']\n['warg']",
+            "{'orc'}\n{'troll'}",
+            "['orc']\n['troll']",
+          ],
+          answer: 3,
+          explain: '& keeps only what BOTH doors saw — the orc — and - keeps what the '
+            + 'west alone saw: the troll, since the difference reads left to right. And '
+            + 'sorted() returns a LIST, so the display wears square brackets, not '
+            + 'braces. The first option mistakes & for the union |; the second reverses '
+            + 'the difference.',
         },
       ],
     },
@@ -1262,6 +2102,130 @@ assert lines[2] == "5", "The third printed line must be rune_count['balin'] -- f
             + '— the same tuple unpacking used throughout this act.',
         },
       ],
+
+      extras: [
+        {
+          id: 'a2l7x1',
+          kind: 'echo',
+          title: 'Patterns for the East Wall',
+          prompt: 'The east wall wants patterns of its own, cut in the smiths’ '
+            + 'economy: one line each. The starter gives you the raw stock: `runes` '
+            + 'and `weights`.\n\n'
+            + 'Write a program that:\n\n'
+            + '- Builds `lowered` with ONE list comprehension: every rune from `runes`, lowercased with `.lower()`, in the same order.\n'
+            + '- Builds `heavy` with ONE list comprehension using an `if`: only the numbers from `weights` greater than `20`, in their original order.\n'
+            + '- Builds `first_marks` with ONE dict comprehension: each rune from `runes` mapped to its FIRST character, `rune[0]`.\n'
+            + '- Prints three lines, in order: `len(lowered)`, then `heavy` itself, then `first_marks["KHAZAD"]`.',
+          starter: py`# The east wall. One line per pattern; the fold is the point.
+runes = ["KHAZAD", "DUM", "BARUK"]
+weights = [25, 8, 31, 14]
+`,
+          solution: py`runes = ["KHAZAD", "DUM", "BARUK"]
+weights = [25, 8, 31, 14]
+
+lowered = [rune.lower() for rune in runes]
+heavy = [w for w in weights if w > 20]
+first_marks = {rune: rune[0] for rune in runes}
+print(len(lowered))
+print(heavy)
+print(first_marks["KHAZAD"])`,
+          hints: [
+            'Each fold is one line: the transform rides at the front ([rune.lower() for ...]), the filter trails the for (if w > 20), and the dict fold keeps a colon between key and value.',
+            'The three folds: lowered = [r.lower() for r in runes], heavy = [w for w in weights if w > 20], first_marks = {r: r[0] for r in runes} -- then the three prints.',
+          ],
+          validation: py`assert lowered == ["khazad", "dum", "baruk"], f"lowered reads {lowered} -- every rune from runes, lowercased, in the same order."
+assert heavy == [25, 31], f"heavy reads {heavy} -- keep only the weights greater than 20, in their original order."
+assert isinstance(first_marks, dict), "first_marks must be a dict -- braces, with rune: rune[0] inside."
+assert first_marks == {"KHAZAD": "K", "DUM": "D", "BARUK": "B"}, f"first_marks reads {first_marks} -- each rune mapped to its FIRST character, rune[0]."
+lines = [l.strip() for l in _stdout.splitlines() if l.strip()]
+assert len(lines) >= 3, "Three lines must be printed: the count, the heavy list, the first mark of KHAZAD."
+assert lines[0] == "3", "The first printed line must be len(lowered) -- three runes were lowered."
+assert lines[1] == "[25, 31]", "The second printed line must be the heavy list itself."
+assert lines[2] == "K", "The third printed line must be first_marks['KHAZAD'] -- the single character K."`,
+          successText: 'Three patterns, three lines. The wall accepts them without comment, which is how walls approve.',
+          xp: 20,
+        },
+        {
+          id: 'a2l7x2',
+          kind: 'echo',
+          title: 'Numbered and Posted',
+          prompt: 'The night watch must be read out twice: once numbered, once '
+            + 'posted. The starter gives you `names` and `posts` — and there is one '
+            + 'more post than there are dwarves left to fill it.\n\n'
+            + 'Write a program that:\n\n'
+            + '- Using a `for` loop and `enumerate(names, start=1)`, prints each name numbered from 1: `1. Frar`, `2. Loni`, `3. Nali`.\n'
+            + '- Using a `for` loop and `zip(names, posts)`, prints one line per pair in the form `Frar guards the gate` (an f-string: the name, ` guards the `, the post).\n\n'
+            + 'Six lines in all — the fourth post goes unguarded, and unspoken.',
+          starter: py`# Three dwarves, four posts. Number them; post them; say nothing of the gap.
+names = ["Frar", "Loni", "Nali"]
+posts = ["gate", "bridge", "stair", "well"]
+`,
+          solution: py`names = ["Frar", "Loni", "Nali"]
+posts = ["gate", "bridge", "stair", "well"]
+
+for number, name in enumerate(names, start=1):
+    print(f"{number}. {name}")
+
+for name, post in zip(names, posts):
+    print(f"{name} guards the {post}")`,
+          hints: [
+            'enumerate(names, start=1) hands two loop variables per pass -- the number and the name -- with no hand-fed counter to forget.',
+            'zip(names, posts) pairs first with first and stops with the shorter roll: for name, post in zip(names, posts): print(f"{name} guards the {post}").',
+          ],
+          validation: py`lines = [l.strip() for l in _stdout.splitlines() if l.strip()]
+assert len(lines) == 6, f"The reading spoke {len(lines)} lines, not 6 -- three numbered, three posted. zip stops with the shorter roll."
+assert lines[0] == "1. Frar", "Numbering starts at 1 -- give enumerate its start=1."
+assert lines[1] == "2. Loni" and lines[2] == "3. Nali", "The numbered reading must run: 1. Frar, 2. Loni, 3. Nali."
+assert lines[3] == "Frar guards the gate", "The posted reading begins: Frar guards the gate -- zip pairs first with first."
+assert lines[4] == "Loni guards the bridge" and lines[5] == "Nali guards the stair", "The postings must pair in step: Loni to the bridge, Nali to the stair."
+assert "well" not in _stdout, "No one guards the well -- zip pairs only while BOTH rolls last; the leftover post goes unspoken."`,
+          successText: 'Three numbered, three posted, and one well left to guard itself. It has managed so far.',
+          xp: 20,
+        },
+      ],
+
+      trace: [
+        {
+          id: 'a2l7t1',
+          code: py`depths = [4, 11, 8, 30]
+deep = [d * 2 for d in depths if d > 10]
+print(deep)
+print(len(depths))`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            '[22, 60]\n4',
+            '[8, 22, 16, 60]\n4',
+            '[11, 30]\n4',
+            '[22, 60]\n2',
+          ],
+          answer: 0,
+          explain: 'The gate admits only 11 and 30, and the expression at the front '
+            + 'doubles each as it enters: [22, 60]. The source is never touched — a '
+            + 'comprehension builds a NEW list — so depths still holds four. The second '
+            + 'option forgets the filter; the third forgets the transform; the fourth '
+            + 'imagines the source consumed by the fold.',
+        },
+        {
+          id: 'a2l7t2',
+          code: py`names = ["Frar", "Loni", "Nali"]
+for n, name in enumerate(names, start=1):
+    if n == 2:
+        continue
+    print(f"{n}. {name}")`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            '1. Frar\n2. Nali',
+            '1. Frar\n2. Loni\n3. Nali',
+            '1. Frar\n3. Nali',
+            '0. Frar\n2. Nali',
+          ],
+          answer: 2,
+          explain: 'enumerate numbers every pass — start=1, so Frar is 1, Loni 2, Nali '
+            + '3 — and continue merely silences the second pass; it does not renumber '
+            + 'the third. Nali keeps the 3 enumerate gave him. The first and last '
+            + 'options imagine the count closing over the gap.',
+        },
+      ],
     },
   ],
 
@@ -1412,8 +2376,7 @@ assert lines[-1] == "['orc', 'troll', 'goblin']", "The last line must be the gre
   // ----------------------------------------------------------
   codex: [
     { term: 'while', def: 'A loop that repeats its indented body for as long as its condition remains `True`, testing before every pass.' },
-    { term: 'break', def: 'Ends the enclosing loop immediately; execution continues at the first line after the loop.' },
-    { term: 'continue', def: 'Abandons the current pass of a loop and returns to the top for the next one.' },
+    { term: 'break / continue', def: '`break` ends the enclosing loop immediately; `continue` abandons only the current pass and returns to the condition for the next.' },
     { term: 'infinite loop', def: 'A `while` loop whose condition never becomes `False`, so it never ends — usually a counter nobody updates.' },
     { term: 'for', def: 'A loop that visits each item of a sequence in turn and stops by itself when the sequence is spent.' },
     { term: 'range()', def: 'Produces a run of numbers from a start (default 0) up to — never including — a stop, moving by a step (default 1).' },
@@ -1421,6 +2384,7 @@ assert lines[-1] == "['orc', 'troll', 'goblin']", "The last line must be the gre
     { term: 'index', def: 'A position number in a sequence, counted from 0; negative indexes count backward from the end.' },
     { term: 'slice', def: 'A copied stretch of a sequence, `seq[start:stop]`, including the start position but never the stop.' },
     { term: '.append()', def: 'Adds one value to the end of a list, changing the list in place.' },
+    { term: 'mutation while iterating', def: 'Striking items from a list while a loop walks it: each removal shifts the survivors left, and the walk silently skips whoever steps into the struck one’s place — no error, just a wrong result. Walk a copy (`items[:]`) and mutate the original.' },
     { term: 'tuple', def: 'An immutable sequence written in parentheses: read like a list, but never changed after creation.' },
     { term: 'unpacking', def: 'Splitting a sequence into named variables in one line, as in `name, year = record`; the counts on both sides must match.' },
     { term: 'dictionary', def: 'A collection of key–value pairs in curly braces; values are looked up by key, not by position.' },

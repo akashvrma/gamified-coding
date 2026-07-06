@@ -15,9 +15,10 @@ import { play } from './sound.js';
 // Thresholds tuned to the 10-act curriculum (19,683 attainable XP:
 // core 17,070 + practice extras/traces/workings/rites — see
 // tools/validate_content.mjs breakdown line): from rank 3 on, each act
-// conquered crests roughly one rank; the final rank demands
-// near-everything, reachable through core + achievements or core + the
-// optional practice riders.
+// conquered crests roughly one rank. The final rank demands
+// near-everything: core alone (17,070) and even core + all
+// achievements (18,695) fall short of 19,300 — at least ~600 XP of
+// the optional practice riders must be earned.
 export const RANKS = [
   { xp: 0,     title: 'Novice at the Threshold' },
   { xp: 200,   title: 'Initiate of Shadows' },

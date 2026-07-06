@@ -2259,6 +2259,27 @@ export function renderBoss(root, actId, { ordeal = false } = {}) {
     S.setRelic(act.id, battle.flawless || sworn.length > 0);
     // The Ordeal pays the warden's spoils and nothing more.
     const bonus = battle.flawless && !ordeal ? boss.flawlessBonus : 0;
+    // Spoils and oaths settle BEFORE the Last Rite plays: the kill is
+    // already persisted, so if the page dies mid-animation the reward
+    // must not be stranded on the far side of the await. Toasts are
+    // held, so nothing speaks before the banner stands.
+    if (first) {
+      grantXp(boss.xp + bonus, `Warden defeated — ${boss.title}`);
+      emit({ type: 'boss-defeated', actId: act.id });
+      if (S.grantEmber('warden')) {
+        toast({
+          icon: '🜂',
+          title: 'An ember is banked against the dark',
+          sub: 'A warden’s fall buys one night of grace.',
+        });
+      }
+    }
+    // The Black Oaths settle: each newly-kept oath pays once, ever.
+    const oathVerdicts = sworn.map((o) => {
+      const firstKept = S.markOathKept(act.id, o.id);
+      if (firstKept) grantXp(OATH_XP, `Oath kept — ${o.title}`);
+      return { o, firstKept };
+    });
     showBark('death');
     // The Last Rite: strength to zero, a held breath, the veil, the
     // strike, the dissolve — and only then the banner. One click skips.
@@ -2283,25 +2304,11 @@ export function renderBoss(root, actId, { ordeal = false } = {}) {
       </div>`;
     if (first) {
       countUp(arena.querySelector('[data-role="spoils"]'), 0, boss.xp + bonus, { duration: 1300 });
-      grantXp(boss.xp + bonus, `Warden defeated — ${boss.title}`);
-      emit({ type: 'boss-defeated', actId: act.id });
-      if (S.grantEmber('warden')) {
-        toast({
-          icon: '🜂',
-          title: 'An ember is banked against the dark',
-          sub: 'A warden’s fall buys one night of grace.',
-        });
-      }
     }
-    // The Black Oaths settle: each newly-kept oath pays once, ever.
-    const verdicts = sworn.map((o) => {
-      const firstKept = S.markOathKept(act.id, o.id);
-      if (firstKept) grantXp(OATH_XP, `Oath kept — ${o.title}`);
-      return `<p class="oath-kept"><span aria-hidden="true">${o.glyph}</span>
+    const verdicts = oathVerdicts.map(({ o, firstKept }) => `<p class="oath-kept"><span aria-hidden="true">${o.glyph}</span>
         <strong>${escapeHtml(o.title)}</strong> — ${firstKept
     ? 'kept. Its mark is set on the relic.'
-    : 'kept again. The mark was already yours.'}</p>`;
-    });
+    : 'kept again. The mark was already yours.'}</p>`);
     if (verdicts.length) {
       arena.querySelector('[data-role="oath-verdicts"]').innerHTML = verdicts.join('');
     }

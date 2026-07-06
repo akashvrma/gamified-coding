@@ -8,9 +8,10 @@ import * as S from './state.js';
 import { emit, grantXp, rankFor, ACHIEVEMENTS, RANKS } from './gamification.js';
 import { runPython, preboot, runnerStatus, onRunnerStatus } from './runner.js';
 import { curriculum, findLesson, findAct } from './data/curriculum.js';
-import { avatarSvg, avatarTier, TIER_NAMES, bossSvg, mapSvg } from './art.js';
-import { castBolt, burst, hitFlash, bossStrike, dissolve } from './fx.js';
-import { typewriter, bossReveal, countUp } from './cinema.js';
+import { avatarSvg, avatarTier, TIER_NAMES, bossSvg, mapSvg, relicSvg } from './art.js';
+import { castBolt, burst, hitFlash, bossStrike, pickBark } from './fx.js';
+import { typewriter, bossReveal, countUp, lastRite } from './cinema.js';
+import { mintSeal } from './share.js';
 import { setAmbient } from './ambient.js';
 import { play } from './sound.js';
 import {
@@ -110,6 +111,59 @@ function sigilTally() {
     earned += (sig.oneCast ? 1 : 0) + (sig.flawless ? 1 : 0) + (sig.unaided ? 1 : 0);
   }));
   return { earned, possible: lessons * 3 };
+}
+
+// ---------------- the arena's law books ----------------
+// Trial by Ordeal is a hard law of the first two acts only: the early
+// wardens may be faced untaught. Nothing after them ever offers it.
+const ORDEAL_ACTS = ['act1', 'act2'];
+
+// The Black Oaths: opt-in rematch modifiers on a conquered act's
+// warden. Never pre-checked (the candle above all), each pays its
+// 25 XP once per act, ever. Marks render on the Reliquary shelf.
+const OATHS = [
+  {
+    id: 'silence', glyph: '⊘', title: 'Oath of Silence',
+    desc: 'the fight explains nothing — wrong answers go uncorrected until the end',
+  },
+  {
+    id: 'breath', glyph: 'Ⅰ', title: 'Oath of One Breath',
+    desc: 'one candle, not three, carried through the whole trial',
+  },
+  {
+    id: 'candle', glyph: '⧖', title: 'Oath of the Candle',
+    desc: 'an eight-minute candle burns beside you; the fight ends when it does',
+  },
+];
+const OATH_XP = 25;
+
+// Mint a Seal of the Fallen for a conquered act — shared by the
+// victory panel and the Reliquary shelf. All facts are gathered here;
+// share.js reads nothing and fetches nothing.
+async function mintSealFor(act, btn) {
+  const st = S.getState();
+  const relic = S.relicFor(act.id) || { pristine: false };
+  const old = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Minting…';
+  try {
+    await mintSeal({
+      actId: act.id,
+      numeral: act.numeral,
+      bossTitle: act.boss.title,
+      rankTitle: rankFor(st.xp).title,
+      keptNights: Array.isArray(st.streak.history) ? st.streak.history.length : 0,
+      relicMarkup: relicSvg(act.id, { pristine: relic.pristine, instance: 'seal' }),
+    });
+  } catch {
+    toast({
+      icon: '🜍',
+      title: 'The seal would not take',
+      sub: 'The mint failed in this browser. The victory stands regardless.',
+    });
+  }
+  btn.disabled = false;
+  btn.textContent = old;
 }
 
 // Curly quotes and no-break spaces (OS autocorrect, pasted prose) are
@@ -496,7 +550,8 @@ export function renderAct(root, actId) {
         <h1>The seal has not broken.</h1>
         <p class="empty-note">Defeat the warden of the previous act to break this seal.</p>
         <p><a class="btn btn-ghost" href="#/">Return to the map</a></p>
-      </div>`;
+      </div>
+      ${ordealOfferHtml(act)}`;
     return;
   }
 
@@ -551,6 +606,29 @@ export function renderAct(root, actId) {
     <div class="lesson-list">${nodes}${bossNode}</div>
     <section class="act-epilogue" id="act-epilogue"></section>`;
   mountEpilogue(root.querySelector('#act-epilogue'), act);
+}
+
+// ---------------- trial by ordeal (the offer) ----------------
+// A hard law of acts I–II only: a still-sealed early act offers its
+// warden to the untaught. One attempt per calendar day, and nothing
+// may fail. The lessons are never closed by it, won or lost.
+
+function ordealOfferHtml(act) {
+  if (!ORDEAL_ACTS.includes(act.id)) return '';
+  const ordeal = S.getOrdeal(act.id);
+  const spentToday = ordeal.attemptedOn === S.todayStamp();
+  const action = spentToday
+    ? '<p class="empty-note">The Warden has already measured you today. The Ordeal reopens tomorrow — the road of trials stands open now.</p>'
+    : `<p><a class="btn btn-danger" href="#/ordeal/${act.id}">Face the Warden untaught ☠</a></p>`;
+  return `
+    <section class="panel ordeal-offer">
+      <h2 class="panel-h">⚖ Trial by Ordeal</h2>
+      <p class="prose">There is one older way through this seal: walk past every lesson
+      and face the Warden untaught. The bar is absolute — one wrong answer, one collapsed
+      casting, and the Ordeal ends for the day. Victory conquers the act outright and pays
+      the Warden's spoils; the lessons remain yours to take, before or after, always.</p>
+      ${action}
+    </section>`;
 }
 
 // ---------------- the epilogue (great working + rite) ----------------
@@ -1594,13 +1672,31 @@ function renderQuizQuestion(hostEl, q, onSolved, { number = 0 } = {}) {
 
 // ---------------- boss ----------------
 
-export function renderBoss(root, actId) {
+export function renderBoss(root, actId, { ordeal = false } = {}) {
   const found = findAct(actId);
   if (!found) { renderMissing(root); return; }
   const { act, actIndex } = found;
   const boss = act.boss;
   const alreadyDown = S.isBossDefeated(act.id);
-  if (!S.isBossUnlocked(curriculum, actIndex) && !alreadyDown) {
+  if (ordeal) {
+    // The Ordeal's own gate: acts I–II only, only while the act is
+    // still sealed, and one attempt per calendar day — hard law.
+    if (!ORDEAL_ACTS.includes(act.id) || S.isActUnlocked(curriculum, actIndex)) {
+      renderBoss(root, actId); // the seal is broken — the ordinary arena stands
+      return;
+    }
+    if (S.getOrdeal(act.id).attemptedOn === S.todayStamp()) {
+      root.innerHTML = `
+        <div class="crumbs"><a href="#/">The Map</a> / <a href="#/act/${act.id}">Act ${escapeHtml(act.numeral)}</a> / Ordeal</div>
+        <div class="panel center">
+          <h1>The Ordeal is spent for today.</h1>
+          <p class="empty-note">One attempt each day — that is the whole of the law.
+          Return tomorrow, or take the lessons; they were never closed.</p>
+          <p><a class="btn btn-ghost" href="#/act/${act.id}">Back to ${escapeHtml(act.title)}</a></p>
+        </div>`;
+      return;
+    }
+  } else if (!S.isBossUnlocked(curriculum, actIndex) && !alreadyDown) {
     root.innerHTML = `
       <div class="crumbs"><a href="#/">The Map</a> / <a href="#/act/${act.id}">Act ${escapeHtml(act.numeral)}</a></div>
       <div class="panel center">
@@ -1613,7 +1709,11 @@ export function renderBoss(root, actId) {
 
   preboot();
 
-  S.setResume(`#/boss/${act.id}`, `${boss.title} · warden of Act ${act.numeral}`);
+  // The Ordeal never bookmarks itself: one attempt per day makes a
+  // stale resume pointer a broken promise.
+  if (!ordeal) {
+    S.setResume(`#/boss/${act.id}`, `${boss.title} · warden of Act ${act.numeral}`);
+  }
 
   root.innerHTML = `
     <div class="crumbs"><a href="#/">The Map</a> / <a href="#/act/${act.id}">Act ${escapeHtml(act.numeral)}</a> / Boss</div>
@@ -1622,6 +1722,7 @@ export function renderBoss(root, actId) {
 
   const battle = {
     lives: 3,
+    maxLives: 3,
     idx: 0,
     flawless: true,
     strikeFails: 0,
@@ -1629,6 +1730,15 @@ export function renderBoss(root, actId) {
     order: [],
     maxHp: 0,
     hp: 0,
+    // Slice D riders: chosen oaths, the dread state, the warden's
+    // rotating voice, the candle clock, the one-time premortem.
+    oaths: { silence: false, breath: false, candle: false },
+    dread: false,
+    barkCount: {},
+    premortemDone: false,
+    candleTimer: 0,
+    candleEndsAt: 0,
+    candleDead: false,
   };
   // The gauntlet's items are fixed for this mount: the act's own
   // questions plus, from Act III on, two wounds read from the ledger
@@ -1645,6 +1755,15 @@ export function renderBoss(root, actId) {
   const hasReview = battle.items.some((it) => it.review);
   let narrated = false; // the warden's tale is told once per fresh encounter
 
+  // The Warden Speaks: authored barks are optional per-act data. When
+  // the act carries none, the arena stays exactly as it always was —
+  // no bark node, no empty chrome.
+  const barks = (typeof boss.barks === 'object' && boss.barks && !Array.isArray(boss.barks))
+    ? boss.barks : null;
+  const anyBarks = Boolean(barks)
+    && ['intro', 'hit', 'playerFail', 'lastCandle', 'death']
+      .some((k) => Array.isArray(barks[k]) && barks[k].length);
+
   // The stage (figure + health) persists across gauntlet steps so the
   // strike animations and HP transitions play against a stable target.
   function stageHtml() {
@@ -1654,8 +1773,119 @@ export function renderBoss(root, actId) {
         <div class="boss-name-plate">${escapeHtml(boss.title)}</div>
         <div class="boss-hpbar" aria-hidden="true"><i id="boss-hpfill" style="width:${(battle.hp / battle.maxHp) * 100}%"></i></div>
         <div class="boss-hptext" id="boss-hptext">Warden strength: ${battle.hp} / ${battle.maxHp}</div>
+        ${anyBarks ? '<p class="warden-bark" data-role="warden-bark" hidden></p>' : ''}
+        <div class="candle-timer" data-role="candle-timer" role="timer"
+          aria-label="The Oath of the Candle — time remaining" hidden></div>
       </div>
       <div id="boss-flow"></div>`;
+  }
+
+  // Surface one authored line for a battle event, rotating through the
+  // list by that event's own running count — deterministic, replayable.
+  function showBark(kind) {
+    if (!barks) return;
+    const lines = barks[kind];
+    if (!Array.isArray(lines) || !lines.length) return;
+    const bark = arena.querySelector('[data-role="warden-bark"]');
+    if (!bark) return;
+    const n = Number(battle.barkCount[kind]) || 0;
+    battle.barkCount[kind] = n + 1;
+    const line = pickBark(lines, n);
+    if (!line) return;
+    bark.hidden = false;
+    bark.textContent = line;
+    // Restart the surfacing animation; reduced motion renders it still.
+    bark.classList.remove('spoken');
+    void bark.offsetWidth;
+    bark.classList.add('spoken');
+  }
+
+  // The Guttering: at one candle the arena enters its dread state —
+  // dimmed vignette, guttering flame, a low drone on the way in. The
+  // drone fires per entry, never loops.
+  function applyDread() {
+    const dread = battle.lives === 1 && !battle.won;
+    if (dread && !battle.dread) play('gutter');
+    battle.dread = dread;
+    arena.classList.toggle('guttering', dread);
+  }
+
+  // The Oath of the Candle: eight minutes, visible the whole while,
+  // lit only by the learner's own hand. Running out ends the fight —
+  // with dignity, and with nothing lost.
+  function stopCandle() {
+    if (battle.candleTimer) {
+      clearInterval(battle.candleTimer);
+      battle.candleTimer = 0;
+    }
+    const clock = arena.querySelector('[data-role="candle-timer"]');
+    if (clock) clock.hidden = true;
+  }
+
+  function candleOut() {
+    battle.candleDead = true;
+    stopCandle();
+    play('bell');
+    flowEl().innerHTML = `
+      <h1 class="boss-title">The candle is spent.</h1>
+      <div class="narrative"><p>Eight minutes were the bargain, and the bargain held.
+      The warden stands; nothing else is taken. Everything you know walks out with you.</p></div>
+      <button class="btn btn-danger" id="again">Take up the trial again</button>
+      <a class="btn btn-ghost" href="#/act/${act.id}">Withdraw</a>`;
+    flowEl().querySelector('#again').addEventListener('click', intro);
+  }
+
+  function startCandle() {
+    battle.candleEndsAt = Date.now() + 8 * 60 * 1000;
+    const paint = () => {
+      if (!document.body.contains(arena) || battle.won) { stopCandle(); return; }
+      const clock = arena.querySelector('[data-role="candle-timer"]');
+      const left = battle.candleEndsAt - Date.now();
+      if (left <= 0) { candleOut(); return; }
+      if (!clock) return;
+      const m = Math.floor(left / 60000);
+      const s = Math.floor((left % 60000) / 1000);
+      clock.hidden = false;
+      clock.textContent = `🕯 ${m}:${String(s).padStart(2, '0')}`;
+    };
+    paint();
+    battle.candleTimer = setInterval(paint, 500);
+  }
+
+  // The Echo: the best prior victory, kept as a spectral plate on
+  // every rematch intro. Subtle — a memory, not a demand.
+  function echoPlateHtml() {
+    const best = S.getBossBest(act.id);
+    if (!best) return '';
+    const n = Math.max(0, Number(best.livesLeft) || 0);
+    const candles = n === 1 ? 'one candle' : `${n} candles`;
+    return `
+      <div class="echo-plate" role="note">
+        <p>☽ Your shade fell here with ${escapeHtml(candles)} standing.${best.flawless ? ' It missed nothing.' : ''}</p>
+      </div>`;
+  }
+
+  // The Black Oaths: offered only over a conquered warden, never
+  // pre-checked — above all the candle, which no one lights for you.
+  function oathListHtml() {
+    const kept = S.getOathsKept(act.id);
+    const rows = OATHS.map((o) => `
+      <label class="oath-row">
+        <input type="checkbox" data-oath="${o.id}">
+        <span class="oath-glyph" aria-hidden="true">${o.glyph}</span>
+        <span class="oath-text"><strong>${escapeHtml(o.title)}</strong> — ${escapeHtml(o.desc)}.</span>
+        ${kept[o.id]
+    ? '<span class="tag tag-done">Kept</span>'
+    : `<span class="tag tag-accent">+${OATH_XP} XP</span>`}
+      </label>`).join('');
+    return `
+      <fieldset class="oath-list">
+        <legend>⛓ The Black Oaths</legend>
+        <p class="oath-note">Sworn only by the willing, before the rematch begins. Win under
+        a new oath and it pays ${OATH_XP} XP — once per oath, per warden — and sets its mark
+        on the relic. No candle is ever lit for you: the clock burns only if you choose it.</p>
+        ${rows}
+      </fieldset>`;
   }
 
   function flowEl() { return arena.querySelector('#boss-flow'); }
@@ -1674,21 +1904,34 @@ export function renderBoss(root, actId) {
   }
 
   function intro() {
+    stopCandle();
+    battle.candleDead = false;
     battle.hp = battle.maxHp;
+    battle.dread = false;
+    arena.classList.remove('guttering');
     arena.innerHTML = stageHtml();
-    flowEl().innerHTML = `
-      <span class="challenge-label">☠ Warden of Act ${escapeHtml(act.numeral)}</span>
-      <h1 class="boss-title">${escapeHtml(boss.title)}</h1>
-      <div class="narrative">${prose(boss.narrative)}</div>
-      <p class="prose">The trial has two movements: a <strong>gauntlet of ${battle.items.length} questions</strong>
+    const movements = ordeal
+      ? `<p class="prose">This is the <strong>Trial by Ordeal</strong>: the Warden faced
+      untaught, one attempt this day. The bar is absolute — <strong>nothing may fail</strong>.
+      One wrong answer in the gauntlet of ${battle.items.length} questions, one collapsed
+      casting in the final working, and the Ordeal ends until tomorrow. Win, and the act is
+      conquered outright; its lessons stay open either way, before or after.</p>`
+      : `<p class="prose">The trial has two movements: a <strong>gauntlet of ${battle.items.length} questions</strong>
       (you carry three lives — each wrong answer feeds one to the dark), then a
       <strong>final working of code</strong>. Every true answer wounds the warden;
       fall, and you begin the gauntlet anew. The final working is no sanctuary:
       after one spared misstep, every failed casting feeds a candle to the dark.${hasReview
         ? ' This warden has read the ledger of your old wounds — two of its questions are drawn from acts you thought closed.'
-        : ''}</p>
+        : ''}</p>`;
+    flowEl().innerHTML = `
+      <span class="challenge-label">☠ Warden of Act ${escapeHtml(act.numeral)}${ordeal ? ' — Trial by Ordeal' : ''}</span>
+      <h1 class="boss-title">${escapeHtml(boss.title)}</h1>
+      <div class="narrative">${prose(boss.narrative)}</div>
+      ${movements}
       ${alreadyDown ? '<p class="prose"><em>You have already broken this warden. Fight again for pride, not power — no further XP awaits.</em></p>' : ''}
-      <button class="btn btn-danger" id="begin">Begin the trial</button>
+      ${alreadyDown ? echoPlateHtml() : ''}
+      ${alreadyDown && !ordeal ? oathListHtml() : ''}
+      <button class="btn btn-danger" id="begin">${ordeal ? 'Begin the Ordeal' : 'Begin the trial'}</button>
       <a class="btn btn-ghost" href="#/act/${act.id}">Withdraw</a>`;
     bossReveal(arena.querySelector('.boss-stage'), boss.title);
     if (!narrated && !alreadyDown) {
@@ -1697,24 +1940,102 @@ export function renderBoss(root, actId) {
     narrated = true;
     flowEl().querySelector('#begin').addEventListener('click', () => {
       play('bell');
-      battle.lives = 3;
+      battle.oaths = { silence: false, breath: false, candle: false };
+      flowEl().querySelectorAll('.oath-list [data-oath]').forEach((box) => {
+        battle.oaths[box.dataset.oath] = box.checked;
+      });
+      // The Ordeal's one attempt is spent the moment the trial begins —
+      // a reload buys no second measuring.
+      if (ordeal) S.markOrdealAttempted(act.id);
+      battle.maxLives = (ordeal || battle.oaths.breath) ? 1 : 3;
+      battle.lives = battle.maxLives;
       battle.idx = 0;
       battle.flawless = true;
       battle.hp = battle.maxHp;
       battle.won = false;
+      battle.candleDead = false;
+      battle.barkCount = {};
       updateHp();
+      applyDread();
+      if (battle.oaths.candle) startCandle();
+      showBark('intro');
       // Reshuffle question order each attempt so retries stay honest.
       for (let i = battle.order.length - 1; i > 0; i -= 1) {
         const j = Math.floor(Math.random() * (i + 1));
         [battle.order[i], battle.order[j]] = [battle.order[j], battle.order[i]];
       }
-      gauntletStep();
+      // The Pre-Mortem: one planning question before the first gauntlet
+      // item, when the act authors one. The untaught get no counsel —
+      // it never appears in an Ordeal.
+      if (boss.premortem && !ordeal && !battle.premortemDone) premortemStep();
+      else gauntletStep();
     });
   }
 
   function livesHtml() {
-    return `<div class="lives" role="img" aria-label="${battle.lives} of 3 lives remain">${
-      [0, 1, 2].map((i) => `<span aria-hidden="true" class="${i < battle.lives ? '' : 'lost'}">🕯️</span>`).join('')}</div>`;
+    return `<div class="lives" role="img" aria-label="${battle.lives} of ${battle.maxLives} ${battle.maxLives === 1 ? 'life remains' : 'lives remain'}">${
+      Array.from({ length: battle.maxLives }, (_, i) => `<span aria-hidden="true" class="${i < battle.lives ? '' : 'lost'}">🕯️</span>`).join('')}</div>`;
+  }
+
+  // ---------------- the pre-mortem (a plan, not a wager) ----------------
+  // Optional per-act data: one decomposition question before the first
+  // gauntlet item. Not scored, no XP, no gating — a wrong pick earns the
+  // Warden's correction and nothing else.
+  function premortemStep() {
+    battle.premortemDone = true;
+    const pm = boss.premortem;
+    const options = Array.isArray(pm.options) ? pm.options : [];
+    flowEl().innerHTML = `
+      <span class="challenge-label">☠ ${escapeHtml(boss.title)}</span>
+      <p class="gauntlet-progress">Before the gauntlet — the plan</p>
+      <div class="quiz-q premortem">
+        <p class="q-text">${inlineOption(pm.prompt)}</p>
+        <p class="premortem-note">Nothing here is scored and nothing is fed to the dark.
+        One moment of planning, before the questions begin.</p>
+        <div class="quiz-opts">
+          ${options.map((opt, oi) => `
+            <button class="quiz-opt" data-o="${oi}">
+              <span class="opt-key">${'ABCD'[oi]}.</span><span>${inlineOption(opt)}</span>
+            </button>`).join('')}
+        </div>
+        <div class="q-result" data-role="qr"></div>
+        <div class="q-explain" hidden></div>
+        <div class="mt" data-role="next"></div>
+      </div>`;
+    const flow = flowEl();
+    const qr = flow.querySelector('[data-role="qr"]');
+    const explain = flow.querySelector('.q-explain');
+    const nextHost = flow.querySelector('[data-role="next"]');
+    flow.querySelectorAll('.quiz-opt').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const oi = Number(btn.dataset.o);
+        play('tick');
+        flow.querySelectorAll('.quiz-opt').forEach((b) => { b.disabled = true; });
+        if (oi === pm.answer) {
+          btn.classList.add('sel-right');
+          qr.textContent = 'The plan holds.';
+          qr.className = 'q-result ok';
+        } else if (battle.oaths.silence) {
+          // Under the Oath of Silence even the plan goes uncorrected.
+          btn.classList.add('sel-wrong');
+          qr.textContent = 'The oath keeps its silence. Carry your plan as it stands.';
+          qr.className = 'q-result bad';
+        } else {
+          btn.classList.add('sel-wrong');
+          flow.querySelectorAll('.quiz-opt')[pm.answer]?.classList.add('sel-right');
+          qr.textContent = 'The Warden turns the page for you.';
+          qr.className = 'q-result bad';
+          explain.hidden = false;
+          explain.innerHTML = pm.explain
+            ? inlineOption(pm.explain)
+            : `The surer plan was ${'ABCD'[pm.answer] || 'the one now marked'}. Hold it in mind — the gauntlet begins.`;
+        }
+        const btnNext = el('button', { class: 'btn' }, 'Begin the gauntlet →');
+        btnNext.addEventListener('click', gauntletStep);
+        nextHost.appendChild(btnNext);
+        btnNext.focus();
+      });
+    });
   }
 
   function gauntletStep() {
@@ -1746,27 +2067,45 @@ export function renderBoss(root, actId) {
         play('tick');
         S.recordQuestionOutcome(q.qid, oi === q.answer, qHash(q.q));
         flow.querySelectorAll('.quiz-opt').forEach((b) => { b.disabled = true; });
-        explain.hidden = false;
-        explain.innerHTML = inlineOption(q.explain);
+        // The Oath of Silence withholds every explanation until the
+        // fight is done — no counsel, right or wrong.
+        if (!battle.oaths.silence) {
+          explain.hidden = false;
+          explain.innerHTML = inlineOption(q.explain);
+        }
         if (oi === q.answer) {
           btn.classList.add('sel-right');
           qr.textContent = 'Your spell strikes home. The warden recoils.';
           qr.className = 'q-result ok';
+          showBark('hit');
           battle.hp = Math.max(1, battle.hp - 1); // the last point falls only to code
           castBolt(btn, figureEl()).then(() => {
             hitFlash(figureEl());
             updateHp();
           });
+        } else if (ordeal) {
+          // The flawless bar: one miss and the Ordeal is over. The
+          // untaught get no counsel — not even the answer.
+          btn.classList.add('sel-wrong');
+          explain.hidden = true;
+          ordealFallen();
+          return;
         } else {
           btn.classList.add('sel-wrong');
-          flow.querySelectorAll('.quiz-opt')[q.answer].classList.add('sel-right');
           battle.lives -= 1;
           battle.flawless = false;
-          qr.textContent = `The warden strikes back — a candle gutters out. The true answer was ${'ABCD'[q.answer]}.`;
+          if (battle.oaths.silence) {
+            qr.textContent = 'The warden strikes back — a candle gutters out. The oath keeps its silence.';
+          } else {
+            flow.querySelectorAll('.quiz-opt')[q.answer].classList.add('sel-right');
+            qr.textContent = `The warden strikes back — a candle gutters out. The true answer was ${'ABCD'[q.answer]}.`;
+          }
           qr.className = 'q-result bad';
           flow.querySelector('.lives').outerHTML = livesHtml();
           bossStrike(figureEl());
           play('bell');
+          showBark(battle.lives === 1 ? 'lastCandle' : 'playerFail');
+          applyDread();
           if (battle.lives <= 0) { fallen(); return; }
         }
         battle.idx += 1;
@@ -1780,6 +2119,7 @@ export function renderBoss(root, actId) {
   }
 
   function fallen() {
+    stopCandle();
     const fig = figureEl();
     if (fig) {
       // The warden looms over the fallen.
@@ -1794,6 +2134,20 @@ export function renderBoss(root, actId) {
       <button class="btn btn-danger" id="again">Rise and try again</button>
       <a class="btn btn-ghost" href="#/act/${act.id}">Retreat and study</a>`;
     flowEl().querySelector('#again').addEventListener('click', intro);
+  }
+
+  // The Ordeal ends the moment anything fails — one attempt, spent with
+  // dignity. Nothing is lost and nothing closes: the normal road stands.
+  function ordealFallen() {
+    stopCandle();
+    arena.classList.remove('guttering');
+    flowEl().innerHTML = `
+      <h1 class="boss-title">The Ordeal ends.</h1>
+      <div class="narrative"><p>The lessons remain, as they always did. The Warden keeps
+      this door and will stand for one attempt again tomorrow — or take the road of
+      trials at any hour; it was never closed.</p></div>
+      <a class="btn" href="#/act/${act.id}">Return to ${escapeHtml(act.title)}</a>
+      <a class="btn btn-ghost" href="#/">The Map</a>`;
   }
 
   function finalChallenge() {
@@ -1814,19 +2168,30 @@ export function renderBoss(root, actId) {
       challenge: { ...ch, successText: 'The warden kneels.' },
     };
     mountBossForge(flowEl().querySelector('#boss-forge'), pseudo, {
-      onPass: () => victory(),
+      // A pass that lands after the candle already died lands on nothing.
+      onPass: () => { if (!battle.candleDead) victory(); },
       // The ward bites back: the first failed Strike per attempt is
       // spared; every one after costs a candle. Any failed Strike
-      // breaks flawless.
+      // breaks flawless. In an Ordeal there is no spared misstep —
+      // the flawless bar ends the trial on the first failed casting.
       onFail: () => {
         battle.flawless = false;
+        if (ordeal) {
+          ordealFallen();
+          return { free: false, fallen: true };
+        }
         battle.strikeFails += 1;
-        if (battle.strikeFails === 1) return { free: true, fallen: false };
+        if (battle.strikeFails === 1) {
+          showBark('playerFail');
+          return { free: true, fallen: false };
+        }
         battle.lives -= 1;
         const livesEl = flowEl().querySelector('.lives');
         if (livesEl) livesEl.outerHTML = livesHtml();
         bossStrike(figureEl());
         play('bell');
+        showBark(battle.lives === 1 ? 'lastCandle' : 'playerFail');
+        applyDread();
         if (battle.lives <= 0) { fallen(); return { free: false, fallen: true }; }
         return { free: false, fallen: false };
       },
@@ -1836,25 +2201,40 @@ export function renderBoss(root, actId) {
   async function victory() {
     if (battle.won) return; // a second killing blow lands on nothing
     battle.won = true;
+    stopCandle();
     // The Economy of Awe: no toast speaks before the banner stands.
     holdToasts();
     const first = S.markBossDefeated(act.id);
-    const bonus = battle.flawless ? boss.flawlessBonus : 0;
-    // The killing blow: strength to zero, then the warden burns away.
+    if (ordeal) S.markOrdealWon(act.id);
+    const sworn = OATHS.filter((o) => battle.oaths[o.id]);
+    // The Echo and the Reliquary write on every victory, first or not:
+    // bests max-merge, and the relic turns pristine when the win earns
+    // it — flawless, or under any oath. Upgrade-only, both.
+    S.recordBossBest(act.id, { livesLeft: battle.lives, flawless: battle.flawless });
+    S.setRelic(act.id, battle.flawless || sworn.length > 0);
+    // The Ordeal pays the warden's spoils and nothing more.
+    const bonus = battle.flawless && !ordeal ? boss.flawlessBonus : 0;
+    showBark('death');
+    // The Last Rite: strength to zero, a held breath, the veil, the
+    // strike, the dissolve — and only then the banner. One click skips.
     battle.hp = 0;
     updateHp();
-    await dissolve(figureEl());
+    arena.classList.remove('guttering');
+    await lastRite(arena.querySelector('.boss-stage'), figureEl());
     arena.innerHTML = `
       <div class="boss-defeated-banner">
         <h2>☠ ${escapeHtml(boss.title)} has fallen.</h2>
         <div class="narrative"><p>${escapeHtml(boss.victoryText)}</p></div>
+        ${ordeal ? '<p class="prose center"><em>Conquered by Ordeal — untaught, unaided, flawless. The lessons of this act stand open whenever you want them.</em></p>' : ''}
         ${first ? `<p class="prose center">Spoils: <strong><span data-role="spoils">0</span> XP</strong>${bonus ? ' <em>(flawless gauntlet bonus included)</em>' : ''}</p>` : '<p class="empty-note">The warden was already yours; no new spoils.</p>'}
+        <div data-role="oath-verdicts"></div>
         <p>
           ${curriculum.acts[actIndex + 1]
     ? `<a class="btn" href="#/act/${curriculum.acts[actIndex + 1].id}">Descend to Act ${escapeHtml(curriculum.acts[actIndex + 1].numeral)} →</a>`
     : '<a class="btn" href="#/profile">Behold what you have become →</a>'}
           <a class="btn btn-ghost" href="#/">The Map</a>
         </p>
+        <p><button class="btn btn-ghost" data-act="mint-seal">🜍 Mint the Seal of the Fallen</button></p>
       </div>`;
     if (first) {
       countUp(arena.querySelector('[data-role="spoils"]'), 0, boss.xp + bonus, { duration: 1300 });
@@ -1868,6 +2248,20 @@ export function renderBoss(root, actId) {
         });
       }
     }
+    // The Black Oaths settle: each newly-kept oath pays once, ever.
+    const verdicts = sworn.map((o) => {
+      const firstKept = S.markOathKept(act.id, o.id);
+      if (firstKept) grantXp(OATH_XP, `Oath kept — ${o.title}`);
+      return `<p class="oath-kept"><span aria-hidden="true">${o.glyph}</span>
+        <strong>${escapeHtml(o.title)}</strong> — ${firstKept
+    ? 'kept. Its mark is set on the relic.'
+    : 'kept again. The mark was already yours.'}</p>`;
+    });
+    if (verdicts.length) {
+      arena.querySelector('[data-role="oath-verdicts"]').innerHTML = verdicts.join('');
+    }
+    const mintBtn = arena.querySelector('[data-act="mint-seal"]');
+    mintBtn.addEventListener('click', () => mintSealFor(act, mintBtn));
     releaseToasts();
   }
 
@@ -2090,6 +2484,55 @@ function scarBookHtml(st) {
     ${fadedHtml}`;
 }
 
+// ---------------- the reliquary ----------------
+// Ten shelf slots, one per act: a relic appears when its warden falls —
+// pristine when the victory earned it (flawless, or under any oath),
+// tarnished otherwise. A tarnished relic is an invitation, not a debt:
+// re-fight the warden and a qualifying win turns it bright. Oath-marks
+// engrave beneath the relics they were sworn over.
+
+function reliquaryHtml() {
+  const slots = curriculum.acts.map((act) => {
+    const relic = S.relicFor(act.id);
+    if (!relic) {
+      return `
+        <div class="relic-slot empty" role="img"
+          aria-label="Act ${escapeHtml(act.numeral)} — no relic yet; its warden still stands">
+          <span class="relic-void" aria-hidden="true">·</span>
+          <span class="relic-slot-label" aria-hidden="true">Act ${escapeHtml(act.numeral)}</span>
+        </div>`;
+    }
+    const kept = S.getOathsKept(act.id);
+    const keptList = OATHS.filter((o) => kept[o.id]);
+    const marks = keptList.length
+      ? `<span class="oath-marks">${keptList.map((o) => `<span class="oath-mark" title="${escapeHtml(`${o.title} — kept`)}">${o.glyph}</span>`).join('')}</span>`
+      : '';
+    const stateWord = relic.pristine ? 'pristine' : 'tarnished';
+    const oathWords = keptList.length
+      ? `; oaths kept: ${keptList.map((o) => o.title).join(', ')}`
+      : '';
+    return `
+      <div class="relic-slot ${stateWord}" role="group"
+        aria-label="Relic of Act ${escapeHtml(act.numeral)} — ${escapeHtml(act.boss.title)}, ${stateWord}${escapeHtml(oathWords)}">
+        <span aria-hidden="true">${relicSvg(act.id, { pristine: relic.pristine, instance: 'shelf' })}</span>
+        <span class="relic-slot-label">Act ${escapeHtml(act.numeral)}</span>
+        ${marks}
+        <span class="relic-actions">
+          <a class="btn btn-ghost btn-small" href="#/boss/${act.id}"
+            aria-label="Fight ${escapeHtml(act.boss.title)} again">⚔ Re-fight</a>
+          <button class="btn btn-ghost btn-small" data-mint-act="${act.id}"
+            aria-label="Mint the Seal of Act ${escapeHtml(act.numeral)}">🜍 Seal</button>
+        </span>
+      </div>`;
+  }).join('');
+  return `
+    <h2 class="section-h">🜍 The Reliquary</h2>
+    <p class="prose">A shelf of ten. Each warden that falls leaves a relic — bright when the
+    victory was flawless or sworn under an oath, tarnished when it was merely won. A tarnished
+    relic can always be brightened: the warden is still down there.</p>
+    <div class="reliquary">${slots}</div>`;
+}
+
 export function renderProfile(root) {
   const st = S.getState();
   const rank = rankFor(st.xp);
@@ -2170,6 +2613,7 @@ export function renderProfile(root) {
         ${keptNightsHtml(st)}
       </div>
     </div>
+    ${reliquaryHtml()}
     <h2 class="section-h">📖 The Book of Scars</h2>
     ${scarBookHtml(st)}
     <h2 class="section-h">Marks of the Dark</h2>
@@ -2177,6 +2621,14 @@ export function renderProfile(root) {
     <div class="mt-2 center">
       <button class="btn btn-danger" id="obliviate">🧠 Obliviate — erase all progress</button>
     </div>`;
+
+  // The Reliquary's mint buttons: same seal, same facts, from the shelf.
+  root.querySelectorAll('[data-mint-act]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const found = findAct(btn.dataset.mintAct);
+      if (found) mintSealFor(found.act, btn);
+    });
+  });
 
   root.querySelector('#obliviate').addEventListener('click', () => {
     const sure = window.confirm(

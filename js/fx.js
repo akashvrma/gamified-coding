@@ -147,6 +147,15 @@ export function shake(el) {
   return anim.finished.catch(() => {});
 }
 
+// The Warden Speaks: pick one bark line from an authored list, rotating
+// deterministically with the battle's own progress index — the same
+// fight replays the same words. No RNG here, and none at module scope.
+export function pickBark(lines, index) {
+  if (!Array.isArray(lines) || !lines.length) return '';
+  const i = Math.abs(Number(index) || 0) % lines.length;
+  return typeof lines[i] === 'string' ? lines[i] : '';
+}
+
 // The warden's death: flare, then dissolve upward into embers.
 export function dissolve(el, color) {
   if (!el) return Promise.resolve();

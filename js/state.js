@@ -48,6 +48,17 @@ function defaultState() {
     vigil: { lastDay: '', count: 0 },
     // The Rekindling: the return-rite is offered at most once per calendar day.
     rekindle: { lastOffered: '' },
+    // Trial by Ordeal: actId -> { attemptedOn, won } — one attempt per
+    // calendar day against a still-sealed act's warden.
+    ordeals: {},
+    // The Echo: actId -> { livesLeft, flawless } — personal bests,
+    // max-merged on every victory, never downgraded.
+    bossBests: {},
+    // The Reliquary: actId -> { pristine } — one relic per fallen warden.
+    relics: {},
+    // The Black Oaths: actId -> { oathId: true } — oaths kept on a
+    // victorious rematch. Each pays its XP once, ever.
+    oaths: {},
     stats: {
       runs: 0,
       failedRuns: 0,
@@ -110,6 +121,14 @@ function load() {
     }
     if (typeof merged.rites !== 'object' || !merged.rites || Array.isArray(merged.rites)) {
       merged.rites = {};
+    }
+    // The arena's ledgers (ordeals/bossBests/relics/oaths) arrived after
+    // the first saves shipped — default every one; records stay shallow,
+    // so field reads below remain defensive.
+    for (const k of ['ordeals', 'bossBests', 'relics', 'oaths']) {
+      if (typeof merged[k] !== 'object' || !merged[k] || Array.isArray(merged[k])) {
+        merged[k] = {};
+      }
     }
     return merged;
   } catch {
@@ -576,13 +595,125 @@ export function isBossDefeated(actId) {
   return Boolean(state.bosses[actId]);
 }
 
+// ---------------- trial by ordeal ----------------
+// actId -> { attemptedOn, won }. One attempt per calendar day; the stamp
+// is written the moment the trial begins, so a reload buys nothing.
+
+function ordealRec(actId) {
+  if (typeof state.ordeals !== 'object' || !state.ordeals || Array.isArray(state.ordeals)) {
+    state.ordeals = {};
+  }
+  let rec = state.ordeals[actId];
+  if (typeof rec !== 'object' || !rec || Array.isArray(rec)) {
+    rec = { attemptedOn: '', won: false };
+    state.ordeals[actId] = rec;
+  }
+  return rec;
+}
+
+export function getOrdeal(actId) {
+  const rec = (state.ordeals || {})[actId];
+  if (typeof rec !== 'object' || !rec || Array.isArray(rec)) {
+    return { attemptedOn: '', won: false };
+  }
+  return { attemptedOn: String(rec.attemptedOn || ''), won: Boolean(rec.won) };
+}
+
+export function markOrdealAttempted(actId) {
+  const rec = ordealRec(actId);
+  rec.attemptedOn = todayStamp();
+  save();
+}
+
+export function markOrdealWon(actId) {
+  const rec = ordealRec(actId);
+  rec.won = true;
+  save();
+}
+
+// ---------------- the echo (personal bests) ----------------
+// Max-merge on every victory: candles standing only climb, and a
+// flawless run is never forgotten. Nothing here ever downgrades.
+
+export function getBossBest(actId) {
+  const rec = (state.bossBests || {})[actId];
+  if (typeof rec !== 'object' || !rec || Array.isArray(rec)) return null;
+  return { livesLeft: Number(rec.livesLeft) || 0, flawless: Boolean(rec.flawless) };
+}
+
+export function recordBossBest(actId, { livesLeft, flawless }) {
+  if (typeof state.bossBests !== 'object' || !state.bossBests || Array.isArray(state.bossBests)) {
+    state.bossBests = {};
+  }
+  const prev = getBossBest(actId) || { livesLeft: 0, flawless: false };
+  state.bossBests[actId] = {
+    livesLeft: Math.max(prev.livesLeft, Number(livesLeft) || 0),
+    flawless: prev.flawless || Boolean(flawless),
+  };
+  save();
+}
+
+// ---------------- the reliquary ----------------
+// One relic per fallen warden; pristine only when the victory earned it
+// (flawless, or won under any oath). Upgrade-only: a relic once bright
+// is never tarnished again. Saves from before this shelf existed derive
+// an honest default — tarnished, unless the bests already prove better.
+
+export function relicFor(actId) {
+  if (!state.bosses[actId]) return null;
+  const rec = (state.relics || {})[actId];
+  if (typeof rec === 'object' && rec && !Array.isArray(rec)) {
+    return { pristine: Boolean(rec.pristine) };
+  }
+  const best = getBossBest(actId);
+  const kept = getOathsKept(actId);
+  return { pristine: Boolean(best && best.flawless) || Object.keys(kept).length > 0 };
+}
+
+export function setRelic(actId, pristine) {
+  if (typeof state.relics !== 'object' || !state.relics || Array.isArray(state.relics)) {
+    state.relics = {};
+  }
+  const prev = relicFor(actId);
+  state.relics[actId] = { pristine: Boolean(pristine) || Boolean(prev && prev.pristine) };
+  save();
+}
+
+// ---------------- the black oaths ----------------
+// actId -> { oathId: true }. markOathKept returns true only the first
+// time ever — the sole gate on each oath's 25 XP, per oath, per act.
+
+export function getOathsKept(actId) {
+  const rec = (state.oaths || {})[actId];
+  return (typeof rec === 'object' && rec && !Array.isArray(rec)) ? rec : {};
+}
+
+export function markOathKept(actId, oathId) {
+  if (typeof state.oaths !== 'object' || !state.oaths || Array.isArray(state.oaths)) {
+    state.oaths = {};
+  }
+  let rec = state.oaths[actId];
+  if (typeof rec !== 'object' || !rec || Array.isArray(rec)) {
+    rec = {};
+    state.oaths[actId] = rec;
+  }
+  const first = !rec[oathId];
+  rec[oathId] = true;
+  save();
+  return first;
+}
+
 // ---------------- unlock rules ----------------
 // Lessons unlock in order within an act; an act's boss unlocks when all
 // its lessons are complete; the next act unlocks when the boss falls.
 
 export function isActUnlocked(curriculum, actIndex) {
   if (actIndex === 0) return true;
-  return isBossDefeated(curriculum.acts[actIndex - 1].id);
+  // An act whose own warden has fallen is open regardless of the acts
+  // before it — the Trial by Ordeal conquers out of order, and the
+  // conquered act's lessons stay available, exactly as promised.
+  return isBossDefeated(curriculum.acts[actIndex - 1].id)
+    || isBossDefeated(curriculum.acts[actIndex].id);
 }
 
 export function isLessonUnlocked(curriculum, actIndex, lessonIndex) {

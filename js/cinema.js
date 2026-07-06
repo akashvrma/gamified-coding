@@ -6,6 +6,7 @@
 // ============================================================
 
 import { play } from './sound.js';
+import { hitFlash, dissolve } from './fx.js';
 
 const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -109,6 +110,51 @@ export function bossReveal(stageEl, name) {
 
 function escapeChar(c) {
   return c.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;');
+}
+
+// ---------------- the last rite ----------------
+// The killing blow, sequenced: a held breath, a veil of dark, the
+// strike, and the warden's dissolve — only then does the victory panel
+// speak. One click anywhere skips straight to the end; reduced motion
+// never enters the rite at all. Resolves when the stage is clear.
+
+export function lastRite(stageEl, figEl) {
+  if (!figEl) return Promise.resolve();
+  if (reduced() || !stageEl) {
+    figEl.style.opacity = '0';
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    let done = false;
+    const veil = document.createElement('div');
+    veil.className = 'rite-veil';
+    veil.setAttribute('aria-hidden', 'true');
+    const finish = () => {
+      if (done) return;
+      done = true;
+      window.removeEventListener('click', finish, true);
+      figEl.style.opacity = '0';
+      veil.remove();
+      stageEl.classList.remove('rite-freeze');
+      resolve();
+    };
+    window.addEventListener('click', finish, true);
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    (async () => {
+      stageEl.classList.add('rite-freeze');
+      await wait(480);
+      if (done) return;
+      stageEl.appendChild(veil);
+      await wait(420);
+      if (done) return;
+      await hitFlash(figEl);
+      if (done) return;
+      await dissolve(figEl);
+      if (done) return;
+      await wait(240);
+      finish();
+    })();
+  });
 }
 
 // ---------------- view transitions ----------------

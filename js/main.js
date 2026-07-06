@@ -118,6 +118,11 @@ function route() {
       setNavActive('map');
       setAmbient('boss', 0.9);
       renderBoss(app, parts[1]);
+    } else if (parts[0] === 'ordeal' && parts[1]) {
+      // Trial by Ordeal: the same arena, entered untaught.
+      setNavActive('map');
+      setAmbient('boss', 1.1);
+      renderBoss(app, parts[1], { ordeal: true });
     } else if (parts[0] === 'profile') {
       setNavActive('profile');
       setAmbient('void', 0.7);

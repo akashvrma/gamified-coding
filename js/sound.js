@@ -207,6 +207,39 @@ function crackle(t0) {
   }
 }
 
+// The Guttering: the last candle's drone — two barely-detuned low sines
+// swelling under a breath of low-passed noise, gone inside two seconds.
+// Fired once per entry into the dread state; it never loops on its own.
+function gutter(t0) {
+  for (const det of [0, 7]) {
+    const o = ctx.createOscillator();
+    o.type = 'sine';
+    o.frequency.value = 52;
+    o.detune.value = det;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.linearRampToValueAtTime(0.2, t0 + 0.5);
+    g.gain.setValueAtTime(0.2, t0 + 1.0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.9);
+    o.connect(g).connect(master);
+    o.start(t0);
+    o.stop(t0 + 2.0);
+  }
+  const breath = ctx.createBufferSource();
+  breath.buffer = noiseBuf;
+  breath.loop = true; // the one-second buffer must outlast the swell; stop() below ends it
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 140;
+  const g2 = ctx.createGain();
+  g2.gain.setValueAtTime(0.0001, t0);
+  g2.gain.linearRampToValueAtTime(0.12, t0 + 0.6);
+  g2.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.8);
+  breath.connect(lp).connect(g2).connect(master);
+  breath.start(t0);
+  breath.stop(t0 + 1.9);
+}
+
 const PALETTE = {
   cast,
   yield: yieldTone,
@@ -215,6 +248,7 @@ const PALETTE = {
   bell,
   ascend,
   crackle,
+  gutter,
 };
 
 export function play(name) {

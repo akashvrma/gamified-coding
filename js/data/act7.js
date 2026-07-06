@@ -5,9 +5,49 @@
 // train/test splits, scaling, K-Means and the elbow, DBSCAN and
 // PCA, trees and forests, and honest evaluation with confusion
 // matrices, precision, and recall.
+// Epilogue: the Great Working — GW-B, "The Inquest of the Vale"
+// (working id gwinquest; achievements key on it).
 // ============================================================
 
 const py = String.raw;
+
+// Shared fixture for the Great Working below. Every stage's `setup`
+// conjures this exact ledger into the namespace before the learner's
+// code runs (spec §9 setup law), so the Inquest's numbers hold
+// identical from stage to stage: 200 beacon signals, 140 false alarms
+// against 60 true, split 150/50 at random_state=0. Sworn copies
+// (_X_SWORN, _y_SWORN) let the validations detect a redacted ledger.
+const INQUEST_SETUP = py`import numpy as np
+
+# The beacon ledger of the vale, sworn before the White Council.
+# One row per signal. Column 0: brightness of the flame. Column 1:
+# duration (minutes the fire held). Column 2: interval (hours since
+# the previous beacon in the chain answered). Column 3: storm (1.0
+# if a storm stood over the ridge that night).
+# y: 1 = true alarm (riders truly moved), 0 = false alarm.
+_rng = np.random.default_rng(7)
+_fb = np.clip(_rng.normal(4.0, 1.3, 140), 0.2, None)
+_fd = np.clip(_rng.normal(14.0, 6.0, 140), 1.0, None)
+_fi = np.clip(_rng.normal(9.0, 3.5, 140), 0.25, None)
+_fs = (_rng.random(140) < 0.55).astype(float)
+_tb = np.clip(_rng.normal(6.2, 1.3, 60), 0.2, None)
+_td = np.clip(_rng.normal(26.0, 6.0, 60), 1.0, None)
+_ti = np.clip(_rng.normal(3.0, 3.5, 60), 0.25, None)
+_ts = (_rng.random(60) < 0.15).astype(float)
+X = np.column_stack([
+    np.concatenate([_fb, _tb]),
+    np.concatenate([_fd, _td]),
+    np.concatenate([_fi, _ti]),
+    np.concatenate([_fs, _ts]),
+])
+y = np.concatenate([np.zeros(140, dtype=int), np.ones(60, dtype=int)])
+_order = _rng.permutation(200)
+X = X[_order]
+y = y[_order]
+FEATURES = ['brightness', 'duration', 'interval', 'storm']
+_X_SWORN = X.copy()
+_y_SWORN = y.copy()
+del _rng, _fb, _fd, _fi, _fs, _tb, _td, _ti, _ts, _order`;
 
 export default {
   id: 'act7',
@@ -2008,6 +2048,414 @@ assert "1.0" in _stdout and "0.833" in _stdout, "Print the two verdicts — roun
       successText: '',
       xp: 0,
     },
+  },
+  // ------------------------------------------------------------------
+  // The Great Working — GW-B: The Inquest of the Vale
+  // Post-boss epilogue (spec §9). Baseline-first discipline carried
+  // through a full small-scale inquest: the count, the model, the
+  // errors priced, the verdict signed. All numbers deterministic
+  // (fixture seed 7, split random_state=0): baseline 0.7, model
+  // accuracy 0.9 (a leaky fit-on-all lands at 0.96, outside the 1e-9
+  // pin), confusion 33/2/3/12, precision 12/14, recall 0.8.
+  // ------------------------------------------------------------------
+  working: {
+    id: 'gwinquest',
+    title: 'The Inquest of the Vale',
+    brief: 'The palantír is dark, and the Council will not light it again on faith. What remains '
+      + 'is the vale itself: a chain of beacon-fires, and a ledger of two hundred signals — how '
+      + 'bright each flame burned, how long it held, how hard it rode on the heels of the beacon '
+      + 'before it, and whether a storm stood over the ridge. One hundred forty of those fires '
+      + 'were lies; sixty were riders in the dark. The White Council demands a written inquest: '
+      + 'can the watching be trusted to a model, or must the watchmen keep the fires? You will '
+      + 'build the case the only lawful way — the count before the casting, the model against '
+      + 'the count, the errors weighed at their true price, and a verdict signed with numbers '
+      + 'that can defend it.',
+    epigraph: {
+      text: 'Bring me no seer\'s confidence. Bring me the count, the sealed rows, and the price of each mistake — then I will read your verdict.',
+      source: 'minutes of the White Council, taken the winter the stone went dark',
+    },
+    stages: [
+      {
+        id: 'gwinquests1',
+        title: 'The Count Before the Casting',
+        brief: 'Every inquest opens with the number any model must humble: the cynic\'s. A watchman '
+          + 'who calls every fire a lie never rides out, never wastes a night — and is right seven '
+          + 'times in ten, because the ledger holds 140 lies against 60 truths. Until a model beats '
+          + 'that watchman on signals it has never seen, it has proven nothing.\n\n'
+          + 'Requirements, exactly:\n\n'
+          + '- Split the conjured evidence: `X_train, X_test, y_train, y_test = train_test_split(X, y, '
+          + 'test_size=0.25, random_state=0)`. The 50 sealed signals stay sealed for the whole Inquest.\n'
+          + '- `majority = int(np.argmax(np.bincount(y_train)))` — the commonest verdict, counted from '
+          + 'the TRAINING labels alone.\n'
+          + '- `baseline_pred = np.full(y_test.shape, majority)` — the cynic\'s prophecy for every sealed signal.\n'
+          + '- `baseline = float((baseline_pred == y_test).mean())`.\n'
+          + '- `print(round(baseline, 2))`.',
+        starter: py`# THE INQUEST OF THE VALE — stage 1: the count before the casting.
+# The fixture has conjured the beacon ledger for you:
+#   X — 200 signals, four measures per row (see FEATURES)
+#   y — 1 = true alarm, 0 = false alarm
+# No model yet. First, the number any model must beat.
+
+import numpy as np
+from sklearn.model_selection import train_test_split
+
+# TODO: split X and y (test_size=0.25, random_state=0) into
+#       X_train, X_test, y_train, y_test
+
+# TODO: majority — the commonest label in y_train (np.bincount, np.argmax)
+
+# TODO: baseline_pred — np.full(y_test.shape, majority)
+
+# TODO: baseline — the fraction of y_test that baseline_pred gets right
+
+# TODO: print(round(baseline, 2))
+`,
+        setup: INQUEST_SETUP,
+        validation: py`import numpy as np
+from sklearn.model_selection import train_test_split as _tts
+assert np.shape(X) == (200, 4) and np.shape(y) == (200,), "The conjured ledger itself was altered — X must stay the 200x4 evidence and y its 200 verdicts. The Inquest reads only the sworn ledger; work on copies."
+assert np.allclose(np.asarray(X, dtype=float), _X_SWORN) and np.array_equal(np.asarray(y), _y_SWORN), "The conjured ledger's values were rewritten — restore X and y as the fixture swore them. The evidence is not yours to redact."
+for _name in ('X_train', 'X_test', 'y_train', 'y_test', 'majority', 'baseline_pred', 'baseline'):
+    assert _name in dir(), "The record lacks a binding this stage demands: " + _name + ". Bind every name the requirements list, exactly."
+_Xtr, _Xte, _ytr, _yte = _tts(_X_SWORN, _y_SWORN, test_size=0.25, random_state=0)
+assert np.shape(X_train) == (150, 4) and np.shape(X_test) == (50, 4), "The split is misproportioned — 200 signals at test_size=0.25 leaves 150 for training and seals 50 away."
+assert np.allclose(np.asarray(X_train, dtype=float), _Xtr) and np.allclose(np.asarray(X_test, dtype=float), _Xte), "The split does not match random_state=0 — an unseeded shuffle is testimony no court can re-hear. Pass random_state=0."
+assert np.array_equal(np.asarray(y_train), _ytr) and np.array_equal(np.asarray(y_test), _yte), "The labels were not split alongside the features — pass X and y together to train_test_split, four names on the left."
+assert np.ndim(majority) == 0 and int(majority) == 0, "majority must be the commonest verdict in the TRAINING labels — 0, the false alarm. np.bincount(y_train), then np.argmax."
+assert np.shape(baseline_pred) == (50,), "baseline_pred must carry one verdict per sealed signal — np.full(y_test.shape, majority)."
+assert np.array_equal(np.asarray(baseline_pred), np.zeros(50, dtype=int)), "baseline_pred must call every sealed signal by the majority verdict, 0 — the cynic never rides out."
+assert np.ndim(baseline) == 0, "baseline must be a single number — the .mean() of one comparison, not an array."
+assert abs(float(baseline) - 0.7) < 1e-9, "baseline is wrong — the cynic is right on exactly 35 of the 50 sealed signals: 0.7. Compare baseline_pred against y_test and take the mean."
+assert "0.7" in _stdout, "The Council heard no number — print(round(baseline, 2)); the cynic's mark is 0.7."`,
+        canon: py`import numpy as np
+from sklearn.model_selection import train_test_split
+
+# The ledger stands conjured: X (200 signals, 4 measures), y (1 = true alarm).
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.25, random_state=0)
+
+majority = int(np.argmax(np.bincount(y_train)))
+baseline_pred = np.full(y_test.shape, majority)
+baseline = float((baseline_pred == y_test).mean())
+
+print(round(baseline, 2))`,
+        successText: 'Seven in ten, for a watchman who never leaves his chair. Every number the stone offers from here on answers to this one.',
+        xp: 40,
+      },
+      {
+        id: 'gwinquests2',
+        title: 'The Stone Against the Count',
+        brief: 'Now, and only now, the model — a tree of three questions, seeded, small enough to '
+          + 'read aloud before the Council. Its one law is the oldest in the act: the sealed rows '
+          + 'must not touch the learning. Fit on all two hundred signals and the score that follows '
+          + 'is flattery — the Inquest strikes flattery from the record.\n\n'
+          + 'Requirements, exactly:\n\n'
+          + '- Keep every stage-1 binding; the Inquest re-reads prior pages before turning new ones.\n'
+          + '- `model = DecisionTreeClassifier(max_depth=3, random_state=0)`, fitted on `X_train`, '
+          + '`y_train` — and nothing else.\n'
+          + '- `pred = model.predict(X_test)`.\n'
+          + '- `model_accuracy = float(accuracy_score(y_test, pred))` — it must out-count the cynic, '
+          + 'or the inquest ends here.\n'
+          + '- `print(round(model_accuracy, 2))`.',
+        starter: py`import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score
+
+# --- stage 1, already sworn ---
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.25, random_state=0)
+
+majority = int(np.argmax(np.bincount(y_train)))
+baseline_pred = np.full(y_test.shape, majority)
+baseline = float((baseline_pred == y_test).mean())
+print(round(baseline, 2))
+
+# --- stage 2: the stone against the count ---
+# TODO: model = DecisionTreeClassifier(max_depth=3, random_state=0)
+
+# TODO: fit it on X_train, y_train — and nothing else
+
+# TODO: pred = model.predict(X_test)
+
+# TODO: model_accuracy = float(accuracy_score(y_test, pred))
+
+# TODO: print(round(model_accuracy, 2))
+`,
+        setup: INQUEST_SETUP,
+        validation: py`import numpy as np
+from sklearn.model_selection import train_test_split as _tts
+from sklearn.tree import DecisionTreeClassifier as _DT
+assert np.shape(X) == (200, 4) and np.allclose(np.asarray(X, dtype=float), _X_SWORN) and np.array_equal(np.asarray(y), _y_SWORN), "The conjured ledger was altered — X and y must stay as the fixture swore them. Work on copies."
+for _name in ('X_train', 'X_test', 'y_train', 'y_test', 'majority', 'baseline', 'model', 'pred', 'model_accuracy'):
+    assert _name in dir(), "The record lacks a binding the Inquest demands: " + _name + ". Prior stages ride forward — keep every name bound."
+_Xtr, _Xte, _ytr, _yte = _tts(_X_SWORN, _y_SWORN, test_size=0.25, random_state=0)
+assert np.allclose(np.asarray(X_train, dtype=float), _Xtr) and np.array_equal(np.asarray(y_test), _yte), "Stage 1 regressed — the sworn split (test_size=0.25, random_state=0) no longer holds. The Inquest re-reads every prior page before it turns a new one."
+assert np.ndim(baseline) == 0 and abs(float(baseline) - 0.7) < 1e-9 and int(majority) == 0, "Stage 1 regressed — the cynic's baseline must still stand at exactly 0.7, majority verdict 0."
+assert hasattr(model, 'get_params') and hasattr(model, 'predict'), "model must be a fitted scikit-learn classifier — DecisionTreeClassifier(max_depth=3, random_state=0)."
+_params = model.get_params()
+assert _params.get('max_depth') == 3 and _params.get('random_state') == 0, "The Council prescribed a tree of three questions, seeded: DecisionTreeClassifier(max_depth=3, random_state=0). A different depth or seed is a different witness."
+_ref = _DT(max_depth=3, random_state=0).fit(_Xtr, _ytr)
+assert np.shape(pred) == (50,), "pred must hold one verdict per sealed signal — model.predict(X_test)."
+assert np.array_equal(np.asarray(pred), _ref.predict(_Xte)), "The tree's verdicts do not match one fitted on the TRAINING rows alone. If you fitted on all 200 signals, the sealed rows leaked into the learning, and every score after that is flattery — the Inquest strikes it from the record. Fit on X_train, y_train; predict X_test."
+assert np.ndim(model_accuracy) == 0, "model_accuracy must be a single number — accuracy_score returns one."
+assert abs(float(model_accuracy) - 0.9) < 1e-9, "model_accuracy must be exactly 0.9 — 45 of the 50 sealed signals. A leaky fit on all 200 lands at 0.96; a wrong depth or seed lands elsewhere. Score pred against y_test and nothing else."
+assert float(model_accuracy) > float(baseline), "The stone must out-count the cynic on sealed signals, or the Inquest ends with the fires kept."
+assert "0.9" in _stdout, "The Council heard no number — print(round(model_accuracy, 2)); the stone's mark is 0.9."`,
+        canon: py`import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.25, random_state=0)
+
+majority = int(np.argmax(np.bincount(y_train)))
+baseline_pred = np.full(y_test.shape, majority)
+baseline = float((baseline_pred == y_test).mean())
+
+model = DecisionTreeClassifier(max_depth=3, random_state=0)
+model.fit(X_train, y_train)
+pred = model.predict(X_test)
+model_accuracy = float(accuracy_score(y_test, pred))
+
+print(round(baseline, 2))
+print(round(model_accuracy, 2))`,
+        successText: 'Nine in ten on signals the tree never saw — and not one sealed row touched the learning. The cynic is out-counted; the Council reads on.',
+        xp: 45,
+      },
+      {
+        id: 'gwinquests3',
+        title: 'The Four Fates of the Fires',
+        brief: 'One number cannot carry a verdict. The stone errs in two currencies: cry riders '
+          + 'where there are none, and the wardens muster for a lie; call a true alarm false, and '
+          + 'a vale burns trusting the promised calm. The Council prices those errors differently, '
+          + 'and so must you.\n\n'
+          + 'Requirements, exactly:\n\n'
+          + '- `cm = confusion_matrix(y_test, pred)`; unpack `tn, fp, fn, tp = cm.ravel()` and cast '
+          + 'each to `int(...)`.\n'
+          + '- `precision = tp / (tp + fp)` and `recall = tp / (tp + fn)`.\n'
+          + '- Bind `costlier_error` to the COUNT of the costlier kind of mistake — decide which of '
+          + '`fp` and `fn` burns vales.\n'
+          + '- `print(tn, fp, fn, tp)`, then `print(round(precision, 3))`, then `print(round(recall, 3))`.',
+        starter: py`import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score, confusion_matrix
+
+# --- stages 1-2, already sworn ---
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.25, random_state=0)
+
+majority = int(np.argmax(np.bincount(y_train)))
+baseline_pred = np.full(y_test.shape, majority)
+baseline = float((baseline_pred == y_test).mean())
+
+model = DecisionTreeClassifier(max_depth=3, random_state=0)
+model.fit(X_train, y_train)
+pred = model.predict(X_test)
+model_accuracy = float(accuracy_score(y_test, pred))
+
+print(round(baseline, 2))
+print(round(model_accuracy, 2))
+
+# --- stage 3: the four fates of the fires ---
+# TODO: cm = confusion_matrix(y_test, pred)
+
+# TODO: tn, fp, fn, tp = cm.ravel(), each cast to int(...)
+
+# TODO: precision = tp / (tp + fp);  recall = tp / (tp + fn)
+
+# TODO: costlier_error — the COUNT of the error that burns vales
+
+# TODO: print(tn, fp, fn, tp), then round(precision, 3), then round(recall, 3)
+`,
+        setup: INQUEST_SETUP,
+        validation: py`import numpy as np
+from sklearn.model_selection import train_test_split as _tts
+from sklearn.tree import DecisionTreeClassifier as _DT
+from sklearn.metrics import confusion_matrix as _cmf
+assert np.shape(X) == (200, 4) and np.allclose(np.asarray(X, dtype=float), _X_SWORN) and np.array_equal(np.asarray(y), _y_SWORN), "The conjured ledger was altered — X and y must stay as the fixture swore them. Work on copies."
+for _name in ('X_train', 'X_test', 'y_train', 'y_test', 'majority', 'baseline', 'model', 'pred', 'model_accuracy', 'cm', 'tn', 'fp', 'fn', 'tp', 'precision', 'recall', 'costlier_error'):
+    assert _name in dir(), "The record lacks a binding the Inquest demands: " + _name + ". Prior stages ride forward — keep every name bound."
+_Xtr, _Xte, _ytr, _yte = _tts(_X_SWORN, _y_SWORN, test_size=0.25, random_state=0)
+assert np.allclose(np.asarray(X_train, dtype=float), _Xtr) and np.array_equal(np.asarray(y_test), _yte), "Stage 1 regressed — the sworn split (test_size=0.25, random_state=0) no longer holds."
+assert np.ndim(baseline) == 0 and abs(float(baseline) - 0.7) < 1e-9 and int(majority) == 0, "Stage 1 regressed — the cynic's baseline must still stand at exactly 0.7, majority verdict 0."
+_ref = _DT(max_depth=3, random_state=0).fit(_Xtr, _ytr)
+assert np.array_equal(np.asarray(pred), _ref.predict(_Xte)), "Stage 2 regressed — the tree's verdicts no longer match one fitted on the training rows alone. If the sealed rows touched the learning, the record is flattery. Fit on X_train, y_train; predict X_test."
+assert np.ndim(model_accuracy) == 0 and abs(float(model_accuracy) - 0.9) < 1e-9, "Stage 2 regressed — model_accuracy must still be exactly 0.9 on the sealed signals."
+_cm = _cmf(_yte, _ref.predict(_Xte))
+assert np.shape(cm) == (2, 2) and int(np.asarray(cm).sum()) == 50, "cm must be the 2x2 confusion matrix over all 50 sealed signals — confusion_matrix(y_test, pred)."
+assert np.array_equal(np.asarray(cm), _cm), "cm's cells are wrong — confusion_matrix(y_test, pred): truth first, prediction second. Swap them and every fate changes name."
+assert np.ndim(tn) == 0 and int(tn) == 33, "tn must be 33 — the quiet nights rightly called quiet. Unpack tn, fp, fn, tp = cm.ravel(); that order, no other."
+assert np.ndim(fp) == 0 and int(fp) == 2, "fp must be 2 — false fires the stone believed. Check the unpack order: tn, fp, fn, tp."
+assert np.ndim(fn) == 0 and int(fn) == 3, "fn must be 3 — true alarms the stone called lies. Check the unpack order: tn, fp, fn, tp."
+assert np.ndim(tp) == 0 and int(tp) == 12, "tp must be 12 — the riders truly caught. Check the unpack order: tn, fp, fn, tp."
+assert np.ndim(precision) == 0 and abs(float(precision) - 12 / 14) < 1e-9, "precision must be tp / (tp + fp) = 12/14, about 0.857 — of the stone's cries, how many were real."
+assert np.ndim(recall) == 0 and abs(float(recall) - 0.8) < 1e-9, "recall must be tp / (tp + fn) = 12/15 = 0.8 — of the real alarms, how many the stone caught."
+assert np.ndim(costlier_error) == 0 and int(costlier_error) == 3, "costlier_error is not the count that burns vales. A false positive musters riders for a lie — 2 of those, a wasted night. A false negative promises calm to a vale already burning — 3 of those, priced in ash. Bind int(fn)."
+assert "33 2 3 12" in _stdout, "Read the four fates into the record — print(tn, fp, fn, tp): 33 2 3 12."
+assert "0.857" in _stdout, "The Council heard no precision — print(round(precision, 3)), which is 0.857, then print(round(recall, 3))."`,
+        canon: py`import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score, confusion_matrix
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.25, random_state=0)
+
+majority = int(np.argmax(np.bincount(y_train)))
+baseline_pred = np.full(y_test.shape, majority)
+baseline = float((baseline_pred == y_test).mean())
+
+model = DecisionTreeClassifier(max_depth=3, random_state=0)
+model.fit(X_train, y_train)
+pred = model.predict(X_test)
+model_accuracy = float(accuracy_score(y_test, pred))
+
+cm = confusion_matrix(y_test, pred)
+tn, fp, fn, tp = (int(v) for v in cm.ravel())
+precision = tp / (tp + fp)
+recall = tp / (tp + fn)
+costlier_error = fn
+
+print(round(baseline, 2))
+print(round(model_accuracy, 2))
+print(tn, fp, fn, tp)
+print(round(precision, 3))
+print(round(recall, 3))`,
+        successText: 'Two musters wasted on lies; three vales that would have burned believing the calm. Now the errors have prices, not excuses.',
+        xp: 50,
+      },
+      {
+        id: 'gwinquests4',
+        title: 'The Verdict Signed',
+        brief: 'The Council does not read notebooks; it reads findings. Assemble the whole case into '
+          + 'one document and sign it. The verdict itself is yours — the Inquest accepts a counsel '
+          + 'to deploy and a counsel to keep the fires — but it accepts no number the record does '
+          + 'not swear to, and no report that hides its own weakness.\n\n'
+          + 'Requirements, exactly:\n\n'
+          + '- Build `findings`, a dict with these keys: `\'baseline\'`, `\'model_accuracy\'`, '
+          + '`\'precision\'`, `\'recall\'` — the sworn numbers from the prior stages — plus '
+          + '`\'limitation\'`: at least one honest sentence (40+ characters), in your own words, '
+          + 'naming where this study is weak; and `\'recommend_deploy\'`: `True` or `False`, '
+          + 'your counsel, defended by the numbers above.\n'
+          + '- `print(\'DEPLOY THE STONE\' if findings[\'recommend_deploy\'] else \'KEEP THE FIRES\')`.',
+        starter: py`import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score, confusion_matrix
+
+# --- stages 1-3, already sworn ---
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.25, random_state=0)
+
+majority = int(np.argmax(np.bincount(y_train)))
+baseline_pred = np.full(y_test.shape, majority)
+baseline = float((baseline_pred == y_test).mean())
+
+model = DecisionTreeClassifier(max_depth=3, random_state=0)
+model.fit(X_train, y_train)
+pred = model.predict(X_test)
+model_accuracy = float(accuracy_score(y_test, pred))
+
+cm = confusion_matrix(y_test, pred)
+tn, fp, fn, tp = (int(v) for v in cm.ravel())
+precision = tp / (tp + fp)
+recall = tp / (tp + fn)
+costlier_error = fn
+
+print(round(baseline, 2))
+print(round(model_accuracy, 2))
+print(tn, fp, fn, tp)
+print(round(precision, 3))
+print(round(recall, 3))
+
+# --- stage 4: the verdict signed ---
+# TODO: findings = { 'baseline': ..., 'model_accuracy': ..., 'precision': ...,
+#                    'recall': ..., 'limitation': '...', 'recommend_deploy': ... }
+#       The numbers are the sworn ones above. The limitation is YOURS to write
+#       (one honest sentence, 40+ characters). The verdict is True or False.
+
+# TODO: print('DEPLOY THE STONE' if findings['recommend_deploy'] else 'KEEP THE FIRES')
+`,
+        setup: INQUEST_SETUP,
+        validation: py`import numpy as np
+from sklearn.model_selection import train_test_split as _tts
+from sklearn.tree import DecisionTreeClassifier as _DT
+from sklearn.metrics import confusion_matrix as _cmf
+assert np.shape(X) == (200, 4) and np.allclose(np.asarray(X, dtype=float), _X_SWORN) and np.array_equal(np.asarray(y), _y_SWORN), "The conjured ledger was altered — X and y must stay as the fixture swore them. Work on copies."
+for _name in ('X_train', 'X_test', 'y_train', 'y_test', 'majority', 'baseline', 'model', 'pred', 'model_accuracy', 'cm', 'tn', 'fp', 'fn', 'tp', 'precision', 'recall', 'costlier_error', 'findings'):
+    assert _name in dir(), "The record lacks a binding the Inquest demands: " + _name + ". Prior stages ride forward — keep every name bound."
+_Xtr, _Xte, _ytr, _yte = _tts(_X_SWORN, _y_SWORN, test_size=0.25, random_state=0)
+assert np.allclose(np.asarray(X_train, dtype=float), _Xtr) and np.array_equal(np.asarray(y_test), _yte), "Stage 1 regressed — the sworn split (test_size=0.25, random_state=0) no longer holds."
+assert np.ndim(baseline) == 0 and abs(float(baseline) - 0.7) < 1e-9 and int(majority) == 0, "Stage 1 regressed — the cynic's baseline must still stand at exactly 0.7, majority verdict 0."
+_ref = _DT(max_depth=3, random_state=0).fit(_Xtr, _ytr)
+assert np.array_equal(np.asarray(pred), _ref.predict(_Xte)), "Stage 2 regressed — the tree's verdicts no longer match one fitted on the training rows alone. Fit on X_train, y_train; predict X_test."
+assert np.ndim(model_accuracy) == 0 and abs(float(model_accuracy) - 0.9) < 1e-9, "Stage 2 regressed — model_accuracy must still be exactly 0.9 on the sealed signals."
+assert np.array_equal(np.asarray(cm), _cmf(_yte, _ref.predict(_Xte))), "Stage 3 regressed — cm no longer matches confusion_matrix(y_test, pred), truth first."
+assert int(tn) == 33 and int(fp) == 2 and int(fn) == 3 and int(tp) == 12, "Stage 3 regressed — the four fates must still read tn 33, fp 2, fn 3, tp 12."
+assert abs(float(precision) - 12 / 14) < 1e-9 and abs(float(recall) - 0.8) < 1e-9 and int(costlier_error) == 3, "Stage 3 regressed — precision 12/14, recall 0.8, and the costlier error still counts 3 burned vales."
+assert isinstance(findings, dict), "findings must be a dict — the Council reads one document, not a drawer of loose notes."
+for _key in ('baseline', 'model_accuracy', 'precision', 'recall', 'limitation', 'recommend_deploy'):
+    assert _key in findings, "The findings lack an entry the Council demands: '" + _key + "'."
+def _sworn_num(_v):
+    return isinstance(_v, (int, float, np.integer, np.floating)) and not isinstance(_v, (bool, np.bool_))
+assert _sworn_num(findings['baseline']) and abs(float(findings['baseline']) - 0.7) < 1e-9, "findings['baseline'] must be the cynic's sworn 0.7 — the number stage 1 filed, no other."
+assert _sworn_num(findings['model_accuracy']) and abs(float(findings['model_accuracy']) - 0.9) < 1e-9, "findings['model_accuracy'] must be the sealed-row 0.9 — no other number was witnessed."
+assert _sworn_num(findings['precision']) and abs(float(findings['precision']) - 12 / 14) < 1e-9, "findings['precision'] must be 12/14 (about 0.857) — exactly what the confusion counts swore."
+assert _sworn_num(findings['recall']) and abs(float(findings['recall']) - 0.8) < 1e-9, "findings['recall'] must be 0.8 — twelve of the fifteen true alarms caught."
+_lim = findings['limitation']
+assert isinstance(_lim, str), "findings['limitation'] must be prose — a string, in your own words."
+assert len(_lim.strip()) >= 40, "The limitation is too thin to protect anyone — give the Council at least one full sentence (40+ characters) on where this study is weak."
+_hooks = ('data', 'sample', 'drift', 'imbalan', 'leak', 'small', 'feature', 'overfit', 'threshold', 'cost')
+assert any(_h in _lim.lower() for _h in _hooks), "An honest limitation names a known weakness of studies like this one — the small sample, the class imbalance, features or weather that may drift, a threshold tuned to one costing, the risk of overfitting. Name one, in your own words."
+assert isinstance(findings['recommend_deploy'], (bool, np.bool_)), "findings['recommend_deploy'] must be True or False — the Council accepts either verdict, but not a hedge."
+assert ('DEPLOY THE STONE' in _stdout) or ('KEEP THE FIRES' in _stdout), "Announce the verdict — print('DEPLOY THE STONE' if findings['recommend_deploy'] else 'KEEP THE FIRES')."`,
+        canon: py`import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score, confusion_matrix
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.25, random_state=0)
+
+majority = int(np.argmax(np.bincount(y_train)))
+baseline_pred = np.full(y_test.shape, majority)
+baseline = float((baseline_pred == y_test).mean())
+
+model = DecisionTreeClassifier(max_depth=3, random_state=0)
+model.fit(X_train, y_train)
+pred = model.predict(X_test)
+model_accuracy = float(accuracy_score(y_test, pred))
+
+cm = confusion_matrix(y_test, pred)
+tn, fp, fn, tp = (int(v) for v in cm.ravel())
+precision = tp / (tp + fp)
+recall = tp / (tp + fn)
+costlier_error = fn
+
+findings = {
+    'baseline': baseline,
+    'model_accuracy': model_accuracy,
+    'precision': precision,
+    'recall': recall,
+    'limitation': 'Two hundred signals from one vale and one season is a small sample '
+                  'with a 70/30 imbalance; the beacons, the weather, and the riders '
+                  'may all drift away from what this tree learned.',
+    'recommend_deploy': False,
+}
+
+print(round(baseline, 2))
+print(round(model_accuracy, 2))
+print(tn, fp, fn, tp)
+print(round(precision, 3))
+print(round(recall, 3))
+print('DEPLOY THE STONE' if findings['recommend_deploy'] else 'KEEP THE FIRES')`,
+        successText: 'Whether you counseled the fires kept or the stone trusted, the Council files a verdict the numbers can defend — and that is the whole craft.',
+        xp: 60,
+      },
+    ],
   },
   codex: [
     {

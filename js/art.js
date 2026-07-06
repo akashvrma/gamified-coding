@@ -261,6 +261,203 @@ export function bossSvg(actId) {
   </svg>`;
 }
 
+// ---------------- the reliquary (boss trophies) ----------------
+// One original trophy per felled warden, shelved in the Sanctum.
+// Tarnished (default): dulled, cracked, dusted with neglect.
+// Pristine: the act mastered — a richer accent, a restrained glow.
+// No CSS vars in the relics: a share card may rasterize them alone.
+
+const RELIC_TONES = {
+  act1: { lit: '#9fd4ff', dim: '#46536b' },  // the gate-wraith's cold watch
+  act2: { lit: '#e8641f', dim: '#5c3a28' },  // deep-fire, banked to a coal
+  act3: { lit: '#7fd4b8', dim: '#3d5a4e' },  // drowned phosphor
+  act4: { lit: '#c9d6ff', dim: '#555f78' },  // wraith-king steel
+  act5: { lit: '#ff5f5f', dim: '#6b3540' },  // the archive's red wax
+  act6: { lit: '#6f86d8', dim: '#3a4460' },  // prophecy-light
+  act7: { lit: '#e8641f', dim: '#5c3a28' },  // the stone's amber iris
+  act8: { lit: '#e8641f', dim: '#54402e' },  // furnace-heart of the machine
+  act9: { lit: '#b49fff', dim: '#4e4866' },  // the echo's violet voice
+  act10: { lit: '#9fb4ff', dim: '#465064' }, // porcelain sheen
+};
+
+export function relicSvg(actId, { pristine = false, instance = '' } = {}) {
+  // Unique def ids per mount: the shelf, a boss screen and a share
+  // card may all mount one relic, so ids carry act + state + instance.
+  const sid = `rl-${actId}-${pristine ? 'p' : 't'}${instance ? `-${instance}` : ''}`;
+  const vid = `${sid}-void`;
+  const gid = `${sid}-glow`;
+  const hid = `${sid}-halo`;
+  const tone = RELIC_TONES[actId] || RELIC_TONES.act1;
+  const acc = pristine ? tone.lit : tone.dim;
+  const glow = pristine ? `filter="url(#${gid})"` : '';
+  const worn = !pristine;
+  const art = {
+    act1: `
+      <!-- the Gatewarden's Key: black iron, its bow an empty archway -->
+      <path d="M60 14 C45 14 35 25 35 39 C35 53 45 63 60 63 C75 63 85 53 85 39 C85 25 75 14 60 14 Z"
+        fill="url(#${vid})" stroke="#1e2233" stroke-width="2.5"/>
+      <path d="M60 26 C52 26 47 32 47 40 C47 47 53 52 60 52 C67 52 73 47 73 40 C73 32 68 26 60 26 Z" fill="#04050a"/>
+      <rect x="56" y="62" width="8" height="50" rx="2" fill="#0b0d16" stroke="#1e2233" stroke-width="1.5"/>
+      <path d="M64 96 h10 v6 h-10 z M64 106 h14 v7 h-14 z" fill="#0b0d16" stroke="#1e2233" stroke-width="1.5"/>
+      <g ${glow}><circle cx="60" cy="40" r="3.2" fill="${acc}" opacity="${pristine ? 0.95 : 0.6}"/></g>
+      ${worn ? '<path d="M44 22 l7 9 -5 4 6 8" fill="none" stroke="#04050a" stroke-width="1.6"/>' : ''}`,
+    act2: `
+      <!-- a splinter of the deep-fire's whip, one ember not yet dead -->
+      <path d="M34 118 L44 76 L40 68 L48 72 L50 62 L54 72 L60 70 L52 80 L44 120 Z"
+        fill="#120a08" stroke="#33150c" stroke-width="1.5"/>
+      <path d="M54 70 C66 52 84 46 92 56 C98 64 92 74 84 70" fill="none" stroke="#33150c" stroke-width="3" stroke-linecap="round"/>
+      <g ${glow}>
+        <path d="M84 76 C81 68 85 61 87 54 C89 62 94 66 91 75 Z" fill="${acc}" opacity="${pristine ? 0.95 : 0.7}"/>
+        ${pristine ? '<path d="M86 72 C85 67 87 64 88 60 C89 65 91 67 90 72 Z" fill="#f0a13c"/>' : ''}
+      </g>
+      ${worn ? `
+      <path d="M40 98 l5 4 -4 5 5 6" fill="none" stroke="#04050a" stroke-width="1.4"/>
+      <circle cx="80" cy="84" r="1.2" fill="#3a3f55" opacity="0.7"/><circle cx="90" cy="80" r="1" fill="#3a3f55" opacity="0.6"/>` : ''}`,
+    act3: `
+      <!-- a waterlogged locket of the drowned, its seam agape -->
+      <path d="M60 10 C57 20 63 30 60 42" fill="none" stroke="#16261f" stroke-width="2" stroke-dasharray="3 4"/>
+      <circle cx="60" cy="48" r="5" fill="none" stroke="#16261f" stroke-width="2.5"/>
+      <ellipse cx="60" cy="80" rx="21" ry="26" fill="url(#${vid})" stroke="#16261f" stroke-width="2.5"/>
+      <ellipse cx="60" cy="80" rx="13" ry="17" fill="none" stroke="#0a1210" stroke-width="2"/>
+      <g ${glow}><path d="M60 60 C58 72 62 88 60 100" fill="none" stroke="${acc}" stroke-width="1.6" opacity="${pristine ? 0.9 : 0.5}"/></g>
+      <path d="M44 98 C38 86 40 70 47 60 M76 96 C83 84 82 68 74 60" fill="none" stroke="#16261f" stroke-width="2.2" opacity="0.9"/>
+      <circle cx="46" cy="112" r="1.6" fill="${acc}" opacity="0.45"/><circle cx="52" cy="120" r="1.1" fill="${acc}" opacity="0.35"/>
+      ${worn ? '<path d="M48 68 l7 8 -5 6 7 9" fill="none" stroke="#030705" stroke-width="1.5"/>' : ''}`,
+    act4: `
+      <!-- the wraith-king's crown-band, split at the brow -->
+      <path d="M30 96 L36 58 L48 76 L60 50 L72 76 L84 58 L90 96 Z" fill="url(#${vid})" stroke="#2b3044" stroke-width="2"/>
+      <path d="M30 96 L90 96 L88 108 L32 108 Z" fill="#171a26" stroke="#2b3044" stroke-width="1.5"/>
+      <g ${glow}><circle cx="60" cy="102" r="3.2" fill="${acc}" opacity="${pristine ? 0.95 : 0.55}"/></g>
+      <path d="M60 50 l2 12 -5 7 4 10 -3 12" fill="none" stroke="#04050a" stroke-width="2"/>
+      ${worn ? `
+      <path d="M42 70 l4 8 -3 8 M78 68 l-4 9 3 9" fill="none" stroke="#04050a" stroke-width="1.2" opacity="0.8"/>
+      <path d="M88 112 l7 6 -10 2 z" fill="#171a26"/>` : ''}`,
+    act5: `
+      <!-- the archive-master's clasp, torn from a chained grimoire -->
+      <rect x="48" y="20" width="24" height="12" rx="3" fill="#0c0a12" stroke="#241d33" stroke-width="1.5"/>
+      <path d="M46 32 h28 v56 c0 12 -14 22 -14 22 s-14 -10 -14 -22 z" fill="url(#${vid})" stroke="#241d33" stroke-width="2.5"/>
+      <circle cx="52" cy="40" r="1.8" fill="#241d33"/><circle cx="68" cy="40" r="1.8" fill="#241d33"/>
+      <circle cx="52" cy="82" r="1.8" fill="#241d33"/><circle cx="68" cy="82" r="1.8" fill="#241d33"/>
+      <g ${glow}>
+        <circle cx="60" cy="61" r="11" fill="#1b1426" stroke="${acc}" stroke-width="2" opacity="${pristine ? 1 : 0.8}"/>
+        <path d="M55 66 l5 -10 5 10 z M60 56 v-4" fill="none" stroke="${acc}" stroke-width="1.4" opacity="${pristine ? 0.9 : 0.6}"/>
+      </g>
+      ${worn ? '<path d="M50 94 l7 5 -5 6 6 7" fill="none" stroke="#04050a" stroke-width="1.5"/>' : ''}`,
+    act6: `
+      <!-- a prophecy orb gone quiet, cradled on a black claw-stand -->
+      <path d="M42 120 h36 l-7 -10 h-22 z" fill="#0d0f1d" stroke="#232a4a" stroke-width="1.5"/>
+      <path d="M46 110 C42 98 44 88 50 80 M74 110 C78 98 76 88 70 80 M60 112 v-9" fill="none" stroke="#0d0f1d" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="60" cy="66" r="25" fill="url(#${vid})" stroke="#3d4a7a" stroke-width="2"/>
+      <g ${glow}>
+        <circle cx="60" cy="66" r="9" fill="${acc}" opacity="${pristine ? 0.8 : 0.35}"/>
+        <path d="M47 72 C54 79 66 79 73 72" fill="none" stroke="${acc}" stroke-width="1.4" opacity="${pristine ? 0.6 : 0.3}"/>
+      </g>
+      <circle cx="53" cy="58" r="2.2" fill="#c9d6ff" opacity="${pristine ? 0.9 : 0.35}"/>
+      ${worn ? '<path d="M70 48 l-6 9 7 6 -5 10" fill="none" stroke="#04050a" stroke-width="1.4"/>' : ''}`,
+    act7: `
+      <!-- a shard sheared from the seeing-stone, one iris still awake -->
+      <path d="M36 112 L84 108 L88 122 L32 122 Z" fill="#141021" stroke="#2c2440" stroke-width="1.5"/>
+      <path d="M52 18 L78 42 L72 94 L46 108 L40 54 Z" fill="url(#${vid})" stroke="#4a2330" stroke-width="2"/>
+      <path d="M52 18 L58 60 L46 108 M58 60 L72 94" fill="none" stroke="#33202a" stroke-width="1.2" opacity="0.9"/>
+      <g ${glow}>
+        <ellipse cx="59" cy="63" rx="6.5" ry="9" fill="${acc}" opacity="${pristine ? 0.9 : 0.55}"/>
+        <ellipse cx="59" cy="63" rx="1.8" ry="6.5" fill="#120306"/>
+      </g>
+      ${worn ? '<path d="M66 30 l-5 9 6 7 -4 10" fill="none" stroke="#3a3f55" stroke-width="1.1" opacity="0.5"/>' : ''}`,
+    act8: `
+      <!-- the machine-shadow's sigil: a gear shorn of its arc -->
+      <path d="M46 120 h28 l-5 -22 h-18 z" fill="#0b0e14" stroke="#2a3244" stroke-width="1.5"/>
+      ${[0, 45, 180, 225, 270, 315].map((a) => `
+      <rect x="56" y="30" width="8" height="10" rx="1" fill="#0b0e14" stroke="#2a3244" stroke-width="1.2" transform="rotate(${a} 60 64)"/>`).join('')}
+      <circle cx="60" cy="64" r="25" fill="url(#${vid})" stroke="#2a3244" stroke-width="2.5"/>
+      <path d="M60 64 L86 52 L79 64 L87 78 L72 86 Z" fill="#020308" stroke="#2a3244" stroke-width="1"/>
+      <circle cx="60" cy="64" r="9" fill="#040609" stroke="#2a3244" stroke-width="1.5"/>
+      <g ${glow}><rect x="52" y="62" width="16" height="4" rx="1" fill="${acc}" opacity="${pristine ? 0.95 : 0.6}"/></g>
+      ${worn ? `
+      <path d="M48 50 l6 7 -5 6" fill="none" stroke="#04050a" stroke-width="1.4"/>
+      <rect x="86" y="114" width="9" height="7" rx="1" fill="#0b0e14" stroke="#2a3244" stroke-width="1" transform="rotate(24 90 117)"/>` : ''}`,
+    act9: `
+      <!-- the echo-sovereign's bell, its clapper cut away -->
+      <line x1="60" y1="12" x2="60" y2="24" stroke="#2c2444" stroke-width="2.5"/>
+      <path d="M57 28 l3 -5 3 6" fill="none" stroke="#2c2444" stroke-width="1.2"/>
+      <circle cx="60" cy="32" r="4" fill="none" stroke="#2c2444" stroke-width="2.5"/>
+      <path d="M60 34 C46 34 41 50 41 66 C41 82 35 90 31 96 L89 96 C85 90 79 82 79 66 C79 50 74 34 60 34 Z"
+        fill="url(#${vid})" stroke="#2c2444" stroke-width="2.5"/>
+      <ellipse cx="60" cy="96" rx="29" ry="5" fill="#050310"/>
+      <g ${glow}><path d="M44 76 C52 80 68 80 76 76" fill="none" stroke="${acc}" stroke-width="2" opacity="${pristine ? 0.85 : 0.5}"/></g>
+      <line x1="82" y1="110" x2="90" y2="118" stroke="#0e0b1a" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="93" cy="120" r="4.5" fill="#0e0b1a" stroke="#2c2444" stroke-width="1.5"/>
+      ${worn ? '<path d="M52 94 l3 -10 -5 -7" fill="none" stroke="#3a3f55" stroke-width="1.2" opacity="0.6"/>' : ''}`,
+    act10: `
+      <!-- the counterfeit's porcelain mask, split along the lie -->
+      <path d="M58 26 C42 28 34 44 34 62 C34 84 44 100 58 106 Z" fill="url(#${vid})" stroke="#2c2440" stroke-width="2"/>
+      <g transform="translate(5 5) rotate(5 62 66)">
+        <path d="M62 26 C78 28 86 44 86 62 C86 84 76 100 62 106 Z" fill="#160f0a" stroke="#3d2a1a" stroke-width="2"/>
+        <path d="M68 58 l10 3 -10 3 z" fill="${pristine ? '#e8641f' : '#5c3a28'}" ${glow}/>
+        <path d="M66 84 q5 3 9 -1" fill="none" stroke="#3d2a1a" stroke-width="1.6"/>
+      </g>
+      <g ${glow}><ellipse cx="47" cy="60" rx="2.8" ry="3.6" fill="${acc}"/></g>
+      <path d="M46 86 q4 4 10 0" fill="none" stroke="#2c2440" stroke-width="1.6"/>
+      <path d="M50 116 l5 6 -8 2 z M72 120 l6 4 -8 3 z" fill="#141021"/>
+      ${worn ? '<path d="M42 44 l6 8 -5 7 6 8" fill="none" stroke="#3a3f55" stroke-width="1.1" opacity="0.5"/>' : ''}`,
+  };
+  return `
+  <svg class="relic-svg ${pristine ? 'pristine' : 'tarnished'} relic-${actId}" viewBox="0 0 120 140" role="img" aria-hidden="true">
+    <defs>
+      <radialGradient id="${vid}" cx="50%" cy="35%" r="70%">
+        <stop offset="0%" stop-color="${pristine ? '#1a1e30' : '#14161f'}"/><stop offset="100%" stop-color="#07080d"/>
+      </radialGradient>
+      ${pristine ? `
+      <filter id="${gid}" x="-150%" y="-150%" width="400%" height="400%">
+        <feGaussianBlur stdDeviation="1.8" result="b"/>
+        <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      <radialGradient id="${hid}" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="${tone.lit}" stop-opacity="0.14"/>
+        <stop offset="100%" stop-color="${tone.lit}" stop-opacity="0"/>
+      </radialGradient>` : ''}
+    </defs>
+    ${pristine ? `<circle cx="60" cy="66" r="46" fill="url(#${hid})"/>` : ''}
+    ${art[actId] || art.act1}
+    ${worn ? `
+    <g class="relic-dust" fill="#8b8fa3" opacity="0.18">
+      <circle cx="28" cy="34" r="1"/><circle cx="88" cy="26" r="0.8"/><circle cx="96" cy="70" r="1.1"/>
+      <circle cx="22" cy="86" r="0.9"/><circle cx="72" cy="16" r="0.7"/><circle cx="40" cy="112" r="1"/>
+    </g>` : ''}
+    <ellipse cx="60" cy="128" rx="38" ry="5.5" fill="#04050a" opacity="0.8"/>
+  </svg>`;
+}
+
+// ---------------- the seal plate (share cards) ----------------
+// A small ornamental plate for the deed-card renderer: filigree
+// frame, a numeral medallion, one title line. Callers pass the only
+// text it carries; both strings are escaped. No defs and no ids, so
+// any number of plates can share a document without collisions.
+
+function escapeXml(text) {
+  return String(text == null ? '' : text).replace(/[&<>"']/g, (ch) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+
+export function sealPlateSvg({ numeral = '', title = '' } = {}) {
+  return `
+  <svg class="seal-plate-svg" viewBox="0 0 360 120" role="img" aria-hidden="true">
+    <rect x="4" y="4" width="352" height="112" rx="10" fill="#0a0c14" stroke="#232738" stroke-width="2"/>
+    <rect x="12" y="12" width="336" height="96" rx="6" fill="none" stroke="#2c2440" stroke-width="1"/>
+    ${[[18, 18, 1, 1], [342, 18, -1, 1], [18, 102, 1, -1], [342, 102, -1, -1]].map(([x, y, sx, sy]) => `
+    <g transform="translate(${x} ${y}) scale(${sx} ${sy})" fill="none" stroke="var(--accent, #c98a2e)" stroke-width="1.4" opacity="0.7">
+      <path d="M0 10 C0 4 4 0 10 0 M2 14 C2 7 7 2 14 2"/>
+      <circle cx="17" cy="4" r="1.2" fill="var(--accent, #c98a2e)" stroke="none"/>
+    </g>`).join('')}
+    <circle cx="60" cy="60" r="26" fill="#0d0f17" stroke="var(--accent, #c98a2e)" stroke-width="1.6"/>
+    <circle cx="60" cy="60" r="31" fill="none" stroke="#232738" stroke-width="1"/>
+    <text x="60" y="68" text-anchor="middle" font-size="22" font-family="Georgia, serif"
+      fill="var(--accent-bright, #f0b45a)">${escapeXml(numeral)}</text>
+    <text x="108" y="66" font-size="17" font-family="Georgia, serif" letter-spacing="1"
+      fill="var(--parchment, #e8dfc8)">${escapeXml(title)}</text>
+    <line x1="108" y1="80" x2="330" y2="80" stroke="#232738" stroke-width="1"/>
+  </svg>`;
+}
+
 // ---------------- the journey map ----------------
 // A winding descent through five regions. Fog covers what is
 // sealed; a marker pulses where the learner stands.

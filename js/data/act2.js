@@ -105,6 +105,29 @@ while step <= 6:
     print(f"Step {step}")
     step += 1`,
         },
+        {
+          heading: 'A rune to recognize: the walrus :=',
+          body: 'One last mark, taught for **reading**, not for duty. Python has an '
+            + '**assignment expression**, spelled `:=` and nicknamed the *walrus* for '
+            + 'its sideways face. Inside a condition it does two things in one breath: '
+            + '`(depth := depth + 3)` binds `depth` to the new value, and the whole '
+            + 'parenthesized expression *is* that value, ready to be tested on the spot.\n\n'
+            + 'You will meet it most often in loops that fetch-and-test in a single '
+            + 'line. In another sorcerer’s scroll, a shape like '
+            + '`while (line := next_rune()) != "END":` reads as: *draw the next rune, '
+            + 'name it `line`, and while it is not END, work the body on it.*\n\n'
+            + 'Be plain about the law here: **writing** the walrus is optional style, '
+            + 'never obligation. The two-line form — assign on one line, test on the '
+            + 'next — is always lawful and often clearer. But other hands fold their '
+            + 'loops this way, so your eyes must know how to unfold it.',
+          code: py`depth = 0
+while (depth := depth + 3) < 10:
+    print(f"{depth} fathoms of rope paid out")
+print("The rope is spent.")`,
+          note: 'Read the condition aloud: *grow depth by three, keep the new value, '
+            + 'and ask whether it is still under ten.* The binding happens first, the '
+            + 'test second — every pass, including the last one that fails.',
+        },
       ],
       challenge: {
         title: 'Count the Descent',
@@ -152,6 +175,28 @@ assert lines[-1] == "The drums begin.", "The final line must be exactly: The dru
 assert step == 8, "When the loop breaks, step should still be 8 -- break fires before the counter moves again."`,
         successText: 'Seven lines spoken, and the stair holds. Far below, something has begun to keep your count for you.',
         xp: 60,
+        workedExample: {
+          intro: 'The Codex turns to a page in a smaller hand — an apprentice of the '
+            + 'second deep who never climbed back past it. Her task was kindred to '
+            + 'yours: nine bells in the guard-hall, rung and counted aloud, the '
+            + 'cracked third passed in silence, the sixth where the rope failed and '
+            + 'the ringing had to end. Read the order of her checks: the ending first, '
+            + 'the skipping second, the honest work last.',
+          code: py`bell = 1
+while bell <= 9:
+    if bell == 6:
+        print("The rope has gone slack.")
+        break
+    if bell == 3:
+        bell += 1
+        continue
+    print(f"Bell {bell} rings")
+    bell += 1`,
+          outro: 'Her bells are not your stair, but the skeleton is one skeleton: '
+            + 'create the counter, test it, change it — and feed it yourself before '
+            + 'every `continue`, or the loop returns to the same bell forever. The '
+            + 'page turns back. Count your own descent now, in your own hand.',
+        },
       },
       quiz: [
         {
@@ -437,6 +482,24 @@ assert lines[5:10] == ["9", "7", "5", "3", "1"], "The countdown must be exactly 
 assert lines[10:14] == ["d", "o", "o", "m"], "The word on the wall must be spelled out d, o, o, m -- loop over the string and print each letter."`,
         successText: 'The column passes and does not see you. You have learned to count as the drum counts.',
         xp: 60,
+        workedExample: {
+          intro: 'The Codex keeps another watcher’s transcription, taken at a '
+            + 'different door in a steadier hour: five empty galleries called in '
+            + 'order, a count falling by fives, and a four-rune word found cut into '
+            + 'the floor. Mark the walls he never touches — his first range ends at '
+            + '7, and his downward march carries all three numbers.',
+          code: py`for n in range(3, 8):
+    print(f"Gallery {n} is empty.")
+
+for n in range(20, 0, -5):
+    print(n)
+
+for rune in "warg":
+    print(rune)`,
+          outro: 'Three processions, three shapes: a bounded walk, a negative stride, '
+            + 'a word taken letter by letter. Your muster wants the same three shapes '
+            + 'wearing different numbers. His page returns to the binding; write your own.',
+        },
       },
       quiz: [
         {
@@ -738,6 +801,25 @@ assert "5" in lines, "Print how many names remain, using len(company). It should
 assert lines[-1] == "Frodo", "The last printed line must be the rearguard: Frodo, fetched with company[-1]."`,
         successText: 'Five names remain, and the ledger knows exactly whom the dark has taken. Keep writing.',
         xp: 65,
+        workedExample: {
+          intro: 'The Codex opens the pack-master’s leaf. He kept the train’s roll to '
+            + 'the very door of the deep, and his rites are your rites wearing humbler '
+            + 'names. Watch each one land: append at the rear, insert shoving '
+            + 'everything behind it one place down, remove striking a value, pop '
+            + 'taking an index — and handing back what it took.',
+          code: py`train = ["pony", "mule", "ox", "goat"]
+train.append("hound")
+train.insert(1, "ram")
+train.remove("ox")
+strayed = train.pop(0)
+print(strayed)
+print(len(train))
+print(train[-1])`,
+          outro: 'The pop is the rite most hands fumble: it returns the taken thing, '
+            + 'and he caught it in a name before the dark could have it. Four beasts '
+            + 'stand on his roll; none of them are yours. Keep your own company now, '
+            + 'rite for rite, in the ledger’s order.',
+        },
       },
       quiz: [
         {
@@ -1101,6 +1183,27 @@ assert "Fell in the year 2994" in lines, "The second carved line must read exact
 assert lines[-2:] == ["Ori", "Oin"], "The last two printed lines must be the swapped watches: Ori, then Oin."`,
         successText: 'The chisel lifts. What you have cut will outlast every hand that comes to read it.',
         xp: 65,
+        workedExample: {
+          intro: 'This page is cut, not written — the work of an apprentice who '
+            + 'carved a waymarker before the bridge took him. One tuple, made once. '
+            + 'One unpacking, counts matched. Two lines built from the parts. And at '
+            + 'the close, two lamps exchanged in a single line, with no third hand to '
+            + 'steady them.',
+          code: py`marker = ("Nain", "keeper of the forge", 2990)
+name, office, year = marker
+print(f"{name}, {office}")
+print(f"Lost in the year {year}")
+
+east_lamp = "lit"
+west_lamp = "dark"
+east_lamp, west_lamp = west_lamp, east_lamp
+print(east_lamp)
+print(west_lamp)`,
+          outro: 'Mark the swap before you go: the right side packs the old values '
+            + 'into a tuple before the left side takes anything, so nothing is '
+            + 'overwritten unread. His stone stands finished. Yours is still blank — '
+            + 'go cut it, and measure twice.',
+        },
       },
       quiz: [
         {
@@ -1356,6 +1459,36 @@ for name, fate in book.items():
 for fate in book.values():
     print(fate)`,
         },
+        {
+          heading: 'Dissection: the closing of a register',
+          body: 'Ten lines, read as the machine reads them — every binding, every '
+            + 'mutation, every spoken word, in order.\n\n'
+            + '- **Line 1** builds a two-entry register and binds the name `fates` to it: Balin and Ori, both alive.\n'
+            + '- **Line 2** writes through an existing key: Balin’s value becomes `"fallen"`. His fate changes; his place in the order does not.\n'
+            + '- **Line 3** writes through a key the register lacks, so a page is added at the end: Floi, lost. Three entries now.\n'
+            + '- **Line 4** tears out Ori entirely, key and value. Two entries remain: Balin, then Floi.\n'
+            + '- **Line 5** asks after Oin with `.get`. Oin is absent, so the default is handed back and `report` binds to `"unrecorded"`. The register itself is untouched — `.get` never writes.\n'
+            + '- **Line 6** prints `unrecorded`.\n'
+            + '- **Line 7** prints `2`.\n'
+            + '- **Lines 8–9** walk `.items()` in insertion order, printing `Balin: fallen`, then `Floi: lost`.\n'
+            + '- **Line 10** prints `False`: `in` examines keys, and `"lost"` lives among the values, where `in` never looks.\n\n'
+            + 'Now hold the working still and turn it. What would change if line 5 '
+            + 'used square brackets — `fates["Oin"]`? The program would die of a '
+            + 'KeyError before a single line was spoken, for nothing has printed yet '
+            + 'when the lookup fails. And what would change if line 4 ran twice? The '
+            + 'second `del` would find no Ori to tear out and raise a KeyError of its '
+            + 'own — deletion, unlike a set’s `.discard`, keeps no silence for the absent.',
+          code: py`fates = {"Balin": "alive", "Ori": "alive"}
+fates["Balin"] = "fallen"
+fates["Floi"] = "lost"
+del fates["Ori"]
+report = fates.get("Oin", "unrecorded")
+print(report)
+print(len(fates))
+for name, fate in fates.items():
+    print(f"{name}: {fate}")
+print("lost" in fates)`,
+        },
       ],
       challenge: {
         title: 'Keeper of the Book',
@@ -1401,6 +1534,24 @@ assert "Floi: fallen" in lines, "The reading must include the line: Floi: fallen
 assert lines[-3:] == ["Balin: fallen", "Ori: alive", "Floi: fallen"], "The three entries must be read in the book's own order -- Balin, Ori, Floi -- by looping over book.items()."`,
         successText: 'The register is current. You try not to wonder whose hand will update it after yours.',
         xp: 70,
+        workedExample: {
+          intro: 'The Book of Mazarbul is not the only register the Codex remembers. '
+            + 'This leaf kept the armory, in a script gone brown at the edges: three '
+            + 'entries built at one stroke, one rewritten through its own key, one '
+            + 'added by the same syntax, one torn out with `del` — then the safe '
+            + 'question, and the full reading in the register’s own order.',
+          code: py`armory = {"axes": "kept", "shields": "kept", "spears": "kept"}
+armory["axes"] = "spent"
+armory["torches"] = "spent"
+del armory["spears"]
+print(armory.get("mail", "unlisted"))
+for item, state in armory.items():
+    print(f"{item}: {state}")`,
+          outro: 'One syntax reads and writes alike: brackets on a known key rewrite '
+            + 'it, on an unknown key add it — and only `.get` asks without the risk '
+            + 'of waking a KeyError. The armory closed long ago. Your book lies open, '
+            + 'waiting on its keeper.',
+        },
       },
       quiz: [
         {
@@ -1705,6 +1856,29 @@ assert lines[2] == "True", "The third line must print whether 'balrog' is in bot
 assert lines[3] == "['cave troll']", "The fourth line must be sorted(west_only)."`,
         successText: 'The tally is clean: three shapes at the west door — and one of them should not be possible.',
         xp: 70,
+        workedExample: {
+          intro: 'Before the second hall had a Watcher it had an ore-clerk, and the '
+            + 'Codex kept her slate. The hauls came up repeating themselves; she '
+            + 'melted them to shapes with `set()`, corrected the tally with one add '
+            + 'and one discard, then weighed her shaft against the south with the '
+            + 'three operators — `&` for both, `|` for either, `-` for hers alone.',
+          code: py`hauls = ["iron", "iron", "silver", "iron", "lead", "silver"]
+north_shaft = set(hauls)
+north_shaft.add("mithril")
+north_shaft.discard("lead")
+south_shaft = {"iron", "copper", "mithril"}
+shared = north_shaft & south_shaft
+every_ore = north_shaft | south_shaft
+north_only = north_shaft - south_shaft
+print(len(north_shaft))
+print(sorted(every_ore))
+print("mithril" in shared)
+print(sorted(north_only))`,
+          outro: 'Note where she leaned on `sorted()`: a set promises no order, and a '
+            + 'clerk who prints one bare is trusting the dark to be tidy. Her ores '
+            + 'are not your horrors, but the weighing is the same weighing. Go reduce '
+            + 'your own reports to truth.',
+        },
       },
       quiz: [
         {
@@ -1989,6 +2163,36 @@ for name, fate in zip(names, fates):
             + 'same unpacking you cut into the tomb-script. And `zip` keeps no record '
             + 'of the longer source’s leftovers: whatever has no partner goes uncounted.',
         },
+        {
+          heading: 'Dissection: three folds and a numbered reading',
+          body: 'Ten lines, read at the smith’s pace — one line, one consequence.\n\n'
+            + '- **Lines 1–2** bind the raw stock: four names, four depths.\n'
+            + '- **Line 3** folds a transform: a NEW list of the four names, shouted. `names` is untouched — a fold never wounds its source.\n'
+            + '- **Line 4** folds a filter: the gate admits only 26 and 14, in source order, so `risky` is `[26, 14]`.\n'
+            + '- **Line 5** folds two sources at once: `zip` pairs each name with its depth, first with first, and the dict fold binds them — four entries.\n'
+            + '- **Line 6** prints `OIN`: index 1 is the *second* mark, for the count began at 0.\n'
+            + '- **Line 7** prints `[26, 14]`.\n'
+            + '- **Line 8** looks up ori’s depth in the new dict and prints `14`.\n'
+            + '- **Lines 9–10** walk `enumerate(marks, start=1)`, two loop variables unpacking each pair: `1. BALIN`, `2. OIN`, `3. ORI`, `4. FLOI`.\n\n'
+            + 'Now hold it still and turn it. What would change if line 4 demanded '
+            + '`d > 30`? The gate would admit nothing, `risky` would be the empty '
+            + 'list, and line 7 would print bare brackets — a fold that admits '
+            + 'nothing still forges a list. And what would change if `depths` held '
+            + 'three numbers instead of four? Line 5’s `zip` would stop with the '
+            + 'shorter roll — floi would go unposted, three entries instead of four — '
+            + 'while lines 3 and 9–10, which read only `names`, would not change by a '
+            + 'single rune.',
+          code: py`names = ["balin", "oin", "ori", "floi"]
+depths = [9, 26, 14, 3]
+marks = [n.upper() for n in names]
+risky = [d for d in depths if d > 10]
+posted = {n: d for n, d in zip(names, depths)}
+print(marks[1])
+print(risky)
+print(posted["ori"])
+for i, m in enumerate(marks, start=1):
+    print(f"{i}. {m}")`,
+        },
       ],
       challenge: {
         title: 'Forged in One Line',
@@ -2034,6 +2238,25 @@ assert lines[1] == "[12, 30, 18]", "The second printed line must be the deep lis
 assert lines[2] == "5", "The third printed line must be rune_count['balin'] -- five runes in the lord's name."`,
         successText: 'Three workings, three lines. The forge approves — and it will remember your signature.',
         xp: 80,
+        workedExample: {
+          intro: 'The smith left more than patterns on the wall. The Codex holds one '
+            + 'of his practice-leaves — the same three folds, cut on humbler stock: '
+            + 'the transform riding at the front of the bracket, the filter trailing '
+            + 'the `for`, and the dict fold keeping its colon between key and value.',
+          code: py`ores = ["iron", "silver", "mithril", "lead"]
+loads = [6, 19, 2, 44, 13]
+
+stamped = [ore.upper() for ore in ores]
+heavy = [x for x in loads if x > 12]
+runes_in = {ore: len(ore) for ore in ores}
+print(len(stamped))
+print(heavy)
+print(runes_in["mithril"])`,
+          outro: 'Read each fold aloud in one breath — *a list of `ore.upper()`, for '
+            + 'each ore in ores* — and notice that no source is ever wounded: every '
+            + 'fold forges new metal. His stock goes back on the rack. Yours is '
+            + 'waiting, one line each.',
+        },
       },
       quiz: [
         {
@@ -2380,6 +2603,53 @@ assert lines[0] == "9", "The first printed line must be len(watch_reports): 9."
 assert "orc: 4" in lines and "troll: 2" in lines and "goblin: 2" in lines and "balrog: 1" in lines, "Each creature must be read out as  name: count  -- four lines, from tally.items()."
 assert lines[-1] == "['orc', 'troll', 'goblin']", "The last line must be the great_threats list itself, printed whole."`,
       xp: 0,
+    },
+
+    barks: {
+      intro: [
+        'I was in the dark before the dark had a name. Your little counts end here.',
+        'The drums were a courtesy. This is the bridge, and the bridge is mine.',
+      ],
+      hit: [
+        'Struck. The roll of the fallen gains a letter of your name.',
+        'Your count falters. The deep does not.',
+        'One more wrong answer and the mountain will not remember you were asked.',
+        'The stair taught you nothing it did not teach the dead.',
+        'Fire takes the careless first. It is taking its time with you.',
+      ],
+      playerFail: [
+        'Your working cracks like a propped gallery. I have brought down better.',
+        'The forge refuses it. The dark would have been less gentle.',
+        'Cast and fail, cast and fail — the bridge has outlasted patience older than yours.',
+      ],
+      lastCandle: [
+        'One candle stands between you and my whole night. Guard it.',
+        'I have watched cities gutter out. Yours is one flame.',
+        'The dark leans close now. It wants to see your last light work.',
+      ],
+      death: [
+        'The bridge breaks... and the deep takes back what was always its own.',
+        'I fell before your kind could count. Falling is not ending. We are patient, down here.',
+      ],
+    },
+    premortem: {
+      prompt: 'The Warden bars the bridge, and the Codex asks one question before '
+        + 'the first blow falls. The Last Page will demand three workings raised in '
+        + 'order: a tally counted out of raw reports, a list filtered from that '
+        + 'tally, and a fixed procession of printed lines. Which do you forge and '
+        + 'prove FIRST?',
+      options: [
+        'The tally loop — every later movement reads from it, so it must stand before anything is built on it',
+        'The printed lines — output is what the ward grades, so print first and fill in the logic after',
+        'The filtered list — it is the subtlest line, so take it while your head is clearest',
+        'All three at once, then run once at the end — fewer castings means fewer chances to fail',
+      ],
+      answer: 0,
+      explain: 'Forge the foundation and prove it before building upward: the '
+        + 'filtered list and every printed line read from the finished tally, so a '
+        + 'wound there poisons all three movements. Print-first grades nothing real, '
+        + 'the subtlest line still needs data to stand on, and one grand casting at '
+        + 'the end leaves you no idea which movement failed.',
     },
   },
 

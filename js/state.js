@@ -39,6 +39,10 @@ function defaultState() {
     resume: { route: '', label: '', at: 0 },
     // qid -> { seen, missed, box, lastDay, dueDay, hash } — the question ledger
     questions: {},
+    // workingId -> { stage: <next unfinished index>, done: {stageId: true} }
+    workings: {},
+    // riteId -> { checks: {checkId: true}, quizPassed, done }
+    rites: {},
     vigil: { lastDay: '', count: 0 },
     stats: {
       runs: 0,
@@ -88,6 +92,14 @@ function load() {
     merged.vigil.count = Number(merged.vigil.count) || 0;
     if (typeof merged.questions !== 'object' || !merged.questions || Array.isArray(merged.questions)) {
       merged.questions = {};
+    }
+    // Old saves carry neither map; individual records may also lack
+    // fields (the merge is shallow) — reads below stay defensive.
+    if (typeof merged.workings !== 'object' || !merged.workings || Array.isArray(merged.workings)) {
+      merged.workings = {};
+    }
+    if (typeof merged.rites !== 'object' || !merged.rites || Array.isArray(merged.rites)) {
+      merged.rites = {};
     }
     return merged;
   } catch {
@@ -277,6 +289,100 @@ export function markTraceSolved(lessonId, traceId) {
 export function isTraceSolved(lessonId, traceId) {
   const rec = state.lessons[lessonId];
   return Boolean(rec && rec.traces && rec.traces[traceId]);
+}
+
+// ---------------- great workings (post-boss epilogues; never gating) ----------------
+// workingId -> { stage: <next unfinished index>, done: {stageId: true} }.
+// Records from hand-edited or partial saves may lack fields — reads guard.
+
+function workingRec(workingId) {
+  if (typeof state.workings !== 'object' || !state.workings || Array.isArray(state.workings)) {
+    state.workings = {};
+  }
+  let rec = state.workings[workingId];
+  if (typeof rec !== 'object' || !rec || Array.isArray(rec)) {
+    rec = { stage: 0, done: {} };
+    state.workings[workingId] = rec;
+  }
+  if (typeof rec.done !== 'object' || !rec.done || Array.isArray(rec.done)) rec.done = {};
+  rec.stage = Number(rec.stage) || 0;
+  return rec;
+}
+
+export function getWorkingProgress(workingId) {
+  const rec = (state.workings || {})[workingId];
+  if (typeof rec !== 'object' || !rec || Array.isArray(rec)) return { stage: 0, done: {} };
+  return {
+    stage: Number(rec.stage) || 0,
+    done: (typeof rec.done === 'object' && rec.done && !Array.isArray(rec.done)) ? rec.done : {},
+  };
+}
+
+export function isWorkingStageDone(workingId, stageId) {
+  return Boolean(getWorkingProgress(workingId).done[stageId]);
+}
+
+// Marks a stage forged; returns true only the first time (the sole gate
+// on the stage's XP). `stage` stays the next unfinished index.
+export function markWorkingStageDone(workingId, stageId, stageIndex) {
+  const rec = workingRec(workingId);
+  const first = !rec.done[stageId];
+  rec.done[stageId] = true;
+  rec.stage = Math.max(rec.stage, stageIndex + 1);
+  save();
+  return first;
+}
+
+// ---------------- rites (post-working epilogues; never gating) ----------------
+// riteId -> { checks: {checkId: true}, quizPassed, done }.
+
+function riteRec(riteId) {
+  if (typeof state.rites !== 'object' || !state.rites || Array.isArray(state.rites)) {
+    state.rites = {};
+  }
+  let rec = state.rites[riteId];
+  if (typeof rec !== 'object' || !rec || Array.isArray(rec)) {
+    rec = { checks: {}, quizPassed: false, done: false };
+    state.rites[riteId] = rec;
+  }
+  if (typeof rec.checks !== 'object' || !rec.checks || Array.isArray(rec.checks)) rec.checks = {};
+  return rec;
+}
+
+export function getRiteProgress(riteId) {
+  const rec = (state.rites || {})[riteId];
+  if (typeof rec !== 'object' || !rec || Array.isArray(rec)) {
+    return { checks: {}, quizPassed: false, done: false };
+  }
+  return {
+    checks: (typeof rec.checks === 'object' && rec.checks && !Array.isArray(rec.checks)) ? rec.checks : {},
+    quizPassed: Boolean(rec.quizPassed),
+    done: Boolean(rec.done),
+  };
+}
+
+export function setRiteCheck(riteId, checkId, on) {
+  const rec = riteRec(riteId);
+  if (on) rec.checks[checkId] = true;
+  else delete rec.checks[checkId];
+  save();
+}
+
+export function markRiteQuizPassed(riteId) {
+  const rec = riteRec(riteId);
+  if (!rec.quizPassed) {
+    rec.quizPassed = true;
+    save();
+  }
+}
+
+// Returns true only on the first completion — the sole gate on rite XP.
+export function markRiteDone(riteId) {
+  const rec = riteRec(riteId);
+  const first = !rec.done;
+  rec.done = true;
+  save();
+  return first;
 }
 
 // ---------------- the forge's memory (fails + hint ladder) ----------------

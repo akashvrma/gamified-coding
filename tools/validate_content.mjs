@@ -78,11 +78,12 @@ function checkChallenge(where, ch, { hintsRequired, hintsExact = null, xpRange =
   }
 }
 
-// Per-kind laws for optional lesson extras (spec §3 / §3b / §3c).
+// Per-kind laws for optional lesson extras (spec §3 / §3b / §3c / §3e).
 const EXTRA_KINDS = {
   echo: { hints: 2, xp: [15, 25] },
   cursed: { hints: 3, xp: [20, 40] },
   ward: { hints: 3, xp: [40, 60] },
+  refactor: { hints: 3, xp: [40, 60] },
 };
 
 const countWords = (s) => String(s || '').trim().split(/\s+/).filter(Boolean).length;
@@ -93,6 +94,13 @@ let totalXp = 0;
 let coreXp = 0;
 let extrasXp = 0;
 let traceXp = 0;
+let workingsXp = 0;
+let ritesXp = 0;
+
+// Working ids live across acts; a rite's download may point at any of
+// them, so cross-references are settled after the whole loop.
+const workingIds = new Set();
+const pendingWorkingRefs = [];
 
 curriculum.acts.forEach((act, ai) => {
   const aw = `act${ai + 1}`;
@@ -159,6 +167,11 @@ curriculum.acts.forEach((act, ai) => {
           return;
         }
         checkChallenge(xw, ex, { hintsRequired: true, hintsExact: kind.hints, xpRange: kind.xp });
+        // Refactor trials pin shape intent (line counts, banned names)
+        // through _source — never inspect.getsource (spec §3e / §5).
+        if (ex.kind === 'refactor' && !/_source/.test(ex.validation || '')) {
+          warn(`${xw}: refactor validation never reads _source — the reshaping intent is unpinned`);
+        }
         manifest.push({
           id: ex.id || `${lesson.id}x?`,
           title: ex.title || xw,
@@ -235,6 +248,118 @@ curriculum.acts.forEach((act, ai) => {
   });
   totalXp += (boss.xp || 0) + (boss.flawlessBonus || 0);
   coreXp += (boss.xp || 0) + (boss.flawlessBonus || 0);
+
+  // ---- great working: optional post-boss staged project (spec §9) ----
+  if (act.working !== undefined) {
+    const w = act.working || {};
+    const ww = `${aw}/working[${w.id || '?'}]`;
+    if (!w.id || !/^gw[a-z]+$/.test(w.id)) {
+      err(`${ww}: id must match ^gw[a-z]+$ (stable — state keys on it), got ${w.id}`);
+    }
+    if (w.id) {
+      if (seenIds.has(w.id)) err(`${ww}: duplicate id`);
+      seenIds.add(w.id);
+      workingIds.add(w.id);
+    }
+    for (const f of ['title', 'brief']) if (!w[f]) err(`${ww}: missing ${f}`);
+    if (w.epigraph !== undefined && (!w.epigraph?.text || !w.epigraph?.source)) {
+      err(`${ww}: malformed epigraph`);
+    }
+    if (!Array.isArray(w.stages) || w.stages.length < 3 || w.stages.length > 6) {
+      err(`${ww}: needs 3–6 stages, got ${w.stages?.length}`);
+    }
+    const stageIdRe = new RegExp(`^${w.id}s\\d+$`);
+    (Array.isArray(w.stages) ? w.stages : []).forEach((st, si) => {
+      const sw = `${ww} stage[${st?.id || si + 1}]`;
+      if (!st.id || !stageIdRe.test(st.id)) {
+        err(`${sw}: id must match ${w.id}s<n> (stable — state and drafts key on it), got ${st.id}`);
+      }
+      if (st.id) {
+        if (seenIds.has(st.id)) err(`${sw}: duplicate id`);
+        seenIds.add(st.id);
+      }
+      for (const f of ['title', 'brief']) if (!st[f]) err(`${sw}: missing ${f}`);
+      checkPyField(`${sw}.starter`, st.starter);
+      checkPyField(`${sw}.canon`, st.canon);
+      checkPyField(`${sw}.validation`, st.validation);
+      if (st.setup !== undefined) checkPyField(`${sw}.setup`, st.setup);
+      if (!/assert/.test(st.validation || '')) err(`${sw}: validation has no assert`);
+      if (!Number.isInteger(st.xp) || st.xp < 30 || st.xp > 60) err(`${sw}: stage xp ${st.xp} outside 30–60`);
+      // The execution gate: the canon must pass its own (cumulative)
+      // stage validation, and the authored starter must fail stage 1's.
+      // run_checks.py executes `setup` before BOTH runs.
+      manifest.push({
+        id: st.id || `${w.id}s?`,
+        title: st.title || sw,
+        starter: st.starter ?? '',
+        solution: st.canon ?? '',
+        validation: st.validation ?? '',
+        setup: st.setup ?? '',
+        starterMustFail: si === 0,
+      });
+      totalXp += st.xp || 0;
+      workingsXp += st.xp || 0;
+    });
+  }
+
+  // ---- rite: optional post-working epilogue (spec §10) ----
+  if (act.rite !== undefined) {
+    const r = act.rite || {};
+    const rw = `${aw}/rite[${r.id || '?'}]`;
+    if (!r.id || !/^rite-[a-z]+$/.test(r.id)) {
+      err(`${rw}: id must match ^rite-[a-z]+$ (stable — state keys on it), got ${r.id}`);
+    }
+    if (r.id) {
+      if (seenIds.has(r.id)) err(`${rw}: duplicate id`);
+      seenIds.add(r.id);
+    }
+    if (!r.title) err(`${rw}: missing title`);
+    if (!Array.isArray(r.sections) || r.sections.length < 3 || r.sections.length > 16) {
+      err(`${rw}: needs 3–16 sections, got ${r.sections?.length}`);
+    }
+    (Array.isArray(r.sections) ? r.sections : []).forEach((s, si) => {
+      if (!s.heading || !s.body) err(`${rw} section ${si + 1}: missing heading/body`);
+      if (s.code !== undefined) checkPyField(`${rw} section ${si + 1}.code`, s.code);
+    });
+    // Rite quizzes are conceptual: structurally checked, never executed.
+    checkQuiz(`${rw}.quiz`, r.quiz, 3, 5);
+    if (!Array.isArray(r.checklist) || r.checklist.length < 3 || r.checklist.length > 8) {
+      err(`${rw}: checklist needs 3–8 items, got ${r.checklist?.length}`);
+    }
+    const checkIds = new Set();
+    (Array.isArray(r.checklist) ? r.checklist : []).forEach((c, ci) => {
+      const cw = `${rw} checklist[${c?.id || ci + 1}]`;
+      if (!c.id || !/^[a-z][a-z0-9-]*$/.test(c.id)) {
+        err(`${cw}: id must be a stable slug matching ^[a-z][a-z0-9-]*$, got ${c.id}`);
+      }
+      if (c.id) {
+        if (checkIds.has(c.id)) err(`${cw}: duplicate id`);
+        checkIds.add(c.id);
+      }
+      if (!c.text) err(`${cw}: missing text`);
+    });
+    if (!Number.isInteger(r.xp) || r.xp < 60 || r.xp > 120) err(`${rw}: rite xp ${r.xp} outside 60–120`);
+    if (r.download !== undefined) {
+      const d = r.download || {};
+      if (!d.filename || !/\.py$/.test(d.filename)) {
+        err(`${rw}.download: filename must end in .py, got ${d.filename}`);
+      }
+      if (d.fallbackCanon !== true) {
+        err(`${rw}.download: fallbackCanon must be true — the take-home must never come up empty`);
+      }
+      if (d.fromWorking !== undefined) {
+        pendingWorkingRefs.push({ where: `${rw}.download`, ref: d.fromWorking });
+      } else if (!act.working) {
+        err(`${rw}.download: no fromWorking named and the act has no working to draw from`);
+      }
+    }
+    totalXp += r.xp || 0;
+    ritesXp += r.xp || 0;
+  }
+});
+
+pendingWorkingRefs.forEach(({ where, ref }) => {
+  if (!workingIds.has(ref)) err(`${where}: fromWorking references unknown working id ${ref}`);
 });
 
 // ----- run CPython grading -----
@@ -257,7 +382,7 @@ console.log(`Warnings: ${warnings.length}`);
 warnings.forEach((w) => console.log(`  warn  ${w}`));
 console.log('');
 console.log(`Total attainable XP from curriculum: ${totalXp}`);
-console.log(`  breakdown: core ${coreXp} / extras ${extrasXp} / trace ${traceXp}`);
+console.log(`  breakdown: core ${coreXp} / extras ${extrasXp} / trace ${traceXp} / workings ${workingsXp} / rites ${ritesXp}`);
 console.log('(plus achievement XP — see js/gamification.js; final rank threshold must stay below the sum)');
 
 if (errors.length || pythonFailed) {

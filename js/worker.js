@@ -53,10 +53,30 @@ def __sweep_files():
 def __dark_run():
     user_code = globals().get("USER_CODE", "")
     validation_code = globals().get("VALIDATION_CODE", "")
+    setup_code = globals().get("SETUP_CODE", "")
     __sweep_files()
     ns = {"__name__": "__main__"}
-    buf = io.StringIO()
     real_stdout, real_stderr = sys.stdout, sys.stderr
+    if setup_code:
+        # Great Workings fixture: runs in the same fresh namespace AFTER
+        # the sweep and BEFORE the user's code. Its stdout is discarded —
+        # _stdout carries only the user's output — and its failure is a
+        # harness fault, never the learner's. Mirror of tools/run_checks.py
+        # run_pair — keep in sync.
+        sbuf = io.StringIO()
+        sys.stdout = sbuf
+        sys.stderr = sbuf
+        try:
+            exec(compile(setup_code, "<the-fixture>", "exec"), ns)
+        except BaseException:
+            sys.stdout, sys.stderr = real_stdout, real_stderr
+            return json.dumps({
+                "ok": False, "stage": "fixture",
+                "output": "",
+                "error": "The Codex's own fixture failed — the fault is the Codex's, not yours. Reload and cast again.",
+            })
+        sys.stdout, sys.stderr = real_stdout, real_stderr
+    buf = io.StringIO()
     sys.stdout = buf
     sys.stderr = buf
     try:
@@ -126,17 +146,18 @@ boot()
   .catch((err) => postMessage({ type: 'fatal', error: String(err) }));
 
 onmessage = async (e) => {
-  const { id, code, validation } = e.data || {};
+  const { id, code, validation, setup } = e.data || {};
   try {
     const py = await boot();
     // Fetch scientific packages (numpy, pandas, scikit-learn, matplotlib…)
     // named in the imports before the spell runs. Failures fall through:
     // the import error will surface to the learner naturally.
     try {
-      await py.loadPackagesFromImports(`${code}\n${validation || ''}`);
+      await py.loadPackagesFromImports(`${code}\n${validation || ''}\n${setup || ''}`);
     } catch { /* offline or unknown package */ }
     py.globals.set('USER_CODE', String(code || ''));
     py.globals.set('VALIDATION_CODE', String(validation || ''));
+    py.globals.set('SETUP_CODE', String(setup || ''));
     const resultJson = py.runPython('__dark_run()');
     postMessage({ type: 'result', id, result: JSON.parse(resultJson) });
   } catch (err) {

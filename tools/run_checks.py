@@ -34,10 +34,24 @@ def sweep_files():
             pass
 
 
-def run_pair(user_code: str, validation_code: str):
-    """Mirror of the worker harness in js/worker.js — keep in sync."""
+def run_pair(user_code: str, validation_code: str, setup_code=None):
+    """Mirror of the worker harness in js/worker.js — keep in sync.
+
+    `setup_code` (Great Workings fixture) runs in the same fresh namespace
+    AFTER the file sweep and BEFORE the user's code. Its stdout is
+    discarded — `_stdout` carries only what the user's code printed — and
+    its failure is a harness fault ("fixture" stage), never the learner's.
+    """
     sweep_files()
     ns = {"__name__": "__main__"}
+    if setup_code:
+        try:
+            with redirect_stdout(io.StringIO()):
+                exec(compile(setup_code, "<the-fixture>", "exec"), ns)
+        except BaseException:
+            return False, "fixture", "", (
+                "The Codex's own fixture failed — the fault is the "
+                "harness's, not the spell's.\n" + traceback.format_exc(limit=3))
     buf = io.StringIO()
     try:
         with redirect_stdout(buf):
@@ -114,14 +128,19 @@ def main():
                 failures.append((ch["id"], "trace", err))
             continue
 
-        ok, stage, _out, err = run_pair(ch["solution"], ch["validation"])
+        # Great Working stage records carry an optional `setup` fixture,
+        # executed before BOTH the solution and the starter run.
+        setup = ch.get("setup") or None
+        ok, stage, _out, err = run_pair(ch["solution"], ch["validation"], setup)
         if not ok:
             failures.append((ch["id"], stage, err))
 
         # The unmodified starter must NOT pass — otherwise the challenge
-        # rewards doing nothing.
-        s_ok, _, _, _ = run_pair(ch["starter"], ch["validation"])
-        if s_ok:
+        # rewards doing nothing. Working stages beyond the first opt out
+        # (starterMustFail: false): their starter is the carried prior
+        # code, and only stage 1's starter is gated by the spec.
+        s_ok, _, _, _ = run_pair(ch["starter"], ch["validation"], setup)
+        if s_ok and ch.get("starterMustFail", True):
             warnings.append((ch["id"], "starter passes validation unchanged"))
 
     for cid, stage, err in failures:

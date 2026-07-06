@@ -101,9 +101,10 @@ const UNREACHABLE = {
     + 'you can still read the scrolls and face the quizzes.',
 };
 
-// Run user code (+ optional validation). Resolves to
+// Run user code (+ optional validation, + optional Great Working setup
+// fixture executed before the user code in the worker). Resolves to
 // { ok, stage, output, error } — never rejects.
-export async function runPython(code, validation = '') {
+export async function runPython(code, validation = '', setup = '') {
   if (status === 'dead') return { ...UNREACHABLE };
   const booted = await preboot();
   if (!booted) return { ...UNREACHABLE };
@@ -127,6 +128,8 @@ export async function runPython(code, validation = '') {
       });
     }, RUN_TIMEOUT_MS);
     pending.set(id, { resolve, timer });
-    worker.postMessage({ id, code, validation });
+    worker.postMessage({
+      id, code, validation, setup,
+    });
   });
 }

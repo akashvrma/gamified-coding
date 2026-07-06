@@ -83,15 +83,15 @@ export default {
     {
       id: 'a2l5x1',        // REQUIRED, stable: lessonId + 'x' + n (state keys on it;
                            // index-keyed records would break on reorder)
-      kind: 'echo',        // 'echo' | 'cursed' | 'ward'
+      kind: 'echo',        // 'echo' | 'cursed' | 'ward' | 'refactor'
       title: 'themed',
       prompt: 'markdown-lite; themed framing then exact requirements',
       starter: py`...`,
       solution: py`...`,
       validation: py`...`, // same quality bar and contract as challenges (§5)
       successText: 'one dark sentence',
-      hints: ['...'],      // echo: exactly 2 · cursed/ward: exactly 3
-      xp: 20,              // echo 15–25 · cursed 20–40 · ward 40–60
+      hints: ['...'],      // echo: exactly 2 · cursed/ward/refactor: exactly 3
+      xp: 20,              // echo 15–25 · cursed 20–40 · ward 40–60 · refactor 40–60
     },
   ],
 
@@ -154,6 +154,22 @@ line — trim, don't split.
   prosecutor — one true implementation must pass silently, each impostor must
   be bitten, with per-impostor diagnostic messages.
 - Exactly 3 hints; XP 40–60.
+
+## 3e. Second-hand law (`kind: 'refactor'`)
+
+The Trial of the Second Hand: a behavior-preserving reshaping. The starter is
+a complete, working, *ugly* program; the trial is to make it smaller or
+cleaner without changing what it does.
+
+- Behavior is pinned by the validation calling the learner's functions against
+  a hidden reference (same inputs, same edge cases) — the reshaped code must
+  still do everything the original did.
+- The reshaping intent (line counts, banned constructs, required idioms) is
+  pinned through `_source` (§5) — **never** `inspect.getsource`, which has no
+  file backing in either harness. The validator warns when a refactor's
+  validation never reads `_source`.
+- Renders as a generic extras panel labelled `⚒ The Second Hand`.
+- Exactly 3 hints (observe → the idiom → the cut); XP 40–60.
 
 ## 4. Boss object schema
 
@@ -353,7 +369,117 @@ A misconception autopsy is an ordinary lesson section whose `heading` begins
 actual output; (d) the true model as one bolded law; (e) one line honoring
 where the false model came from.
 
-## 9. Hard checklist per act (validated mechanically)
+## 9. The Great Working (optional act-level `working`)
+
+A Great Working is a staged project — one build carried through several
+stages, each raised on the one before it. It is an **epilogue**: the engine
+reveals it on the act page only after the act's boss has fallen, and NOTHING
+ever gates on it. The next act opens when the warden dies, whether the
+Working is ever touched.
+
+```js
+export default {
+  // ... the usual act fields ...
+  working: {                 // OPTIONAL — most acts have none
+    id: 'gwledger',          // REQUIRED, stable, ^gw[a-z]+$ (state keys on it).
+                             // Reserved: 'gwledger' (act 3), 'gwinquest' (act 7)
+                             // — the working-complete achievements key on these.
+    title: 'The Drowned Ledger',
+    brief: 'markdown-lite. What is being built, and why the dark wants it.',
+    epigraph: { text: '...', source: '...' },   // optional, act-epigraph shape
+    stages: [                // 3–6 stages, forged strictly in order
+      {
+        id: 'gwledgers1',    // REQUIRED, stable: workingId + 's' + n
+                             // (state AND editor drafts key on it)
+        title: 'themed stage name',
+        brief: 'markdown-lite. Exact requirements for THIS stage, stated plainly.',
+        starter: py`...`,    // stage 1: the true starter. Later stages: a
+                             // fallback only — the forge opens with the
+                             // learner's own passing code from stage n-1.
+        setup: py`...`,      // OPTIONAL fixture, see the setup law below
+        validation: py`...`, // CUMULATIVE — see the cumulative law below
+        canon: py`...`,      // the complete canonical solution UP TO AND
+                             // INCLUDING this stage ("Reforge from the canon")
+        xp: 40,              // 30–60 per stage, paid once on first pass
+      },
+    ],
+  },
+};
+```
+
+**The setup law.** `setup` is a Python source string the harness executes in
+the SAME fresh namespace as the learner's code, AFTER the per-run file sweep
+and BEFORE the learner's code — in both harnesses (js/worker.js and
+tools/run_checks.py, kept behaviorally identical). It exists to conjure the
+stage's fixture: write the messy input file, bind the shared constants. Its
+stdout is discarded — `_stdout` carries only what the *learner's* code
+printed — and `_source` stays the learner's code alone. A setup that raises
+is a **harness fault** ("The Codex's own fixture failed"), surfaced as the
+Codex's own wound and never blamed on the learner. Setup must obey the py
+rules of §1/§6: deterministic, no `input()`, no backticks, no `${`.
+
+**The cumulative law.** Stage *n*'s validation re-asserts the behavior of
+stages 1…n−1 before judging the new work — regression discipline is the
+lesson. The engine does not stack validations for you; **authors write each
+stage's validation cumulative by hand.**
+
+**The carry law.** Stage *n*'s editor pre-fills with the learner's passing
+code from stage n−1 (draft key `darkcodex.draft.<workingId>.<stageId>`). The
+"Reforge from the canon" button (confirm before overwrite) replaces the
+editor with the stage's `canon`. Because of the carry, every `canon` must be
+the WHOLE program as of its stage, not a diff.
+
+**Validated mechanically:** ids and ranges as above; `canon` must PASS its
+own stage's validation in CPython (with `setup` run first); the authored
+`starter` must FAIL stage 1's validation; `setup` runs before both the canon
+and starter runs. Stage XP sums into the validator's `workings` bucket.
+
+On the final stage's first pass the engine emits `working-complete` — the
+per-working achievements in js/gamification.js key on `workingId`.
+
+## 10. The Rite (optional act-level `rite`)
+
+A Rite is a ceremony, not a trial: teaching sections, a conceptual quiz, and
+an honor-system fieldwork checklist for deeds done OUTSIDE the Codex (install
+Python, run a file, raise a venv). It renders after the Working on the act
+page, only once the boss has fallen, and never gates anything.
+
+```js
+export default {
+  // ... the usual act fields ...
+  rite: {                    // OPTIONAL
+    id: 'rite-leaving',      // REQUIRED, stable, ^rite-[a-z]+$
+    title: 'Leaving the Codex',
+    sections: [ ... ],       // 3–16, same shape as lesson sections (§3)
+    quiz: [ ... ],           // 3–5, same shape as lesson quiz. CONCEPTUAL:
+                             // structurally validated, never executed.
+    checklist: [             // 3–8 honor-system fieldwork items
+      { id: 'ran-a-file', text: 'I ran a .py file outside the Codex.' },
+    ],
+    xp: 90,                  // 60–120, paid once when quiz + checklist stand
+    download: {              // OPTIONAL take-home
+      filename: 'drowned_ledger.py',   // must end in .py
+      fromWorking: 'gwledger',         // optional; defaults to the act's working
+      fallbackCanon: true,             // REQUIRED true — never an empty take-home
+    },
+  },
+};
+```
+
+Laws:
+
+- The checklist is the learner's word and nothing else — no ward verifies
+  fieldwork. Checks persist per `checklist[].id` (stable slugs,
+  `^[a-z][a-z0-9-]*$`).
+- Completion = quiz withstood (every question eventually answered true) AND
+  every box marked. It pays `xp` once and emits `rite-complete`.
+- The download assembles a data-URI `.py` from the learner's final working
+  stage draft, falling back to that stage's `canon` — entirely client-side,
+  no network. `fromWorking` must name a working that exists somewhere in the
+  curriculum.
+- Rite XP sums into the validator's `rites` bucket.
+
+## 11. Hard checklist per act (validated mechanically)
 
 - Exactly 7 lessons, ids `aNl1..aNl7`; one boss; 10–16 codex entries.
 - Every challenge: solution passes its own validation in CPython 3.11.
@@ -361,9 +487,18 @@ where the false model came from.
 - No `input(`, no backticks, no `${` inside any `py` field.
 - All XP values within specified ranges.
 - Every extra (`extras[]`): required stable id `aNlMx<n>`, kind in
-  echo/cursed/ward, per-kind hint count and XP range (§3), solution passes its
-  validation in CPython, unmodified starter fails it.
+  echo/cursed/ward/refactor, per-kind hint count and XP range (§3), solution
+  passes its validation in CPython, unmodified starter fails it. Refactor
+  validations that never read `_source` draw a warning.
 - Every trace (`trace[]`): required stable id `aNlMt<n>`, exactly 4 options,
   `answer` in 0..3, non-empty `explain`; the code is **executed** — stripped
   stdout must equal `options[answer]` exactly, or the code must die of the
   exception type named in `raises`.
+- A `working` (§9): id `^gw[a-z]+$`, 3–6 stages with ids `<workingId>s<n>`,
+  stage xp 30–60, non-empty starter/canon/validation; every stage's canon
+  passes its validation in CPython with `setup` executed first; stage 1's
+  starter fails its validation.
+- A `rite` (§10): id `^rite-[a-z]+$`, 3–16 sections, quiz 3–5 (conceptual,
+  never executed), checklist 3–8 with stable slug ids, xp 60–120; any
+  `download` names a `.py` file, carries `fallbackCanon: true`, and its
+  `fromWorking` (if named) resolves to a real working.

@@ -359,10 +359,396 @@ export function renderAct(root, actId) {
       </blockquote>
       <div class="prose">${prose(act.intro)}</div>
     </header>
-    <div class="lesson-list">${nodes}${bossNode}</div>`;
+    <div class="lesson-list">${nodes}${bossNode}</div>
+    <section class="act-epilogue" id="act-epilogue"></section>`;
+  mountEpilogue(root.querySelector('#act-epilogue'), act);
+}
+
+// ---------------- the epilogue (great working + rite) ----------------
+// Optional post-boss surfaces on the act page, revealed only once the
+// act's warden has fallen. NOTHING gates on them — the next act opens
+// the moment the boss dies, whether these pages are ever touched.
+
+function mountEpilogue(host, act) {
+  if ((!act.working && !act.rite) || !S.isBossDefeated(act.id)) {
+    host.innerHTML = '';
+    return;
+  }
+  host.innerHTML = `
+    <h2 class="section-h">🜍 After the Warden</h2>
+    <p class="prose">The act is conquered; these pages opened when its warden fell.
+    Nothing ahead is sealed behind them — this is craft for its own sake.</p>
+    <div data-role="working-host"></div>
+    <div data-role="rite-host"></div>`;
+  if (act.working) mountWorking(host.querySelector('[data-role="working-host"]'), act);
+  if (act.rite) mountRite(host.querySelector('[data-role="rite-host"]'), act);
+}
+
+function mountWorking(host, act) {
+  const w = act.working;
+  const stages = Array.isArray(w.stages) ? w.stages : [];
+  if (!stages.length) return;
+
+  const panel = el('details', { class: 'extra-panel working-panel' });
+  panel.innerHTML = `
+    <summary>
+      <span class="extra-kind">🜍 The Great Working</span>
+      <span class="extra-title">${escapeHtml(w.title)}</span>
+      <span class="extra-status" data-role="working-status"></span>
+    </summary>
+    <div class="extra-body">
+      ${w.epigraph ? `<blockquote class="epigraph">${escapeHtml(w.epigraph.text)}
+        <cite>— ${escapeHtml(w.epigraph.source)}</cite></blockquote>` : ''}
+      <div class="prose">${prose(w.brief)}</div>
+      <p class="prose">A Working is built in stages, each raised on the one before it.
+      Every stage keeps what you wrote for the last — your own code, carried forward —
+      and each holds a canon to reforge from if yours has gone astray.</p>
+      <div class="working-stages" data-role="stages"></div>
+    </div>`;
+  host.appendChild(panel);
+
+  const stagesHost = panel.querySelector('[data-role="stages"]');
+  const statusEl = panel.querySelector('[data-role="working-status"]');
+  const entries = [];
+
+  // The next unfinished index — stages are forged strictly in order.
+  function nextIndex() {
+    let i = 0;
+    while (i < stages.length && S.isWorkingStageDone(w.id, stages[i].id)) i += 1;
+    return i;
+  }
+
+  function refresh() {
+    const cur = nextIndex();
+    statusEl.innerHTML = cur >= stages.length
+      ? '<span class="tag tag-done">Complete</span>'
+      : `<span class="tag tag-accent">Stage ${cur + 1} of ${stages.length}</span>`;
+    entries.forEach((entry, i) => {
+      const done = S.isWorkingStageDone(w.id, stages[i].id);
+      entry.sealed = i > cur;
+      entry.panel.classList.toggle('sealed', entry.sealed);
+      entry.status.innerHTML = done
+        ? '<span class="tag tag-done">Forged</span>'
+        : (entry.sealed
+          ? '<span class="tag tag-locked">Sealed</span>'
+          : `<span class="tag tag-accent">+${Number(stages[i].xp) || 0} XP</span>`);
+    });
+  }
+
+  stages.forEach((stage, i) => {
+    const stagePanel = el('details', { class: 'extra-panel working-stage' });
+    stagePanel.innerHTML = `
+      <summary>
+        <span class="extra-kind">Stage ${i + 1}</span>
+        <span class="extra-title">${escapeHtml(stage.title)}</span>
+        <span class="extra-status" data-role="stage-status"></span>
+      </summary>
+      <div class="extra-body">
+        <div class="prose">${prose(stage.brief)}</div>
+        <div data-role="stage-forge"></div>
+      </div>`;
+    stagesHost.appendChild(stagePanel);
+    const entry = {
+      panel: stagePanel,
+      status: stagePanel.querySelector('[data-role="stage-status"]'),
+      sealed: false,
+      mounted: false,
+    };
+    entries.push(entry);
+    stagePanel.addEventListener('toggle', () => {
+      if (stagePanel.open && entry.sealed) { stagePanel.open = false; return; }
+      if (!stagePanel.open || entry.mounted) return;
+      entry.mounted = true;
+      mountWorkingStageForge(stagePanel.querySelector('[data-role="stage-forge"]'), {
+        act, working: w, stage, stageIndex: i, stages, onAdvance: refresh,
+      });
+    });
+  });
+  refresh();
+}
+
+// The Working's forge: no hint ladder and no dead apprentice's notes —
+// the safety net here is the stage's cumulative canon, offered by the
+// Reforge button and never opened by accident.
+function mountWorkingStageForge(host, {
+  act, working: w, stage, stageIndex, stages, onAdvance,
+}) {
+  const recordKey = `${w.id}.${stage.id}`;
+  host.innerHTML = `
+    <div class="forge">
+      <div class="forge-head">
+        <span class="dots"><i></i><i></i><i></i></span>
+        <span>The Forge — Stage ${stageIndex + 1} of ${stages.length}</span>
+      </div>
+      <div class="editor-wrap">
+        <div class="editor-gutter" aria-hidden="true">1</div>
+        <textarea class="editor" spellcheck="false" autocapitalize="off" autocorrect="off"
+          aria-label="${EDITOR_LABEL}"></textarea>
+      </div>
+      <div class="forge-actions">
+        <button class="btn" data-act="run">▶ Cast the spell</button>
+        <button class="btn btn-ghost" data-act="reset">Reset</button>
+        <button class="btn btn-ghost" data-act="reforge">⚒ Reforge from the canon</button>
+        <span class="runner-state" data-role="runner-state"></span>
+      </div>
+      <div class="console" data-role="console" role="status" aria-live="polite" hidden></div>
+      <div data-role="verdict" role="status" aria-live="polite"></div>
+    </div>`;
+
+  const editor = host.querySelector('textarea.editor');
+  const gutter = host.querySelector('.editor-gutter');
+  const consoleBox = host.querySelector('[data-role="console"]');
+  const verdictBox = host.querySelector('[data-role="verdict"]');
+  const runBtn = host.querySelector('[data-act="run"]');
+
+  // Stage n opens with the learner's passing code from stage n-1 —
+  // their own work carried forward. The authored starter serves the
+  // first stage, and any stage whose prior draft has been lost.
+  const carried = stageIndex > 0 ? loadDraft(`${w.id}.${stages[stageIndex - 1].id}`, '') : '';
+  const prefill = carried.trim() ? carried : stage.starter;
+  editor.value = loadDraft(recordKey, prefill);
+  if (S.isWorkingStageDone(w.id, stage.id)) {
+    verdictBox.innerHTML = `
+      <div class="verdict verdict-pass">
+        <span class="verdict-title">Already forged.</span>
+        You may refine this stage freely — the mark is yours.
+      </div>`;
+  }
+
+  function syncGutter() {
+    const lines = editor.value.split('\n').length || 1;
+    gutter.textContent = Array.from({ length: lines }, (_, i) => i + 1).join('\n');
+    gutter.scrollTop = editor.scrollTop;
+  }
+  wireEditorNormalization(editor); // before the draft-saver: drafts store normalized text
+  editor.addEventListener('input', () => { syncGutter(); saveDraft(recordKey, editor.value); });
+  editor.addEventListener('scroll', () => { gutter.scrollTop = editor.scrollTop; });
+  wireEditorKeys(editor, () => { saveDraft(recordKey, editor.value); syncGutter(); });
+  syncGutter();
+  wireRunnerLabel(host);
+
+  host.querySelector('[data-act="reset"]').addEventListener('click', () => {
+    editor.value = prefill;
+    clearDraft(recordKey);
+    syncGutter();
+  });
+
+  host.querySelector('[data-act="reforge"]').addEventListener('click', () => {
+    const sure = window.confirm(
+      'Reforge from the canon? Your code in this stage is struck out and the canonical working takes its place. There is no counter-curse.',
+    );
+    if (!sure) return;
+    editor.value = stage.canon;
+    saveDraft(recordKey, editor.value);
+    syncGutter();
+  });
+
+  runBtn.addEventListener('click', async () => {
+    play('cast');
+    runBtn.disabled = true;
+    runBtn.textContent = '⏳ Casting…';
+    consoleBox.hidden = false;
+    consoleBox.innerHTML = '<span class="con-dim">The runes begin to glow…</span>';
+    verdictBox.innerHTML = '';
+    host.querySelector('.editor-wrap').classList.add('casting');
+
+    const result = await runPython(editor.value, stage.validation, stage.setup || '');
+    host.querySelector('.editor-wrap')?.classList.remove('casting');
+    runBtn.disabled = false;
+    runBtn.textContent = '▶ Cast the spell';
+
+    const out = result.output
+      ? escapeHtml(result.output)
+      : '<span class="con-dim">(the spell produced no output)</span>';
+    S.recordRun(result.ok);
+    emit({ type: 'run' });
+    if (result.ok) {
+      play('yield');
+      consoleBox.innerHTML = out;
+      const next = stages[stageIndex + 1];
+      // Carry the passing code forward: the next stage opens with it.
+      if (next && !S.isWorkingStageDone(w.id, next.id)
+        && !loadDraft(`${w.id}.${next.id}`, '').trim()) {
+        saveDraft(`${w.id}.${next.id}`, editor.value);
+      }
+      const first = S.markWorkingStageDone(w.id, stage.id, stageIndex);
+      const finished = stages.every((s2) => S.isWorkingStageDone(w.id, s2.id));
+      verdictBox.innerHTML = `
+        <div class="verdict verdict-pass">
+          <span class="verdict-title">${finished
+    ? 'The Great Working stands complete.'
+    : 'The stage is forged.'}</span>
+          ${finished
+    ? 'Every stage holds. What you built here is yours to carry out of the Codex.'
+    : 'The Working holds — the next stage opens with this very code.'}
+        </div>`;
+      castBolt(runBtn, verdictBox).then(() => burst(verdictBox));
+      if (first) {
+        grantXp(Number(stage.xp) || 0, `The Working advances — ${stage.title}`);
+        emit({
+          type: 'working-stage-forged', workingId: w.id, stageId: stage.id, actId: act.id,
+        });
+        if (finished) {
+          emit({ type: 'working-complete', workingId: w.id, actId: act.id });
+        }
+      }
+      onAdvance();
+    } else {
+      const harnessFault = result.stage === 'engine' || result.stage === 'fixture';
+      if (!harnessFault) play('collapse');
+      consoleBox.innerHTML = `${out}\n<span class="con-err">${escapeHtml(result.error || '')}</span>`;
+      let title;
+      let guidance;
+      if (result.stage === 'fixture') {
+        title = 'The Codex’s own fixture failed.';
+        guidance = 'The fault is the Codex’s, not yours — your code was never judged. Cast again; if the fixture keeps failing, reload the page.';
+      } else if (result.stage === 'validate') {
+        title = 'The spell fired — but the ward rejected it.';
+        guidance = 'Your code ran, yet it does not do what the stage demands. Read the ward’s message below the output.';
+      } else {
+        title = 'The spell collapsed.';
+        guidance = 'Python could not finish your code. Read the last line of the message — it names the wound.';
+      }
+      verdictBox.innerHTML = `
+        <div class="verdict verdict-fail">
+          <span class="verdict-title">${title}</span>
+          ${guidance}
+        </div>`;
+    }
+  });
+}
+
+// The learner's take-home: the final stage of a Working as they left it,
+// or its canon when the forge stands empty. Assembled entirely client-side.
+function workingTakeHome(act, dl) {
+  const wid = dl.fromWorking || (act.working && act.working.id) || '';
+  let w = null;
+  for (const a of curriculum.acts) {
+    if (a.working && a.working.id === wid) { w = a.working; break; }
+  }
+  if (!w || !Array.isArray(w.stages) || !w.stages.length) return '';
+  const last = w.stages[w.stages.length - 1];
+  const draft = loadDraft(`${w.id}.${last.id}`, '');
+  if (draft.trim()) return draft;
+  return dl.fallbackCanon ? (last.canon || '') : '';
+}
+
+function mountRite(host, act) {
+  const r = act.rite;
+  const panel = el('details', { class: 'extra-panel rite-panel' });
+  panel.innerHTML = `
+    <summary>
+      <span class="extra-kind">🝓 The Rite</span>
+      <span class="extra-title">${escapeHtml(r.title)}</span>
+      <span class="extra-status" data-role="rite-status"></span>
+    </summary>
+    <div class="extra-body" data-role="rite-body"></div>`;
+  host.appendChild(panel);
+
+  const statusEl = panel.querySelector('[data-role="rite-status"]');
+  function refreshStatus() {
+    const rec = S.getRiteProgress(r.id);
+    statusEl.innerHTML = rec.done
+      ? '<span class="tag tag-done">Kept</span>'
+      : `<span class="tag tag-accent">+${Number(r.xp) || 0} XP</span>`;
+  }
+  refreshStatus();
+
+  let mounted = false;
+  panel.addEventListener('toggle', () => {
+    if (!panel.open || mounted) return;
+    mounted = true;
+    mountRiteBody(panel.querySelector('[data-role="rite-body"]'), act, r, refreshStatus);
+  });
+}
+
+function mountRiteBody(body, act, r, refreshStatus) {
+  const quiz = Array.isArray(r.quiz) ? r.quiz : [];
+  const checklist = Array.isArray(r.checklist) ? r.checklist : [];
+  const rec0 = S.getRiteProgress(r.id);
+
+  const dl = r.download;
+  const takeHome = dl && dl.filename ? workingTakeHome(act, dl) : '';
+  const downloadHtml = takeHome
+    ? `<p><a class="btn" download="${escapeHtml(dl.filename)}"
+         href="data:text/x-python;charset=utf-8,${encodeURIComponent(takeHome)}">⤓ Carry the Working out — ${escapeHtml(dl.filename)}</a></p>
+       <p class="empty-note">The final stage of your Great Working, as you left it —
+       or its canon, if your forge stands empty. It runs anywhere Python does.</p>`
+    : '';
+
+  body.innerHTML = `
+    ${sectionsHtml(r.sections)}
+    <h2 class="section-h">🕯 The Questioning</h2>
+    <p class="prose">${rec0.quizPassed
+    ? 'You have already withstood this questioning. Answer again if you wish to test the scar.'
+    : 'Answer truly. Wrong answers cost nothing here.'}</p>
+    <div data-role="rite-quiz"></div>
+    <h2 class="section-h">⛧ The Fieldwork</h2>
+    <p class="prose">These deeds are done beyond the Codex’s sight, on your own machine.
+    No ward watches them — mark each only when it is true. Your word is the only seal here.</p>
+    <div class="rite-checklist" data-role="rite-checklist"></div>
+    ${downloadHtml}
+    <div data-role="rite-result" role="status" aria-live="polite"></div>`;
+
+  const resultHost = body.querySelector('[data-role="rite-result"]');
+
+  function maybeRiteComplete() {
+    refreshStatus();
+    const rec = S.getRiteProgress(r.id);
+    if (!rec.quizPassed || !checklist.every((c) => rec.checks[c.id])) return;
+    if (S.markRiteDone(r.id)) {
+      grantXp(Number(r.xp) || 0, `The Rite is kept — ${r.title}`);
+      emit({ type: 'rite-complete', riteId: r.id, actId: act.id });
+      resultHost.innerHTML = `
+        <div class="verdict verdict-pass">
+          <span class="verdict-title">The Rite is kept.</span>
+          What was learned inside the Codex now lives outside it.
+        </div>`;
+    }
+    refreshStatus();
+  }
+
+  // The questioning: rite quizzes are conceptual — answered here, never executed.
+  const qHost = body.querySelector('[data-role="rite-quiz"]');
+  const solvedFlags = quiz.map(() => false);
+  quiz.forEach((q, qi) => {
+    renderQuizQuestion(qHost, q, (missed) => {
+      solvedFlags[qi] = true;
+      S.recordQuestionOutcome(`${r.id}:q${qi}`, !missed, qHash(q.q));
+      if (solvedFlags.every(Boolean)) {
+        S.markRiteQuizPassed(r.id);
+        maybeRiteComplete();
+      }
+    }, { number: qi + 1 });
+  });
+
+  const listHost = body.querySelector('[data-role="rite-checklist"]');
+  const rec = S.getRiteProgress(r.id);
+  listHost.innerHTML = checklist.map((c) => `
+    <label class="rite-check">
+      <input type="checkbox" data-check="${escapeHtml(c.id)}" ${rec.checks[c.id] ? 'checked' : ''}>
+      <span>${escapeHtml(c.text)}</span>
+    </label>`).join('');
+  listHost.addEventListener('change', (e) => {
+    const box = e.target.closest('input[data-check]');
+    if (!box) return;
+    S.setRiteCheck(r.id, box.dataset.check, box.checked);
+    maybeRiteComplete();
+  });
 }
 
 // ---------------- lesson page ----------------
+
+// One lesson-style section list (heading, prose, optional code, optional
+// lore note) — shared by lessons and by the Rite's teaching block.
+function sectionsHtml(sections) {
+  return (Array.isArray(sections) ? sections : []).map((sec) => `
+    <h2 class="section-h">${escapeHtml(sec.heading)}</h2>
+    <div class="prose">${prose(sec.body)}</div>
+    ${sec.code ? codeBlock(sec.code) : ''}
+    ${sec.note ? `<div class="lore-note"><span class="rune">🜏</span><div class="prose">${prose(sec.note)}</div></div>` : ''}
+  `).join('');
+}
 
 export function renderLesson(root, lessonId) {
   const found = findLesson(lessonId);
@@ -387,13 +773,6 @@ export function renderLesson(root, lessonId) {
     `Trial ${lessonIndex + 1} — ${lesson.title} · Act ${act.numeral}, ${act.title}`,
   );
 
-  const sectionsHtml = lesson.sections.map((sec) => `
-    <h2 class="section-h">${escapeHtml(sec.heading)}</h2>
-    <div class="prose">${prose(sec.body)}</div>
-    ${sec.code ? codeBlock(sec.code) : ''}
-    ${sec.note ? `<div class="lore-note"><span class="rune">🜏</span><div class="prose">${prose(sec.note)}</div></div>` : ''}
-  `).join('');
-
   root.innerHTML = `
     <div class="crumbs">
       <a href="#/">The Map</a> /
@@ -406,7 +785,7 @@ export function renderLesson(root, lessonId) {
       <p class="lesson-concept-line">You will learn: <strong>${escapeHtml(lesson.concept)}</strong></p>
     </header>
     <div class="narrative">${prose(lesson.narrative)}</div>
-    ${sectionsHtml}
+    ${sectionsHtml(lesson.sections)}
     <section class="challenge-panel" id="challenge"></section>
     <section class="scrying" id="scrying"></section>
     <section class="quiz" id="quiz"></section>
@@ -721,6 +1100,7 @@ const EXTRA_LABELS = {
   echo: '⟳ Echoes in the Stone',
   cursed: '☠ Cursed Scroll',
   ward: '⚒ Forge the Ward',
+  refactor: '⚒ The Second Hand',
 };
 
 function mountExtras(host, lesson) {

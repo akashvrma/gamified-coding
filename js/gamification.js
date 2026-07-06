@@ -188,6 +188,18 @@ export const ACHIEVEMENTS = [
     // no longer voids the incentive forever.
     check: (st) => (st.stats.unaidedStreak || 0) >= 15,
   },
+  {
+    id: 'working-ledger', icon: '⚖️', xp: 100,
+    title: 'Keeper of the Drowned Ledger',
+    desc: 'Carry Act III’s Great Working through every stage — the lake gives up its dead in order, and you wrote each name down.',
+    check: (st, ev) => ev.type === 'working-complete' && ev.workingId === 'gwledger',
+  },
+  {
+    id: 'working-inquest', icon: '🕯️', xp: 100,
+    title: 'Arbiter of the Inquest',
+    desc: 'Close Act VII’s Great Working — baseline before belief, holdout kept sacred, findings signed in your own hand.',
+    check: (st, ev) => ev.type === 'working-complete' && ev.workingId === 'gwinquest',
+  },
 ];
 
 // ---------------- event bus ----------------

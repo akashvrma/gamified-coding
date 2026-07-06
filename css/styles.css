@@ -424,6 +424,22 @@ details.extra-panel > summary:focus-visible { outline: 2px solid var(--accent); 
 .extra-status { margin-left: auto; }
 .extra-body { padding: 0 1.1rem 1.1rem; }
 
+/* ---------------- act epilogue (great working + rite) ---------------- */
+
+.act-epilogue { margin-top: 2rem; }
+.act-epilogue:empty { display: none; }
+.working-stages { margin-top: 0.8rem; }
+details.working-stage { background: var(--bg-inset); }
+/* Sealed stages keep their place in the ladder but refuse the hand. */
+details.working-stage.sealed > summary { opacity: 0.55; cursor: not-allowed; }
+details.working-stage.sealed > summary:hover { background: transparent; }
+.rite-checklist { display: flex; flex-direction: column; gap: 0.55rem; margin: 0.6rem 0 1.1rem; }
+.rite-check {
+  display: flex; gap: 0.6rem; align-items: baseline;
+  cursor: pointer; color: var(--ink-dim);
+}
+.rite-check input { accent-color: var(--accent); flex: none; }
+
 /* ---------------- quiz ---------------- */
 
 .quiz { margin-top: 1.5rem; }

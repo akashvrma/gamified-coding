@@ -36,8 +36,12 @@ export default {
   intro: 'markdown-lite paragraph(s) — what this act covers, themed but concrete',
   lessons: [ /* exactly 7 lesson objects, see §3 */ ],
   boss: { /* see §4 */ },
-  codex: [ { term: 'print()', def: 'one-sentence plain definition, markdown-lite' }, ... ],
-                            // 10–17 entries covering the act's Python vocabulary
+  codex: [ { term: 'print()', def: 'one-sentence plain definition, markdown-lite',
+             lesson: 'a1l1' }, ... ],
+                            // 10–17 entries covering the act's Python vocabulary.
+                            // lesson: OPTIONAL — the id of the lesson (in THIS act)
+                            //   that teaches the term; renders a quiet "taught in"
+                            //   link in the Codex. Omit if the term has no home trial.
 };
 ```
 

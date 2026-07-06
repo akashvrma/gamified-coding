@@ -1006,13 +1006,58 @@ function mountRiteBody(body, act, r, refreshStatus) {
 
 // ---------------- lesson page ----------------
 
+// A lesson/Rite code block the reader can lift straight into the forge.
+// Only teaching blocks wear this — never the forge, quiz, or scrying.
+const FORGE_COPY_LABEL = '⚒ To the forge';
+
+function forgeableCodeBlock(code) {
+  return `<div class="codeblock-wrap">${codeBlock(code)}<button type="button" class="code-copy" aria-label="Copy this working into your forge">${FORGE_COPY_LABEL}</button></div>`;
+}
+
+// Old-engine / insecure-origin path when the async clipboard is barred.
+function execCopy(text) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.top = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand('copy');
+    ta.remove();
+    return ok;
+  } catch { return false; }
+}
+
+function markTaken(btn) {
+  btn.textContent = 'Taken.';
+  clearTimeout(btn._forgeRevert);
+  btn._forgeRevert = setTimeout(() => { btn.textContent = FORGE_COPY_LABEL; }, 1200);
+}
+
+// One delegated listener serves every copy button, including Rite bodies
+// mounted long after their page painted.
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.code-copy');
+  if (!btn) return;
+  const source = btn.closest('.codeblock-wrap')?.querySelector('code');
+  if (!source) return;
+  const text = source.textContent;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => markTaken(btn), () => { if (execCopy(text)) markTaken(btn); });
+  } else if (execCopy(text)) {
+    markTaken(btn);
+  }
+});
+
 // One lesson-style section list (heading, prose, optional code, optional
 // lore note) — shared by lessons and by the Rite's teaching block.
 function sectionsHtml(sections) {
   return (Array.isArray(sections) ? sections : []).map((sec) => `
     <h2 class="section-h">${escapeHtml(sec.heading)}</h2>
     <div class="prose">${prose(sec.body)}</div>
-    ${sec.code ? codeBlock(sec.code) : ''}
+    ${sec.code ? forgeableCodeBlock(sec.code) : ''}
     ${sec.note ? `<div class="lore-note"><span class="rune">🜏</span><div class="prose">${prose(sec.note)}</div></div>` : ''}
   `).join('');
 }
@@ -2772,11 +2817,19 @@ export function renderCodex(root) {
         <p class="codex-locked-note">These pages are still sealed. Reach Act ${escapeHtml(act.numeral)} to read them.</p>
       </section>`;
     }
-    const entries = act.codex.map((c) => `
+    const entries = act.codex.map((c) => {
+      // Optional cross-binding: point back to the trial that taught the
+      // term. Absent field or a dangling id simply grows no link.
+      const taught = c.lesson ? findLesson(c.lesson) : null;
+      const back = taught
+        ? ` <a class="codex-taught" href="#/lesson/${escapeHtml(c.lesson)}">→ taught in ${escapeHtml(taught.lesson.title)}</a>`
+        : '';
+      return `
       <div class="codex-entry">
         <span class="codex-term">${escapeHtml(c.term)}</span>
-        <span class="codex-def">${prose(c.def).replace(/^<p>|<\/p>$/g, '')}</span>
-      </div>`).join('');
+        <span class="codex-def">${prose(c.def).replace(/^<p>|<\/p>$/g, '')}${back}</span>
+      </div>`;
+    }).join('');
     return `<section class="codex-act">
       <h2>${escapeHtml(act.sigil)} ${escapeHtml(act.title)}</h2>
       ${entries}

@@ -117,6 +117,11 @@ curriculum.acts.forEach((act, ai) => {
   }
   (act.codex || []).forEach((c, i) => {
     if (!c.term || !c.def) err(`${aw} codex[${i}]: missing term/def`);
+    // Optional cross-binding: a term may name the lesson that taught it,
+    // which must be a lesson in this same act.
+    if (c.lesson !== undefined && !(act.lessons || []).some((l) => l.id === c.lesson)) {
+      err(`${aw} codex[${i}]: lesson '${c.lesson}' is not a lesson in this act`);
+    }
   });
 
   (act.lessons || []).forEach((lesson, li) => {

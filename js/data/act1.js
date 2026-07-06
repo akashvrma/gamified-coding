@@ -130,6 +130,18 @@ assert _lines[1] == "The shelves are watching.", "The shelves turn away. Line 2 
 assert _lines[2] == "I read at my own peril.", "The oath is incomplete. Line 3 must be exactly: I read at my own peril."`,
         successText: 'The candle steadies and burns a shade too green. Somewhere in the stacks, your name is written down.',
         xp: 50,
+        workedExample: {
+          intro: 'The Codex turns its own pages, unasked, to a dead reader’s hand — the '
+            + 'entry-words she spoke at the west stair, a working kindred to yours. Read how '
+            + 'it moves: one print() for each demanded line, the wording exact.',
+          code: py`# Her working: the three entry-words of the west stair, exact and in order.
+print("The stair is counted.")
+print("The dark below is counted too.")
+print("I descend anyway.")`,
+          outro: 'Her stair is not your threshold, and her lines will not open your door. '
+            + 'Keep only the shape — one print() per line, quotes around each phrase, wording '
+            + 'matched to the letter — and speak your own three.',
+        },
       },
       quiz: [
         {
@@ -384,6 +396,20 @@ assert "7" in _stdout, "The count of fragments never reached the ledger. Print f
 assert "<class 'int'>" in _stdout, "The count's nature was never proven. Print type(fragments)."`,
         successText: 'The entries dry instantly, as ink does when the book approves. Somewhere in its box, the locket taps once.',
         xp: 55,
+        workedExample: {
+          intro: 'The Codex offers a kindred page from another intake: a poison bound as a '
+            + 'string, its doses bound as a bare integer, and the count’s nature proven with '
+            + 'type() — the same three duties your ledger demands, performed on different goods.',
+          code: py`# A dead reader's intake: the poison, the count, and proof of the count's nature.
+poison = "widow's draught"
+doses = 4
+print(poison)
+print(doses)
+print(type(doses))`,
+          outro: 'His names and his numbers are his own; your ledger wants yours. Match the '
+            + 'shape — string in quotes, integer bare, three prints with type() last — and '
+            + 'seal your own vessels.',
+        },
       },
       quiz: [
         {
@@ -663,6 +689,22 @@ assert "len(" in _live, "The count must be counted, never typed by hand - the wa
 assert any(ln.strip() == "19" for ln in _stdout.splitlines()), "The count was never spoken. Print len(cleansed) - a line holding the bare number 19."`,
         successText: 'The wall drinks the corrected words. Far below the floorboards, something very long changes direction.',
         xp: 60,
+        workedExample: {
+          intro: 'The Codex unfolds an older evidence page: a different scrap of wall-speech, '
+            + 'cleansed by a hand now still — the same rites as yours, stripped, shouted, '
+            + 'mended, and counted with len(), never by hand.',
+          code: py`# Her cleansing of an older scrap, rite for rite.
+scrap = "   the seal is broken   "
+bare = scrap.strip()
+shouted = bare.upper()
+mended = bare.replace("broken", "whole")
+print(shouted)
+print(mended)
+print(len(bare))`,
+          outro: 'Mark that every method hands back a new string, and she binds each result '
+            + 'before leaning on it. Your whisper wants the same rites in the same order — '
+            + 'but its own words, its own count. Go and cleanse it.',
+        },
       },
       quiz: [
         {
@@ -986,6 +1028,24 @@ assert "6 wait in the corridor." in _stdout, "The ledger's second line is missin
 assert "The ledger holds 272 souls." in _stdout, "The ledger's third line is missing or wrong. It must read exactly: The ledger holds 272 souls."`,
         successText: 'The columns balance to the last soul, and the ledger — satisfied — turns its own page.',
         xp: 60,
+        workedExample: {
+          intro: 'The Codex lays a kindred ledger beside yours: a dead keeper balancing the '
+            + 'crypt-yard — floor division for the whole shares, modulo for the remainder, '
+            + 'int() to wake an inked count, and f-strings to speak the lines.',
+          code: py`# Her balance of the crypt-yard, to the last coffin.
+coffins = 100
+crypts = 9
+old_tally = "23"
+per_crypt = coffins // crypts
+unhoused = coffins % crypts
+total = coffins + int(old_tally)
+print(f"Each crypt holds {per_crypt}.")
+print(f"{unhoused} wait above ground.")
+print(f"The yard answers for {total}.")`,
+          outro: 'Her crypts are not your cells, and her numbers will not balance your tower. '
+            + 'Keep the pattern — // then %, int() before the addition, an f before every '
+            + 'speaking quote — and close your own columns.',
+        },
       },
       quiz: [
         {
@@ -1285,6 +1345,24 @@ assert "Admitted: True" in _stdout, "The gate never heard the second verdict. Pr
 assert "Silent: True" in _stdout, "The gate never heard the third verdict. Print exactly: Silent: True"`,
         successText: 'The gate weighs your three verdicts and finds them exact. Lying to it was never an option; being precise was.',
         xp: 65,
+        workedExample: {
+          intro: 'The Codex shows a kindred weighing: a dead courier judged at the toll-bridge '
+            + '— one comparison bound straight to a name, one or, one not turned on empty '
+            + 'text, and three exact f-string lines.',
+          code: py`# The toll-bridge's verdicts on the courier, exact and unflattering.
+weight = 40
+sealed = True
+manifest = ""
+heavy = weight >= 50
+passes = heavy or sealed
+undeclared = not manifest
+print(f"Heavy: {heavy}")
+print(f"Passes: {passes}")
+print(f"Undeclared: {undeclared}")`,
+          outro: 'No if anywhere — each verdict is a bare expression sealed into a vessel, '
+            + 'then spoken through braces. Your gate asks different questions of different '
+            + 'values; answer it the same way, in your own working.',
+        },
       },
       quiz: [
         {
@@ -1547,6 +1625,37 @@ if sighting == "wraith":
 else:
     print("The aisle is empty.")`,
         },
+        {
+          heading: 'Dissection: The Night Bell',
+          body: 'Writing forks is half the craft; reading one whole, without running it, is '
+            + 'the other half. The complete working stands below — take it apart line by line:\n\n'
+            + '- **Line 1** binds `bell` to the integer `3`.\n'
+            + '- **Line 2** asks its question early and keeps the answer: `bell < 4` is `True`, sealed into `warded`.\n'
+            + '- **Line 3** speaks through an f-string — `The bell rings 3.` — before any choosing begins.\n'
+            + '- **Line 4** weighs `warded`, finds `True`, and opens; the indented block claims what follows.\n'
+            + '- **Line 5**, four spaces deep, speaks: `The sound stays inside.`\n'
+            + '- **Line 6** opens a second door inside the first, eight spaces deep: `bell == 3` holds.\n'
+            + '- **Line 7** speaks the keeper’s count.\n'
+            + '- **Lines 8–9**: this `else` stands level with line 4’s `if`, so it answers to the outer door — which opened, so the else is never consulted.\n'
+            + '- **Line 10** stands at the margin, outside every block, and runs whatever the doors decided.\n\n'
+            + 'Four lines speak; two stay silent. Now ask, without running it: if line 1 read '
+            + '`bell = 9`, `warded` would seal `False` — the outer else would speak alone, the '
+            + 'nested question would never be asked, and the margin line would still run. And '
+            + 'if the `else` were pushed four spaces deeper, it would change owners, pairing '
+            + 'with the *inner* if: tonight’s output would not change at all, yet the program '
+            + 'would mean something different the first night the bell rang otherwise. '
+            + 'Indentation is not where a line stands; it is what a line obeys.',
+          code: py`bell = 3
+warded = bell < 4
+print(f"The bell rings {bell}.")
+if warded:
+    print("The sound stays inside.")
+    if bell == 3:
+        print("Three: the keeper's count.")
+else:
+    print("The sound is loose in the stacks.")
+print("The night goes on.")`,
+        },
       ],
       challenge: {
         title: 'The Watcher in the Aisle',
@@ -1596,6 +1705,27 @@ assert "Only a nuisance. Walk on." not in _stdout, "The poltergeist line spoke f
 assert "The aisle is empty. For now." not in _stdout, "The empty-aisle line spoke although the sighting is a dementor - your conditions are not guarding their doors."`,
         successText: 'The fork holds. The thing in the aisle finds only the one path you allowed it — and drifts back into the cold.',
         xp: 70,
+        workedExample: {
+          intro: 'The Codex opens a kindred fork: a dead warden’s door-ward — one chain, one '
+            + 'question nested inside the first branch alone, and exactly one path permitted '
+            + 'to speak.',
+          code: py`# The door-ward: one chain, one question nested where it matters.
+knock = "iron"
+lantern_lit = False
+if knock == "iron":
+    print("Iron knuckles at the door.")
+    if lantern_lit:
+        print("Meet it with light.")
+    else:
+        print("Meet it in the dark.")
+elif knock == "wood":
+    print("A neighbor. Probably.")
+else:
+    print("The door is only settling.")`,
+          outro: 'Mark the shape: the nested if/else stands eight spaces deep, inside the '
+            + 'first branch only, and the outer chain opens a single door. Your aisle holds a '
+            + 'different watcher — build it the same fork, with your own lines.',
+        },
       },
       quiz: [
         {
@@ -1849,11 +1979,20 @@ print("The aisle continues.")`,
             + '- Go to the **line number** it cites, and read the code standing there.\n'
             + '- Change **one thing**. Run again. One wound, one mending — never three guesses at once.\n'
             + '- When a vessel’s contents are in doubt, make the machine confess: print the value and look at it.\n\n'
+            + 'The confession has a finer form. Write `=` after the name inside an '
+            + 'f-string’s braces — `print(f"{step=}")` — and the machine prints name and '
+            + 'value together: `step=2`. The scrying labels itself, so a page of confessions '
+            + 'stays readable; and strings confess wearing their quotes, exposing stray '
+            + 'spaces you would never otherwise see.\n\n'
             + 'An error is not a judgement of you. It is information — freely given, '
             + 'precisely aimed, and more honest than most allies you will keep.',
           code: py`# When unsure what a vessel actually holds, make it confess:
 step = 2
-print(f"step is {step} before the ritual begins")`,
+print(f"step is {step} before the ritual begins")
+# The = rune makes the confession name itself:
+print(f"{step=}")     # step=2
+vessel = " cracked urn"
+print(f"{vessel=}")   # vessel=' cracked urn' - the quotes betray the stray space`,
         },
       ],
       challenge: {
@@ -1904,6 +2043,23 @@ assert _lines[3] == "Letters counted: 14", "Line 4 is wrong - a raw number canno
 assert _lines[4] == "First letter: l", "Line 5 is wrong - the first letter lives at index 0, not 30 (the IndexError wound)."`,
         successText: 'The ward reknits itself, scar by scar. You did not guess — you read, and the marks obeyed.',
         xp: 75,
+        workedExample: {
+          intro: 'The Codex shows a kindred mending, already finished: another apprentice’s '
+            + 'charm that once carried the same four wounds. The scars are annotated — read '
+            + 'where each mark pointed, and how little each mend changed.',
+          code: py`# Another apprentice's charm, four wounds closed. The scars are noted.
+charm = "umbra vigil"
+echo = charm.upper()
+print("The charm: " + charm)
+print("Its echo: " + echo)              # was missing its final ) - a SyntaxError
+keeper = "one-eyed crow"
+print("Kept by " + keeper)              # was misspelled 'keper' - a NameError
+print("Letters: " + str(len(charm)))    # bare len() refused to join text - a TypeError
+print("First: " + charm[0])             # was charm[40], past the end - an IndexError`,
+          outro: 'Four marks, four one-line mends, the ritual never rewritten. Your ward '
+            + 'bleeds in the same four ways but in its own places: cast it, read the last '
+            + 'line of the mark, and close one wound at a time.',
+        },
       },
       quiz: [
         {
@@ -2212,6 +2368,47 @@ assert "Memories offered: 0" in _stdout, "The toll was never counted aloud. Prin
 assert "Nothing warm remains. Pass." in _stdout, "With zero memories the gate must conclude: Nothing warm remains. Pass."
 assert "The dementors pause, tasting light." not in _stdout, "The pause line spoke although happy_memories is 0 - your fork is not weighing the count."`,
       xp: 0,
+    },
+    barks: {
+      intro: [
+        'I was built of readers who were certain. Come closer. Be certain at me.',
+        'Six questions, then one working. Your warmth has already been counted.',
+      ],
+      hit: [
+        'There. A certainty comes loose. I drink it slowly, to make it last.',
+        'That answer held warmth once. It is mine now.',
+        'The gate grows one reader heavier.',
+        'You knew this once. Hear how far away once has become.',
+        'Doubt is a door. I keep every one of them.',
+      ],
+      playerFail: [
+        'Your working dies on the air. Its mark is written; the cold can wait while you read it.',
+        'The spell collapses, and even the collapse is recorded. The last line of the mark knows why.',
+        'Cast, and broken. Every wound in this library has an address.',
+      ],
+      lastCandle: [
+        'One candle stands between you and the shelf where I keep the others.',
+        'The cold has your outline now. One flame keeps it from taking the rest.',
+      ],
+      death: [
+        'The certainty I drank from a thousand readers — you carry it back out. That has never happened.',
+        'Go, then. The gate will remember you the way you remember winter: from the far side of a door.',
+      ],
+    },
+    premortem: {
+      prompt: 'Beyond the six questions waits one final working: exact demanded lines, then a '
+        + 'fork. Before the first casting — what is the discipline?',
+      options: [
+        'Build it in the stated order, casting after each step to compare what printed against the demanded lines before adding more.',
+        'Write the whole working in one breath and cast once at the end, mending whatever mark appears.',
+        'Begin with the fork, since branching is hardest, and fit the printed lines around it afterwards.',
+        'Type the demanded lines directly into print() first, and decide later which values should have produced them.',
+      ],
+      answer: 0,
+      explain: 'Small steps, verified early: each casting proves the last binding before the '
+        + 'next leans on it. A single all-at-once cast buries every wound under one mark; '
+        + 'starting with the fork builds the roof before the walls; and hand-typed output is '
+        + 'a promise the ward will test — let the values speak through the braces.',
     },
   },
 

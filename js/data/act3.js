@@ -108,6 +108,26 @@ print(echo)              # None — the call handed back only silence`,
             + 'variable you expected to hold a result holds `None` instead, you almost certainly '
             + 'printed where you should have returned.',
         },
+        {
+          heading: 'Autopsy: “print is how a function answers”',
+          body: 'You may believe by now: *“print is how a function gives back its answer — I '
+            + 'watched the number appear.”* The Department keeps a working that died of that '
+            + 'belief, and tonight the jar is opened. Read it and commit to a prediction '
+            + 'before the reveal: the believer expects `8`, then `9`.',
+          code: py`def double(n):
+    print(n * 2)          # a shout — text, sent to the human
+
+result = double(4)        # the believer predicts: result holds 8
+print(result + 1)         # the believer predicts: 9`,
+          note: 'What actually happens: `8` appears — then the working dies of '
+            + '`TypeError: unsupported operand type(s) for +: \'NoneType\' and \'int\'`. '
+            + '`double` shouted at the screen and returned nothing, so `result` holds `None`, '
+            + 'and `None + 1` is nonsense the machine refuses to compute. **The law: `print` '
+            + 'sends text to a human; `return` hands a value to the code. Only a returned '
+            + 'value can travel onward.** The false model was honestly earned — in every '
+            + 'working before this act, the screen was the only place a result ever needed '
+            + 'to go, so printing and producing looked identical. They part ways here.',
+        },
       ],
       challenge: {
         title: 'The Cataloguer’s Trial',
@@ -213,6 +233,96 @@ assert orb_number(12, 0) == 1200, "orb_number(12, 0) should be 1200."`,
           explain: 'def is an act of creation, not execution: it forges the function object and '
             + 'binds the name. The body only runs when called — which is why a def with a bug in '
             + 'its logic can sit quietly until the first invocation.',
+        },
+      ],
+      extras: [
+        {
+          id: 'a3l1x1',
+          kind: 'echo',
+          title: 'Echo: The Twelve Doors',
+          prompt: 'The circular room turns, and when it stills, every door needs a fresh plate '
+            + 'and a fresh code. The same craft echoes back at you.\n\n'
+            + '- `door_plate(keeper, chamber)` — **returns** (never prints) exactly the string '
+            + '`CHAMBER, kept by KEEPER`. Example: `door_plate("Croaker", "Time")` returns '
+            + '`Time, kept by Croaker` — note the chamber comes first.\n'
+            + '- `door_code(level, door)` — **returns** the integer `level * 12 + door`. '
+            + 'Example: `door_code(3, 4)` returns `40`.',
+          starter: py`def door_plate(keeper, chamber):
+    # return "<chamber>, kept by <keeper>"
+    pass
+
+
+def door_code(level, door):
+    pass
+`,
+          solution: py`def door_plate(keeper, chamber):
+    return f"{chamber}, kept by {keeper}"
+
+
+def door_code(level, door):
+    return level * 12 + door
+`,
+          hints: [
+            'Both bodies are single return lines — no print anywhere. The chamber goes FIRST on the plate, even though the keeper is the first parameter.',
+            'door_plate: return f"{chamber}, kept by {keeper}" — and door_code: return level * 12 + door.',
+          ],
+          validation: py`p = door_plate("Croaker", "Time")
+assert p is not None, "door_plate handed back None — return the plate, do not print it."
+assert p == "Time, kept by Croaker", "The plate is misforged. Expected exactly: Time, kept by Croaker — the chamber comes first."
+assert door_plate("Bode", "Space") == "Space, kept by Bode", "door_plate must build the plate from its parameters, not fixed text."
+assert door_plate("", "Death") == "Death, kept by ", "Even an unnamed keeper is recorded. Add or trim nothing."
+c = door_code(3, 4)
+assert c is not None, "door_code handed back None — return the number."
+assert c == 40, "door_code(3, 4) should be 40 — level * 12 + door."
+assert door_code(0, 7) == 7, "The surface counts as level zero: door_code(0, 7) should be 7."
+assert door_code(9, 0) == 108, "door_code(9, 0) should be 108."`,
+          successText: 'The plates seat themselves, and the room rotates once — approval, or appetite.',
+          xp: 18,
+        },
+      ],
+      trace: [
+        {
+          id: 'a3l1t1',
+          code: py`def kindle(wick):
+    print("lit: " + wick)
+
+flame = kindle("black taper")
+print(flame)`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            'lit: black taper\nlit: black taper',
+            'lit: black taper',
+            'lit: black taper\nNone',
+            'An error — flame was never given a value',
+          ],
+          answer: 2,
+          explain: 'kindle prints its message but has no return, so the call itself hands back '
+            + 'None — and the outer print faithfully displays it. Printing is not returning '
+            + '(option one), print(None) is not silence (option two), and the assignment is '
+            + 'legal: flame holds a real value, None (option four).',
+        },
+        {
+          id: 'a3l1t2',
+          code: py`def gate(depth):
+    if depth > 5:
+        return "sealed"
+    return "open"
+    print("beyond the veil")
+
+print(gate(9))
+print(gate(2))`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            'sealed\nopen',
+            'sealed\nopen\nbeyond the veil',
+            'sealed\nbeyond the veil\nopen\nbeyond the veil',
+            'open\nopen',
+          ],
+          answer: 0,
+          explain: 'return ends the call on the spot: depth 9 takes the first return, depth 2 '
+            + 'the second. The final print stands after an unconditional return and can never '
+            + 'run — dead code, silently unreachable. The function did not need to finish its '
+            + 'body to answer; return IS the finishing.',
         },
       ],
     },
@@ -389,6 +499,174 @@ assert total_power(5, -2) == 3, "Drained wards count against the total: total_po
           explain: 'The double star gathers keyword arguments the def line did not name '
             + 'explicitly, into a dict. It has nothing to do with arithmetic or globals — the '
             + 'stars are gathering syntax, not multiplication.',
+        },
+      ],
+      extras: [
+        {
+          id: 'a3l2x1',
+          kind: 'echo',
+          title: 'Echo: The Dosing Bench',
+          prompt: 'A second bench of brass instruments, the same shapes wearing different '
+            + 'fittings.\n\n'
+            + '- `label_vial(contents, potency=1)` — `potency` defaults to `1`. **Returns** '
+            + 'exactly the string `CONTENTS at potency POTENCY`. It must work called with just '
+            + 'the contents, with a positional potency, or with `potency=` as a keyword.\n'
+            + '- `combined_dose(*drops)` — accepts **any number** of positional numbers and '
+            + '**returns** their sum; called with nothing, it returns `0`.',
+          starter: py`def label_vial(contents, potency):
+    # give potency a default of 1 above, then return the label
+    pass
+
+
+# define combined_dose so it accepts any number of drops
+`,
+          solution: py`def label_vial(contents, potency=1):
+    return f"{contents} at potency {potency}"
+
+
+def combined_dose(*drops):
+    total = 0
+    for drop in drops:
+        total = total + drop
+    return total
+`,
+          hints: [
+            'The default lives in the def line — def label_vial(contents, potency=1): — and the star lives in the other: def combined_dose(*drops):.',
+            'Inside combined_dose, drops is a tuple: start total at 0, add each drop in a loop, return total.',
+          ],
+          validation: py`assert label_vial("dittany") == "dittany at potency 1", "With no potency given, the default of 1 must fill the slot."
+assert label_vial("moonseed", 6) == "moonseed at potency 6", "A positional potency must override the default."
+assert label_vial("hemlock", potency=9) == "hemlock at potency 9", "label_vial must accept potency as a keyword argument."
+assert combined_dose() == 0, "An empty bench doses nothing — combined_dose() must return 0."
+assert combined_dose(4) == 4, "A single offering: combined_dose(4) should be 4."
+assert combined_dose(1, 2, 3) == 6, "combined_dose(1, 2, 3) should be 6."
+assert combined_dose(10, -4) == 6, "Antidotes count against the dose: combined_dose(10, -4) should be 6."`,
+          successText: 'Every phrasing feeds cleanly, and the machine at the far end does not even pause.',
+          xp: 18,
+        },
+        {
+          id: 'a3l2x2',
+          kind: 'cursed',
+          title: 'Cursed Scroll: The Watch That Never Disbands',
+          prompt: 'A scroll from the flooded levels, still running, still wrong. The night '
+            + 'watch was mustered with two names and the day watch with two others — yet the '
+            + 'ledger reports **both** watches at four men, and the day watch answers with the '
+            + 'night’s dead in its ranks. No error is ever raised. The scroll runs clean, and '
+            + 'it lies.\n\n'
+            + 'Mend it **in place** — do not rewrite the working from nothing. When mended:\n\n'
+            + '- a muster with **no watch given** must begin a genuinely fresh watch, every time\n'
+            + '- a watch **passed in explicitly** must still be honoured\n'
+            + '- the two printed lines must each hold exactly their own two names',
+          starter: py`# The Watch Ledger. It runs without error — and it lies.
+# Mend the working IN PLACE; do not rewrite it from nothing.
+
+def muster(name, watch=[]):
+    # a recruit joins the given watch; with no watch given,
+    # a NEW watch is (supposedly) begun for them
+    watch.append(name)
+    return watch
+
+
+def report(label, watch):
+    return label + ": " + ", ".join(watch)
+
+
+night = muster("Bode")
+night = muster("Croaker", night)
+
+day = muster("Rookwood")
+day = muster("Selwyn", day)
+
+print(report("night watch", night))
+print(report("day watch", day))
+`,
+          solution: py`# The Watch Ledger — mended in place.
+
+def muster(name, watch=None):
+    # a recruit joins the given watch; with no watch given,
+    # a NEW watch truly begins for them
+    if watch is None:
+        watch = []
+    watch.append(name)
+    return watch
+
+
+def report(label, watch):
+    return label + ": " + ", ".join(watch)
+
+
+night = muster("Bode")
+night = muster("Croaker", night)
+
+day = muster("Rookwood")
+day = muster("Selwyn", day)
+
+print(report("night watch", night))
+print(report("day watch", day))
+`,
+          hints: [
+            'Observe before you cut: call muster("test") twice with no watch and print what comes back each time — then look hard at what the “fresh” watch already contains.',
+            'The false model: “watch=[] builds a new list at each call.” It does not. The default value is created ONCE, when Python reads the def line — and every bare call shares that one list.',
+            'The mend is two lines: def muster(name, watch=None): — then inside the body, if watch is None: watch = [] before the append. Now each bare call truly begins fresh.',
+          ],
+          validation: py`w1 = muster("Alpha")
+assert w1 == ["Alpha"], "A muster with no watch given must begin a FRESH watch — this one arrived already holding earlier recruits. The default list is created once, at def, and shared by every call."
+w2 = muster("Omega")
+assert w2 == ["Omega"], "The second bare muster still remembers the first — each call without a watch must build its own new list. Default to None and create the list inside the body."
+assert w1 == ["Alpha"], "Enlisting Omega altered Alpha's watch — the two musters share one list. They must not."
+assert muster("Two", ["One"]) == ["One", "Two"], "A watch passed in explicitly must still be honoured: muster('Two', ['One']) should be ['One', 'Two']."
+assert report("dawn", ["a", "b"]) == "dawn: a, b", "report must not change — label, colon, space, names joined by comma-space."
+lines = [l for l in _stdout.splitlines() if l.strip()]
+assert "night watch: Bode, Croaker" in lines, "The night watch should muster exactly Bode and Croaker."
+assert "day watch: Rookwood, Selwyn" in lines, "The day watch should muster exactly Rookwood and Selwyn — no dead men carried over from the night."`,
+          successText: 'Named and broken: the mutable default argument — forged once at def, shared by every call that leans on it, mended with None.',
+          xp: 30,
+        },
+      ],
+      trace: [
+        {
+          id: 'a3l2t1',
+          code: py`def gather(relic, hoard=[]):
+    hoard.append(relic)
+    return hoard
+
+print(gather("ash"))
+print(gather("bone"))`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            "['ash']\n['bone']",
+            "['ash', 'bone']\n['ash', 'bone']",
+            'ash\nbone',
+            "['ash']\n['ash', 'bone']",
+          ],
+          answer: 3,
+          explain: 'The default list is created once, when def runs — and both calls share it. '
+            + 'The first call prints its one relic; by the second, the same list has '
+            + 'accumulated both. A fresh list per call (option one) is exactly what a mutable '
+            + 'default does NOT give you — the Cursed Scroll on this page asks you to break '
+            + 'that very curse.',
+        },
+        {
+          id: 'a3l2t2',
+          code: py`def brand(name, depth=2, silent=False):
+    if silent:
+        return f"{name}:{depth}:hushed"
+    return f"{name}:{depth}"
+
+print(brand("veil", silent=True))
+print(brand("orb", 7))`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            'veil:2\norb:7',
+            'veil:2:hushed\norb:7',
+            'veil:True:hushed\norb:7',
+            'An error — depth must be supplied before silent',
+          ],
+          answer: 1,
+          explain: 'A keyword argument lands in its named slot: silent=True leaves depth at its '
+            + 'default of 2, so the first line reads veil:2:hushed. In the second call the bare '
+            + '7 fills the next positional slot — depth. Nothing is illegal here; defaults make '
+            + 'the skipped slots optional.',
         },
       ],
     },
@@ -581,6 +859,105 @@ assert ward_strength == 10, "The ledger itself was altered — your code must no
           explain: 'Pass values in, return values out. `total = add_cost(total, 3)` shows the '
             + 'change at the call site, keeps the function testable in isolation, and leaves no '
             + 'hidden hand on the ledger.',
+        },
+      ],
+      extras: [
+        {
+          id: 'a3l3x1',
+          kind: 'echo',
+          title: 'Echo: The Lamp Ledger',
+          prompt: 'Another ledger, the same discipline. The starter holds `lamp_oil = 12` — '
+            + 'read it if you like, but never touch it: no reassignment, no `global`.\n\n'
+            + '- `spent(oil, hours)` — **returns** `oil - hours`, but never less than `0`.\n'
+            + '- `refilled(oil, amount)` — **returns** `oil + amount`, but never more than `24`.\n\n'
+            + 'The ward will check the ledger still reads exactly `12` when your code has finished.',
+          starter: py`lamp_oil = 12   # the ledger — read, never touched
+
+def spent(oil, hours):
+    pass
+
+
+def refilled(oil, amount):
+    pass
+`,
+          solution: py`lamp_oil = 12   # the ledger — read, never touched
+
+def spent(oil, hours):
+    result = oil - hours
+    if result < 0:
+        result = 0
+    return result
+
+
+def refilled(oil, amount):
+    result = oil + amount
+    if result > 24:
+        result = 24
+    return result
+`,
+          hints: [
+            'Work purely from the parameters: compute the new value into a local, clamp it with an if, then return it.',
+            'spent: result = oil - hours; if result < 0: result = 0; return result. refilled mirrors it, capped at 24.',
+          ],
+          validation: py`assert spent(12, 5) == 7, "spent(12, 5) should be 7."
+assert spent(3, 3) == 0, "An exact burn leaves nothing: spent(3, 3) should be 0."
+assert spent(2, 9) == 0, "The ledger never reads below zero: spent(2, 9) should be 0, not negative."
+assert refilled(12, 6) == 18, "refilled(12, 6) should be 18."
+assert refilled(20, 10) == 24, "The reservoir caps at 24: refilled(20, 10) should be 24."
+assert refilled(24, 1) == 24, "Already brimming: refilled(24, 1) should stay 24."
+assert refilled(0, 0) == 0, "Nothing added to nothing is still nothing."
+assert lamp_oil == 12, "The ledger itself was altered — pass values in, return values out, and leave lamp_oil be."`,
+          successText: 'The lamps burn on borrowed arithmetic, and the ledger never once feels your hand.',
+          xp: 18,
+        },
+      ],
+      trace: [
+        {
+          id: 'a3l3t1',
+          code: py`depth = 9
+
+def sink():
+    depth = 90
+    print(depth)
+
+sink()
+print(depth)`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            '90\n9',
+            '90\n90',
+            '9\n9',
+            'An error — depth is defined twice',
+          ],
+          answer: 0,
+          explain: 'Assignment inside a function creates a LOCAL. Inside sink, that local (90) '
+            + 'shadows the global; the moment the call returns, the shadow dies, and the '
+            + 'global — never touched — still reads 9. Reusing the name is no error; it is '
+            + 'scope doing its quiet, treacherous work.',
+        },
+        {
+          id: 'a3l3t2',
+          code: py`fuel = 5
+
+def burn(cost):
+    remaining = fuel - cost
+    return remaining
+
+print(burn(2))
+print(burn(4))
+print(fuel)`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            '3\n1\n1',
+            'An error — fuel is not visible inside burn',
+            '3\n1\n5',
+            '3\n-1\n5',
+          ],
+          answer: 2,
+          explain: 'A function may freely READ a global, so each call computes from fuel = 5: '
+            + 'first 3, then 1. remaining is a fresh local in each call, and nothing ever '
+            + 'assigns to fuel, which still reads 5. Option four is the trap: calls do not '
+            + 'remember each other’s locals — every circle is drawn fresh.',
         },
       ],
     },
@@ -819,6 +1196,97 @@ assert dangerous_names([], 5) == [], "An empty shelf names no one."`,
             + 'stopping of it.',
         },
       ],
+      extras: [
+        {
+          id: 'a3l4x1',
+          kind: 'echo',
+          title: 'Echo: The Shelf of Tomes',
+          prompt: 'A different shelf has come down in the night: tomes this time, each a tuple '
+            + '`(title, year, rot)` — for example `("Case 91", 1802, 4)`. The Unspeakables '
+            + 'read oldest first.\n\n'
+            + '- `oldest_first(tomes)` — **returns a NEW list** of the tomes ordered by year '
+            + '(index `1`), **lowest first**. Use `sorted()` with a `key`; the original list '
+            + 'must be left unchanged.\n'
+            + '- `rotted_titles(tomes, limit)` — **returns** a list of just the titles '
+            + '(index `0`) of tomes whose rot (index `2`) is **greater than or equal to** '
+            + '`limit`, in original shelf order.\n\n'
+            + 'Both must return `[]` for an empty shelf or when nothing qualifies.',
+          starter: py`# Each tome is a tuple: (title, year, rot)
+
+def oldest_first(tomes):
+    pass
+
+
+def rotted_titles(tomes, limit):
+    pass
+`,
+          solution: py`def oldest_first(tomes):
+    return sorted(tomes, key=lambda tome: tome[1])
+
+
+def rotted_titles(tomes, limit):
+    return [tome[0] for tome in tomes if tome[2] >= limit]
+`,
+          hints: [
+            'The year sits at index 1, and sorted() already puts the lowest first — sorted(tomes, key=lambda tome: tome[1]) needs no reverse.',
+            'rotted_titles is one comprehension: [tome[0] for tome in tomes if tome[2] >= limit].',
+          ],
+          validation: py`shelf = [("Case 91", 1802, 4), ("The Veil Papers", 1750, 9), ("Inventory of Doors", 1899, 2)]
+ordered = oldest_first(shelf)
+assert ordered is not None, "oldest_first handed back None — return the sorted list."
+assert ordered == [("The Veil Papers", 1750, 9), ("Case 91", 1802, 4), ("Inventory of Doors", 1899, 2)], "oldest_first must order the tomes by year, lowest first."
+assert shelf[0] == ("Case 91", 1802, 4), "The original shelf was reordered — return a NEW list with sorted(), not .sort()."
+assert oldest_first([]) == [], "An empty shelf sorts to an empty list."
+assert rotted_titles(shelf, 4) == ["Case 91", "The Veil Papers"], "rotted_titles(shelf, 4) should keep only titles with rot 4 or more, in shelf order."
+assert rotted_titles(shelf, 1) == ["Case 91", "The Veil Papers", "Inventory of Doors"], "A limit of 1 keeps every tome, in original order."
+assert rotted_titles(shelf, 10) == [], "Nothing rots that far — expected an empty list."
+assert rotted_titles([], 3) == [], "An empty shelf names nothing."`,
+          successText: 'The tomes settle by age, and the rot answers title by title — the shelf knows its own decay.',
+          xp: 20,
+        },
+      ],
+      trace: [
+        {
+          id: 'a3l4t1',
+          code: py`def toll(name):
+    return f"bell for {name}"
+
+rite = toll
+print(rite("the archivist"))
+print(toll is rite)`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            'bell for the archivist\nFalse',
+            'bell for the archivist\nTrue',
+            'An error — toll cannot be assigned without parentheses',
+            'bell for toll\nTrue',
+          ],
+          answer: 1,
+          explain: 'rite = toll, without parentheses, binds a second name to the SAME function '
+            + 'object — calling rite rings toll, and `is` confirms one object under two names. '
+            + 'No copy is made, and the assignment is perfectly legal: a function is a value, '
+            + 'exactly as an int is.',
+        },
+        {
+          id: 'a3l4t2',
+          code: py`orbs = [("Tycho", 3), ("Mopsus", 6), ("Cassandra", 9)]
+first = sorted(orbs, key=lambda o: o[1], reverse=True)[0]
+print(first[0])
+print(len(orbs))`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            'Tycho\n3',
+            '9\n3',
+            'Cassandra\n9',
+            'Cassandra\n3',
+          ],
+          answer: 3,
+          explain: 'reverse=True puts the highest key first, and the key is o[1] — so the first '
+            + 'element of the new list is ("Cassandra", 9), and first[0] is the seer’s name. '
+            + 'The key only decides the ordering; the full tuples fill the result. And sorted '
+            + 'built a NEW list — orbs still holds all three, so len is 3.',
+        },
+      ],
     },
 
     // ----------------------------------------------------------
@@ -918,6 +1386,29 @@ print(read_pressure("12"))
 print(read_pressure("veil"))
 # A bare "except:" here would also have swallowed a misspelled
 # variable name — and that bug would rot, unseen, for weeks.`,
+        },
+        {
+          heading: 'The ward’s anatomy',
+          body: 'A confession, this deep in: every trial you have passed on every floor was '
+            + 'judged by lines like these — `assert condition, "message"`. If the condition '
+            + 'holds, `assert` does nothing at all; if it fails, it raises an `AssertionError` '
+            + 'carrying the message. That is the entire machinery of judgement.\n\n'
+            + 'The ward-smith’s three laws:\n\n'
+            + '- **Test the promise** — call the working with lawful inputs and assert the exact values it owes you.\n'
+            + '- **Test the edge** — the boundaries are where impostors hide; the middle mostly tests itself.\n'
+            + '- **Test the refusal** — offer it something forbidden inside `try`/`except` and assert the exception truly came. A ward that admits everything guards nothing.\n\n'
+            + 'The surface world calls this craft **testing**, and its common rite is *pytest*: '
+            + 'files of functions named `test_...`, each full of these same asserts, discovered '
+            + 'and run by a single command, failures reported plainly. The Forge cannot run '
+            + 'pytest — but every assert you write here is that craft, unrenamed.',
+          code: py`def check_seal(candidate):
+    assert candidate(4) == 8, "a lawful doubling came back wrong"
+    refused = False
+    try:
+        candidate(-1)          # the forbidden offering
+    except ValueError:
+        refused = True
+    assert refused, "the refusal never came"`,
         },
       ],
       challenge: {
@@ -1052,6 +1543,238 @@ assert safe_draw(0, 1) == 0, "An empty reserve stays empty."`,
             + 'corruption at its source and tells the caller exactly what to fix. Returning '
             + 'None invites the failure to surface later, far from its cause — and the bare '
             + 'except is the trap that hides your own bugs.',
+        },
+      ],
+      extras: [
+        {
+          id: 'a3l5x1',
+          kind: 'echo',
+          title: 'Echo: The Lift Refuses',
+          prompt: 'The lift beneath the Department obeys the same containment law as the '
+            + 'tanks: refuse loudly at the threshold, contain the refusal above.\n\n'
+            + '- `descend(current, floors)` — the strict machinery:\n'
+            + '  - if `floors` is less than or equal to `0`, raise `ValueError("the lift refuses idle orders")`\n'
+            + '  - if `current + floors` is greater than `9`, raise `ValueError("nothing lies below the ninth")`\n'
+            + '  - otherwise **return** `current + floors`\n'
+            + '- `safe_descend(current, floors)` — call `descend(current, floors)` inside a '
+            + '`try` and return its result; if it raises `ValueError`, catch it and return '
+            + '`current` unchanged.',
+          starter: py`def descend(current, floors):
+    # floors <= 0           -> ValueError("the lift refuses idle orders")
+    # current + floors > 9  -> ValueError("nothing lies below the ninth")
+    pass
+
+
+def safe_descend(current, floors):
+    pass
+`,
+          solution: py`def descend(current, floors):
+    if floors <= 0:
+        raise ValueError("the lift refuses idle orders")
+    if current + floors > 9:
+        raise ValueError("nothing lies below the ninth")
+    return current + floors
+
+
+def safe_descend(current, floors):
+    try:
+        return descend(current, floors)
+    except ValueError:
+        return current
+`,
+          hints: [
+            'descend is two guard clauses and a return — raise ValueError with the exact message for each unlawful order, then return the new floor.',
+            'safe_descend wraps one call: try: return descend(current, floors), then except ValueError: return current.',
+          ],
+          validation: py`assert descend(2, 3) == 5, "A lawful descent: descend(2, 3) should be 5."
+assert descend(0, 9) == 9, "Landing exactly on the ninth floor is lawful: descend(0, 9) should be 9."
+raised = False
+try:
+    descend(4, 0)
+except ValueError as err:
+    raised = True
+    assert "refuses" in str(err), "The idle-order refusal must carry the message: the lift refuses idle orders"
+assert raised, "descend(4, 0) must raise ValueError — the lift does not honour idle orders."
+raised = False
+try:
+    descend(4, -2)
+except ValueError:
+    raised = True
+assert raised, "A negative descent must also raise ValueError."
+raised = False
+try:
+    descend(7, 5)
+except ValueError as err:
+    raised = True
+    assert "ninth" in str(err), "The overrun refusal must carry the message: nothing lies below the ninth"
+assert raised, "descend(7, 5) must raise ValueError — there is nothing below the ninth."
+assert safe_descend(2, 3) == 5, "A lawful order passes straight through: safe_descend(2, 3) should be 5."
+assert safe_descend(7, 5) == 7, "When descend refuses, safe_descend must return the current floor unchanged."
+assert safe_descend(4, 0) == 4, "safe_descend(4, 0) should be 4 — the refusal is contained, not repeated."`,
+          successText: 'The lift refuses what it must and carries what it may — containment, floor by floor.',
+          xp: 20,
+        },
+        {
+          id: 'a3l5x2',
+          kind: 'ward',
+          title: 'The Ward-Craft',
+          prompt: 'Every trial on this floor has ended the same way: an unseen ward reading '
+            + 'your work and biting when it lied. Tonight the slate turns. **You** forge the '
+            + 'ward — and the Department will feed it impostors.\n\n'
+            + 'The contract of `brew_strength(herbs, moon_phase)`, the working your ward must '
+            + 'interrogate:\n\n'
+            + '- returns `herbs * 3`\n'
+            + '- returns `5` more than that when `moon_phase` is exactly `"full"`\n'
+            + '- `herbs` of `0` is lawful: `0` on a dark night, `5` under a full moon\n'
+            + '- `herbs` below `0` must raise `ValueError`\n\n'
+            + 'Write **one function**, `ward(candidate)`. `candidate` is *some implementation* '
+            + 'of `brew_strength`, handed to your ward. Call `candidate(...)` with inputs of '
+            + 'your choosing and `assert` the whole contract: exact lawful values, the zero '
+            + 'boundary, and the refusal — for that last, call it with negative herbs inside '
+            + '`try`/`except ValueError` and assert the exception truly came. Your ward must '
+            + 'finish **silently** for a lawful candidate and raise `AssertionError` for every '
+            + 'impostor.',
+          starter: py`# The contract of brew_strength(herbs, moon_phase):
+#   - returns herbs * 3
+#   - +5 more when moon_phase == "full"
+#   - herbs == 0 is lawful (0 dark, 5 full)
+#   - herbs < 0 must raise ValueError
+
+def ward(candidate):
+    # TODO: assert the promise, the edge, and the refusal
+    pass
+`,
+          solution: py`def ward(candidate):
+    # the promise — exact values on lawful inputs
+    assert candidate(2, "dark") == 6, "a dark-night brew of 2 herbs must be 6"
+    assert candidate(4, "full") == 17, "a full-moon brew of 4 herbs must be 17"
+    # the edge — the zero boundary
+    assert candidate(0, "dark") == 0, "zero herbs on a dark night must brew 0"
+    assert candidate(0, "full") == 5, "zero herbs under a full moon must brew 5"
+    # the refusal — the forbidden offering
+    refused = False
+    try:
+        candidate(-1, "dark")
+    except ValueError:
+        refused = True
+    assert refused, "negative herbs must raise ValueError"
+`,
+          hints: [
+            'Begin with the promise: assert candidate(2, "dark") == 6, and an exact full-moon value such as assert candidate(4, "full") == 17. Wrong values on lawful inputs are the first impostors to bite.',
+            'Now the edge the contract names: assert candidate(0, "dark") == 0 and candidate(0, "full") == 5. An impostor that is wrong only at zero walks past every other check.',
+            'Last, the refusal: set refused = False, call candidate(-1, "dark") inside try/except ValueError, set refused = True inside the except, then assert refused. A candidate that never raises must be bitten too.',
+          ],
+          validation: py`def _true_brew(herbs, moon_phase):
+    if herbs < 0:
+        raise ValueError("herbs below zero")
+    strength = herbs * 3
+    if moon_phase == "full":
+        strength = strength + 5
+    return strength
+
+def _impostor_moonblind(herbs, moon_phase):
+    if herbs < 0:
+        raise ValueError("herbs below zero")
+    return herbs * 3
+
+def _impostor_offbyone(herbs, moon_phase):
+    if herbs < 0:
+        raise ValueError("herbs below zero")
+    strength = herbs * 3
+    if moon_phase == "full":
+        strength = strength + 4
+    return strength
+
+def _impostor_neverraises(herbs, moon_phase):
+    strength = herbs * 3
+    if moon_phase == "full":
+        strength = strength + 5
+    return strength
+
+def _impostor_boundary(herbs, moon_phase):
+    if herbs < 0:
+        raise ValueError("herbs below zero")
+    if herbs == 0:
+        return 1
+    strength = herbs * 3
+    if moon_phase == "full":
+        strength = strength + 5
+    return strength
+
+assert callable(ward), "The Codex finds no ward(candidate) function to judge with."
+
+try:
+    ward(_true_brew)
+except AssertionError as e:
+    raise AssertionError("Your ward bit the one lawful brewer (" + str(e) + ") — recheck your expected values against the contract: herbs * 3, plus 5 only under a full moon.")
+except ValueError:
+    raise AssertionError("A refusal escaped your ward uncontained — call the candidate with negative herbs inside try/except ValueError, so a lawful refusal is caught, not fatal.")
+
+_impostors = [
+    (_impostor_moonblind, "your ward admitted the impostor that ignores the moon — assert an exact full-moon value, e.g. candidate(4, 'full') == 17, not just dark-night brews"),
+    (_impostor_offbyone, "your ward admitted the impostor that is off by one under the full moon — assert the exact full-moon value: candidate(4, 'full') == 17, no looser"),
+    (_impostor_neverraises, "your ward admitted the impostor that never raises — test the forbidden offering: call candidate(-1, ...) in try/except ValueError and assert the refusal truly came"),
+    (_impostor_boundary, "your ward admitted the impostor that is wrong at zero herbs — test the boundary: candidate(0, 'dark') must be 0"),
+]
+for _imp, _msg in _impostors:
+    _caught = False
+    try:
+        ward(_imp)
+    except AssertionError:
+        _caught = True
+    except ValueError:
+        raise AssertionError("your ward let a candidate's ValueError fly uncaught — wrap the negative-herbs call in try/except ValueError and assert on a flag instead")
+    assert _caught, _msg`,
+          successText: 'Four impostors bitten, one lawful brewer admitted in silence — the judging is yours now, and it was always the harder craft.',
+          xp: 50,
+        },
+      ],
+      trace: [
+        {
+          id: 'a3l5t1',
+          code: py`try:
+    n = int("9")
+except ValueError:
+    print("refused")
+else:
+    print("accepted", n)
+finally:
+    print("resealed")`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            'accepted 9',
+            'accepted 9\nresealed',
+            'refused\nresealed',
+            'accepted 9\nrefused\nresealed',
+          ],
+          answer: 1,
+          explain: '"9" converts cleanly, so except never fires; else runs precisely BECAUSE '
+            + 'nothing was raised; and finally runs no matter what. The clauses are not a '
+            + 'sequence to be read top to bottom — each has its condition: except on failure, '
+            + 'else on success, finally always.',
+        },
+        {
+          id: 'a3l5t2',
+          code: py`try:
+    print("first")
+    n = int("veil")
+    print("second")
+except ValueError:
+    print("caught")
+finally:
+    print("sealed")`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            'first\ncaught\nsealed',
+            'first\nsecond\ncaught\nsealed',
+            'caught\nsealed',
+            'first\ncaught',
+          ],
+          answer: 0,
+          explain: 'The try body runs until the moment of the raise: "first" prints, '
+            + 'int("veil") explodes, and "second" is abandoned — Python jumps straight to the '
+            + 'matching except, and finally reseals as it always does. What ran before the '
+            + 'failure is not undone (option three), and finally is never skipped (option four).',
         },
       ],
     },
@@ -1268,6 +1991,102 @@ assert recall_memories("pensieve.txt") == ["only this remains"], "Write mode mus
             + 'unreadable strand.',
         },
       ],
+      extras: [
+        {
+          id: 'a3l6x1',
+          kind: 'echo',
+          title: 'Echo: The Roll of the Drowned',
+          prompt: 'A narrower basin: the roll of those lost to the flooded levels, one name '
+            + 'per line, first name first.\n\n'
+            + '- `etch_roll(path, names)` — `names` is a list of strings. Open `path` in '
+            + '**write mode** with `with`, write each name on its own line, and **return** '
+            + 'how many names were written.\n'
+            + '- `first_etched(path)` — open `path` in **read mode** with `with` and '
+            + '**return** the first line without its newline — or the empty string `""` if '
+            + 'the file holds nothing.',
+          starter: py`def etch_roll(path, names):
+    pass
+
+
+def first_etched(path):
+    # return the first line (no newline), or "" if empty
+    pass
+`,
+          solution: py`def etch_roll(path, names):
+    with open(path, "w") as roll:
+        for name in names:
+            roll.write(name + "\n")
+    return len(names)
+
+
+def first_etched(path):
+    with open(path, "r") as roll:
+        lines = roll.read().splitlines()
+    if lines == []:
+        return ""
+    return lines[0]
+`,
+          hints: [
+            'etch_roll mirrors the pouring rite: with open(path, "w") as roll:, write each name plus "\\n", then return len(names) after the block ends.',
+            'In first_etched, read().splitlines() gives bare lines — return lines[0] if the list holds anything, otherwise "".',
+          ],
+          validation: py`n = etch_roll("drowned.txt", ["Bode", "Rookwood", "Croaker"])
+assert n == 3, "etch_roll must return how many names it wrote — 3 here."
+assert first_etched("drowned.txt") == "Bode", "The first name etched must come back first, without its newline."
+etch_roll("drowned.txt", ["Selwyn"])
+assert first_etched("drowned.txt") == "Selwyn", "Write mode replaces — after a second etching, only the new roll remains."
+assert etch_roll("empty.txt", []) == 0, "Etching no names returns 0."
+assert first_etched("empty.txt") == "", "An empty roll answers with the empty string, not an error."`,
+          successText: 'The roll takes the names without complaint. It has taken many.',
+          xp: 20,
+        },
+      ],
+      trace: [
+        {
+          id: 'a3l6t1',
+          code: py`with open("vial.txt", "w") as f:
+    f.write("ash")
+    f.write("bone")
+
+with open("vial.txt") as f:
+    print(f.read())`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            'ash\nbone',
+            'ash bone',
+            'ashbone',
+            'bone',
+          ],
+          answer: 2,
+          explain: 'write pours exactly what it is given — no newline, no space. Two writes to '
+            + 'the same open file continue the strand: ashbone. Truncation happens at open, '
+            + 'not per write — only reopening in "w" erases (option four’s fear belongs to the '
+            + 'next scrying).',
+        },
+        {
+          id: 'a3l6t2',
+          code: py`with open("basin.txt", "w") as f:
+    f.write("first pouring\n")
+
+with open("basin.txt", "w") as f:
+    f.write("second pouring\n")
+
+with open("basin.txt") as f:
+    print(len(f.readlines()))`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            '1',
+            '2',
+            '0',
+            'An error — the basin was opened while it already held text',
+          ],
+          answer: 0,
+          explain: 'Opening in "w" truncates: the second open erased the first pouring before '
+            + 'a single character was written. One line survives. Adding to what exists is '
+            + 'mode "a" — and reopening an existing file is never an error; the mode simply '
+            + 'decides the fate of what was there.',
+        },
+      ],
     },
 
     // ----------------------------------------------------------
@@ -1459,6 +2278,108 @@ assert "e" in printed, "The guarded page never fired — the Forge runs your cod
           explain: 'Run directly, a file wears the name "__main__" and the guard passes. '
             + 'Imported, it wears its module name and the guard block stays dark — which is '
             + 'the point: importers get your functions without your demonstrations.',
+        },
+      ],
+      extras: [
+        {
+          id: 'a3l7x1',
+          kind: 'echo',
+          title: 'Echo: The Assembled Report',
+          prompt: 'One more binding before the floor floods. This time the tally falls on '
+            + 'whole words, and the root rounds **up**.\n\n'
+            + '- Import `Counter` from `collections`, and import `math`.\n'
+            + '- `most_common_word(text)` — split `text` into words with `text.split()`, '
+            + 'tally the words with `Counter`, and **return the single most common word**.\n'
+            + '- `ceil_root(n)` — **return** the square root of `n` rounded **up** to an '
+            + 'integer (use `math.ceil(math.sqrt(n))`). Example: `ceil_root(17)` returns `5`.\n'
+            + '- Inside an `if __name__ == "__main__":` guard, print the result of '
+            + '`most_common_word("the veil the door the dark")` — it should print `the`.',
+          starter: py`# imports first
+
+
+def most_common_word(text):
+    pass
+
+
+def ceil_root(n):
+    pass
+
+
+# the guard, then the print
+`,
+          solution: py`from collections import Counter
+import math
+
+
+def most_common_word(text):
+    counts = Counter(text.split())
+    return counts.most_common(1)[0][0]
+
+
+def ceil_root(n):
+    return math.ceil(math.sqrt(n))
+
+
+if __name__ == "__main__":
+    print(most_common_word("the veil the door the dark"))
+`,
+          hints: [
+            'text.split() breaks the text into a list of words; Counter of that list tallies whole words, and .most_common(1)[0][0] is the word itself.',
+            'ceil_root is one line: return math.ceil(math.sqrt(n)). The guard is exactly if __name__ == "__main__": with the print indented beneath it.',
+          ],
+          validation: py`assert most_common_word("door door veil") == "door", "most_common_word('door door veil') should be door."
+assert most_common_word("ash bone ash bone ash") == "ash", "The tally must count whole words, not characters."
+assert most_common_word("silence") == "silence", "A single word is its own majority."
+assert ceil_root(16) == 4, "ceil_root(16) should be 4 — a perfect square needs no rounding."
+assert ceil_root(17) == 5, "ceil_root(17) should be 5 — the root rounds UP."
+assert ceil_root(1) == 1, "ceil_root(1) should be 1."
+assert ceil_root(0) == 0, "ceil_root(0) should be 0."
+printed = [line.strip() for line in _stdout.splitlines()]
+assert "the" in printed, "The guarded page never fired — the Forge runs your code as __main__, so the guard should have printed: the"`,
+          successText: 'The report binds itself shut. Below, faintly, water.',
+          xp: 22,
+        },
+      ],
+      trace: [
+        {
+          id: 'a3l7t1',
+          code: py`from collections import Counter
+
+tally = Counter("mystery")
+print(tally["y"])
+print(tally.most_common(1)[0][0])`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            '2\nm',
+            '1\ny',
+            "2\n('y', 2)",
+            '2\ny',
+          ],
+          answer: 3,
+          explain: '"mystery" holds two y’s and one of everything else, so tally["y"] is 2 and '
+            + 'y tops the tally. most_common(1) returns a LIST of (element, count) pairs — the '
+            + 'first [0] takes the pair, the second [0] takes the element. Stop one bracket '
+            + 'early and you print the whole pair (option three).',
+        },
+        {
+          id: 'a3l7t2',
+          code: py`from math import floor
+
+print(floor(3.9))
+print(sqrt(16))`,
+          q: 'The scrying: what comes of running this working?',
+          options: [
+            '3\n4.0',
+            '3 — then it dies of NameError: only floor was pulled from math, so sqrt was never bound',
+            '4\n4.0',
+            '3\n4',
+          ],
+          answer: 1,
+          raises: 'NameError',
+          explain: 'from math import floor binds exactly one name. floor(3.9) prints 3 — floor '
+            + 'drops toward zero, it does not round — and then sqrt raises NameError: '
+            + 'importing one name does not smuggle in its siblings. You would need '
+            + 'from math import sqrt, or import math and math.sqrt.',
         },
       ],
     },
@@ -1688,8 +2609,8 @@ assert safe_cast(grimoire, "Gravemist") == "the spell fizzles", "safe_cast must 
     { term: 'argument', def: 'The actual value supplied for a parameter at the moment of a call.' },
     { term: 'return', def: 'Ends a function immediately and hands a value back to the caller — the call expression becomes that value.' },
     { term: 'None', def: 'Python’s value for *nothing here* — what every function returns when it never reaches a `return`.' },
-    { term: '*args', def: 'A starred parameter that gathers all extra positional arguments into a **tuple**.' },
-    { term: '**kwargs', def: 'A double-starred parameter that gathers all extra keyword arguments into a **dict** of name to value.' },
+    { term: '*args / **kwargs', def: 'The gathering parameters: `*args` collects extra positional arguments into a **tuple**; `**kwargs` collects extra keyword arguments into a **dict** of name to value.' },
+    { term: 'mutable default argument', def: 'The silent curse of `def f(x, acc=[])`: the default is created **once**, at `def`, and shared by every call — default to `None` and build a fresh list inside the body.' },
     { term: 'scope', def: 'The region of code where a name is visible — locals live and die inside their function; globals span the file.' },
     { term: 'shadowing', def: 'When an assignment inside a function creates a local that hides a global of the same name, leaving the global untouched.' },
     { term: 'lambda', def: 'An unnamed function of one expression — `lambda n: n * 2` — whose result is returned automatically.' },

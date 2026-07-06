@@ -375,9 +375,54 @@ details.solution-reveal summary {
   font-family: var(--serif); letter-spacing: 0.04em;
 }
 details.solution-reveal summary:hover { color: var(--danger); }
+details.solution-reveal summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 details.solution-reveal .solution-warning {
   font-size: 0.8rem; color: #e07a7a; margin: 0.5rem 0;
 }
+
+/* ---------------- the Codex's rescue ---------------- */
+
+.rescue-box:empty { display: none; }
+.rescue-panel {
+  background: var(--bg-inset);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 0.8rem 1rem; margin-top: 0.8rem;
+  font-size: 0.92rem; color: var(--ink-dim);
+}
+.rescue-panel .rescue-lead {
+  font-family: var(--serif); color: var(--accent-bright);
+  margin: 0 0 0.35rem;
+}
+.rescue-panel .rescue-text { margin: 0 0 0.6rem; }
+
+/* ---------------- the scrying (trace prediction) ---------------- */
+
+.scrying { margin-top: 1.5rem; }
+.trace-item { margin: 1rem 0; }
+.trace-item .codeblock { margin-bottom: 0; border-radius: 8px 8px 0 0; }
+.trace-item .quiz-q { margin-top: 0; border-radius: 0 0 8px 8px; }
+
+/* ---------------- extras (echoes, scrolls, wards) ---------------- */
+
+.extras { margin-top: 1.5rem; }
+details.extra-panel {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--bg-raise); margin: 0.8rem 0;
+}
+details.extra-panel > summary {
+  display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: baseline;
+  padding: 0.85rem 1.1rem; cursor: pointer; list-style: none;
+}
+details.extra-panel > summary::-webkit-details-marker { display: none; }
+details.extra-panel > summary::before { content: '▸'; color: var(--ink-faint); }
+details.extra-panel[open] > summary::before { content: '▾'; }
+details.extra-panel > summary:hover { background: var(--accent-dim); }
+details.extra-panel > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.extra-kind { font-family: var(--serif); color: var(--accent-bright); }
+.extra-title { color: var(--ink-dim); }
+.extra-status { margin-left: auto; }
+.extra-body { padding: 0 1.1rem 1.1rem; }
 
 /* ---------------- quiz ---------------- */
 

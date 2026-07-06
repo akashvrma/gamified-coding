@@ -72,7 +72,7 @@ export const ACHIEVEMENTS = [
   {
     id: 'borrowed-knowledge', icon: '📖', xp: 10,
     title: 'The Half-Blood Prince’s Notes',
-    desc: 'Peek at a solution. Borrowed knowledge still stains the hands.',
+    desc: 'Even the Prince learned from margins. Study it, then make it yours.',
     check: (st, ev) => ev.type === 'solution-viewed',
   },
   {
@@ -181,8 +181,10 @@ export const ACHIEVEMENTS = [
   {
     id: 'unaided', icon: '🐍', xp: 80,
     title: 'Parselmouth',
-    desc: 'Solve fifteen trials without ever viewing a solution.',
-    check: (st) => st.stats.challengesSolved >= 15 && st.stats.solutionsViewed === 0,
+    desc: 'Solve fifteen trials in an unbroken run without opening the notes.',
+    // A consecutive-run threshold, not a lifetime scar: one early peek
+    // no longer voids the incentive forever.
+    check: (st) => (st.stats.unaidedStreak || 0) >= 15,
   },
 ];
 

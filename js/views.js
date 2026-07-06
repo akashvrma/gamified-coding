@@ -52,6 +52,34 @@ function wireEditorKeys(editor, afterEdit) {
 
 const EDITOR_LABEL = 'Python code editor. Tab inserts four spaces; press Escape then Tab to move focus out.';
 
+// Curly quotes and no-break spaces (OS autocorrect, pasted prose) are
+// invisible Python-killers: `print(“hi”)` dies of SyntaxError with no
+// visible difference. Straighten them the moment they arrive.
+const SMART_CHARS = /[\u2018\u2019\u201C\u201D\u00A0]/;
+
+function normalizeSpellText(text) {
+  return text
+    .replace(/[\u2018\u2019]/g, "'")   // curly single quotes
+    .replace(/[\u201C\u201D]/g, '"')   // curly double quotes
+    .replace(/\u00A0/g, ' ');           // no-break space
+}
+
+// Normalize on `input` (covers typing AND paste). Every replacement is
+// one-char-for-one-char, so restoring the selection indices keeps the
+// caret exactly where it was; clean input is left untouched so the
+// undo stack only pays when a smart character actually appeared.
+// Wire this BEFORE any draft-saving input listener — listeners fire in
+// registration order, so drafts always store the normalized text.
+function wireEditorNormalization(editor) {
+  editor.addEventListener('input', () => {
+    const value = editor.value;
+    if (!SMART_CHARS.test(value)) return;
+    const { selectionStart, selectionEnd, selectionDirection } = editor;
+    editor.value = normalizeSpellText(value);
+    editor.setSelectionRange(selectionStart, selectionEnd, selectionDirection);
+  });
+}
+
 // Bind the small "Summoning the interpreter…" status line inside a forge
 // to runner state, and drop the listener when the view's DOM is replaced.
 function wireRunnerLabel(host) {
@@ -380,7 +408,9 @@ export function renderLesson(root, lessonId) {
     <div class="narrative">${prose(lesson.narrative)}</div>
     ${sectionsHtml}
     <section class="challenge-panel" id="challenge"></section>
+    <section class="scrying" id="scrying"></section>
     <section class="quiz" id="quiz"></section>
+    <section class="extras" id="extras"></section>
     <footer class="lesson-footer" id="lesson-footer"></footer>`;
 
   // The grimoire writes itself once; every later visit renders instantly.
@@ -389,7 +419,9 @@ export function renderLesson(root, lessonId) {
   }
   S.markSeen(lesson.id);
   mountChallenge(root.querySelector('#challenge'), lesson, () => refreshFooter());
+  mountScrying(root.querySelector('#scrying'), lesson);
   mountQuiz(root.querySelector('#quiz'), lesson, () => refreshFooter());
+  mountExtras(root.querySelector('#extras'), lesson);
 
   const footerHost = root.querySelector('#lesson-footer');
   function refreshFooter() {
@@ -416,13 +448,15 @@ export function renderLesson(root, lessonId) {
 
 // ---------------- the forge (code challenge) ----------------
 
-function mountChallenge(host, lesson, onChange) {
-  const ch = lesson.challenge;
-  const rec = S.getLessonProgress(lesson.id);
+// The one true forge: editor, drafts, hint ladder, verdicts, and — for
+// lessons and extras — the Codex's own rescue. recordKey keys drafts and
+// persistence (a lesson id, or an extra's stable id). Boss forges do NOT
+// use this: the arena keeps its own merciless forge (mountBossForge).
+function mountForge(host, {
+  recordKey, challenge: ch, passed, onPass, onFail = null, rescue = true,
+}) {
+  const hints = Array.isArray(ch.hints) ? ch.hints : [];
   host.innerHTML = `
-    <span class="challenge-label">⚔ The Trial</span>
-    <h2>${escapeHtml(ch.title)}</h2>
-    <div class="prose">${prose(ch.prompt)}</div>
     <div class="forge">
       <div class="forge-head">
         <span class="dots"><i></i><i></i><i></i></span>
@@ -430,22 +464,23 @@ function mountChallenge(host, lesson, onChange) {
       </div>
       <div class="editor-wrap">
         <div class="editor-gutter" aria-hidden="true">1</div>
-        <textarea class="editor" spellcheck="false" autocapitalize="off"
+        <textarea class="editor" spellcheck="false" autocapitalize="off" autocorrect="off"
           aria-label="${EDITOR_LABEL}"></textarea>
       </div>
       <div class="forge-actions">
         <button class="btn" data-act="run">▶ Cast the spell</button>
         <button class="btn btn-ghost" data-act="reset">Reset</button>
-        <button class="btn btn-ghost" data-act="hint">Whisper a hint</button>
+        ${hints.length ? '<button class="btn btn-ghost" data-act="hint">Whisper a hint</button>' : ''}
         <span class="runner-state" data-role="runner-state"></span>
       </div>
       <div class="hint-box" data-role="hints"></div>
+      <div class="rescue-box" data-role="rescue"></div>
       <div class="console" data-role="console" role="status" aria-live="polite" hidden></div>
       <div data-role="verdict" role="status" aria-live="polite"></div>
       <details class="solution-reveal">
-        <summary>☠ Surrender and read the answer</summary>
-        <p class="solution-warning">Knowledge taken, not earned, teaches half as much.
-        Study it, then rewrite it yourself from nothing.</p>
+        <summary>☠ Open the dead apprentice’s notes</summary>
+        <p class="solution-warning">Study it, close it, and rewrite it from nothing —
+        apprentices have always learned so.</p>
         ${codeBlock(ch.solution)}
       </details>
     </div>`;
@@ -455,10 +490,12 @@ function mountChallenge(host, lesson, onChange) {
   const consoleBox = host.querySelector('[data-role="console"]');
   const verdictBox = host.querySelector('[data-role="verdict"]');
   const hintsBox = host.querySelector('[data-role="hints"]');
+  const rescueBox = host.querySelector('[data-role="rescue"]');
   const runBtn = host.querySelector('[data-act="run"]');
+  const solutionDetails = host.querySelector('details.solution-reveal');
 
-  editor.value = loadDraft(lesson.id, ch.starter);
-  if (rec.challenge) {
+  editor.value = loadDraft(recordKey, ch.starter);
+  if (passed) {
     verdictBox.innerHTML = `
       <div class="verdict verdict-pass">
         <span class="verdict-title">Already conquered.</span>
@@ -471,38 +508,94 @@ function mountChallenge(host, lesson, onChange) {
     gutter.textContent = Array.from({ length: lines }, (_, i) => i + 1).join('\n');
     gutter.scrollTop = editor.scrollTop;
   }
-  editor.addEventListener('input', () => { syncGutter(); saveDraft(lesson.id, editor.value); });
+  wireEditorNormalization(editor); // before the draft-saver: drafts store normalized text
+  editor.addEventListener('input', () => { syncGutter(); saveDraft(recordKey, editor.value); });
   editor.addEventListener('scroll', () => { gutter.scrollTop = editor.scrollTop; });
-  wireEditorKeys(editor, () => { saveDraft(lesson.id, editor.value); syncGutter(); });
+  wireEditorKeys(editor, () => { saveDraft(recordKey, editor.value); syncGutter(); });
   syncGutter();
 
   wireRunnerLabel(host);
 
-  let hintIdx = 0;
-  host.querySelector('[data-act="hint"]').addEventListener('click', () => {
-    if (hintIdx >= ch.hints.length) {
-      toast({ icon: '🤫', title: 'The Codex is silent', sub: 'No more hints remain. Trust your own hand.' });
-      return;
-    }
+  // The hint ladder renders from the persisted count: a reload keeps
+  // every whisper already given, and re-reveals never recount the stat.
+  function appendHint(idx, { stirred = false } = {}) {
     const div = el('div', { class: 'hint-item' },
-      `<strong>Whisper ${hintIdx + 1}:</strong> ${prose(ch.hints[hintIdx]).replace(/^<p>|<\/p>$/g, '')}`);
+      `<strong>${stirred ? 'The Codex stirs. ' : ''}Whisper ${idx + 1}:</strong> ${prose(hints[idx]).replace(/^<p>|<\/p>$/g, '')}`);
     hintsBox.appendChild(div);
-    hintIdx += 1;
-    S.recordHint();
-  });
+  }
+  for (let i = 0; i < Math.min(S.getHintsRevealed(recordKey), hints.length); i += 1) {
+    appendHint(i);
+  }
+
+  const hintBtn = host.querySelector('[data-act="hint"]');
+  if (hintBtn) {
+    hintBtn.addEventListener('click', () => {
+      const revealed = S.getHintsRevealed(recordKey);
+      if (revealed >= hints.length) {
+        toast({
+          icon: '🤫',
+          title: 'The Codex is silent',
+          sub: 'No more whispers remain — but fail on, and the Codex will open the dead apprentice’s notes.',
+        });
+        return;
+      }
+      appendHint(revealed);
+      S.markHintRevealed(recordKey, revealed + 1);
+    });
+  }
 
   host.querySelector('[data-act="reset"]').addEventListener('click', () => {
     editor.value = ch.starter;
-    clearDraft(lesson.id);
+    clearDraft(recordKey);
     syncGutter();
   });
 
-  host.querySelector('details.solution-reveal').addEventListener('toggle', (e) => {
+  solutionDetails.addEventListener('toggle', (e) => {
     if (e.target.open) {
-      S.markSolutionViewed(lesson.id);
-      emit({ type: 'solution-viewed', lessonId: lesson.id });
+      S.markSolutionViewed(recordKey);
+      emit({ type: 'solution-viewed', lessonId: recordKey });
     }
   });
+
+  // The 6-fail tier: a kindred working when the content provides one,
+  // else the Codex offers the notes itself. Its initiative, never a plea.
+  function showDeepRescue() {
+    if (ch.workedExample) {
+      rescueBox.innerHTML = `
+        <div class="rescue-panel">
+          <p class="rescue-lead">🜏 The Codex stirs.</p>
+          <p class="rescue-text">The Codex shows you a kindred working.</p>
+          <div class="prose">${prose(ch.workedExample.intro || '')}</div>
+          ${codeBlock(ch.workedExample.code)}
+          <div class="prose">${prose(ch.workedExample.outro || '')}</div>
+        </div>`;
+      return;
+    }
+    if (rescueBox.querySelector('[data-act="open-notes"]')) return;
+    rescueBox.innerHTML = `
+      <div class="rescue-panel">
+        <p class="rescue-lead">🜏 The Codex stirs.</p>
+        <p class="rescue-text">Open the dead apprentice’s notes. Study it, close it,
+        rewrite it from nothing.</p>
+        <button class="btn btn-ghost" data-act="open-notes">☠ Open the dead apprentice’s notes</button>
+      </div>`;
+    rescueBox.querySelector('[data-act="open-notes"]').addEventListener('click', () => {
+      solutionDetails.open = true; // fires toggle — the bookkeeping stays honest
+      solutionDetails.scrollIntoView({ block: 'nearest' });
+    });
+  }
+
+  // Every third consecutive misfire, the Codex acts of its own accord.
+  function maybeRescue(fails) {
+    if (fails % 3 === 0) {
+      const revealed = S.getHintsRevealed(recordKey);
+      if (revealed < hints.length) {
+        appendHint(revealed, { stirred: true });
+        S.markHintRevealed(recordKey, revealed + 1);
+      }
+    }
+    if (fails >= 6) showDeepRescue();
+  }
 
   runBtn.addEventListener('click', async () => {
     play('cast');
@@ -528,20 +621,16 @@ function mountChallenge(host, lesson, onChange) {
       play('yield');
       consoleBox.innerHTML = out;
       S.recordRun(true);
+      S.resetFails(recordKey);
+      rescueBox.innerHTML = '';
       emit({ type: 'run' });
-      const first = S.markChallenge(lesson.id);
       verdictBox.innerHTML = `
         <div class="verdict verdict-pass">
           <span class="verdict-title">The ward yields.</span>
           ${escapeHtml(ch.successText)}
         </div>`;
       castBolt(runBtn, verdictBox).then(() => burst(verdictBox));
-      if (first) {
-        grantXp(ch.xp, `Trial passed — ${lesson.title}`);
-        emit({ type: 'challenge-solved', lessonId: lesson.id });
-        maybeLessonComplete(lesson);
-      }
-      onChange();
+      if (onPass) onPass();
     } else {
       if (result.stage !== 'engine') play('collapse');
       consoleBox.innerHTML = `${out}\n<span class="con-err">${escapeHtml(result.error || '')}</span>`;
@@ -558,8 +647,126 @@ function mountChallenge(host, lesson, onChange) {
           <span class="verdict-title">${title}</span>
           ${guidance}
         </div>`;
-      onChange();
+      // Engine faults are not the learner's — they never count as fails.
+      if (result.stage !== 'engine') {
+        const fails = S.recordFail(recordKey);
+        if (rescue) maybeRescue(fails);
+      }
+      if (onFail) onFail();
     }
+  });
+}
+
+function mountChallenge(host, lesson, onChange) {
+  const ch = lesson.challenge;
+  const rec = S.getLessonProgress(lesson.id);
+  host.innerHTML = `
+    <span class="challenge-label">⚔ The Trial</span>
+    <h2>${escapeHtml(ch.title)}</h2>
+    <div class="prose">${prose(ch.prompt)}</div>
+    <div data-role="forge-host"></div>`;
+  mountForge(host.querySelector('[data-role="forge-host"]'), {
+    recordKey: lesson.id,
+    challenge: ch,
+    passed: rec.challenge,
+    onPass: () => {
+      const first = S.markChallenge(lesson.id);
+      if (first) {
+        grantXp(ch.xp, `Trial passed — ${lesson.title}`);
+        emit({ type: 'challenge-solved', lessonId: lesson.id });
+        maybeLessonComplete(lesson);
+      }
+      onChange();
+    },
+    onFail: () => onChange(),
+  });
+}
+
+// ---------------- the scrying (trace prediction) ----------------
+// Optional, never gating: read a working, say what it will print before
+// the machine speaks. First true reading of each item pays 5 XP.
+
+function mountScrying(host, lesson) {
+  const items = Array.isArray(lesson.trace) ? lesson.trace : [];
+  if (!items.length) { host.innerHTML = ''; return; }
+  host.innerHTML = `
+    <h2 class="section-h">🔮 The Scrying</h2>
+    <p class="prose">Do not cast these — read them. Say what the machine will say
+    before it is allowed to speak. The first true reading of each working pays 5 XP.</p>
+    <div data-role="trace-items"></div>`;
+  const itemsHost = host.querySelector('[data-role="trace-items"]');
+  items.forEach((t, i) => {
+    const wrap = el('div', { class: 'trace-item' }, codeBlock(t.code));
+    itemsHost.appendChild(wrap);
+    renderQuizQuestion(wrap, {
+      q: t.q, options: t.options, answer: t.answer, explain: t.explain,
+    }, (missed) => {
+      // The Leitner ledger learns of every scrying — the Vigil will
+      // draw on these wounds in a later wave.
+      S.recordQuestionOutcome(`${lesson.id}:trace:${t.id}`, !missed, qHash(t.q));
+      if (!missed && !S.isTraceSolved(lesson.id, t.id)) {
+        S.markTraceSolved(lesson.id, t.id);
+        grantXp(5, 'The scrying read true');
+        emit({ type: 'trace-solved', lessonId: lesson.id, traceId: t.id });
+      }
+    }, { number: i + 1 });
+  });
+}
+
+// ---------------- extras (echoes, cursed scrolls, ward-craft) ----------------
+// Optional side workings after the interrogation. Real XP, paid once;
+// nothing gates on them — the descent never waits here.
+
+const EXTRA_LABELS = {
+  echo: '⟳ Echoes in the Stone',
+  cursed: '☠ Cursed Scroll',
+  ward: '⚒ Forge the Ward',
+};
+
+function mountExtras(host, lesson) {
+  const extras = Array.isArray(lesson.extras) ? lesson.extras : [];
+  if (!extras.length) { host.innerHTML = ''; return; }
+  host.innerHTML = `
+    <h2 class="section-h">🜏 Beyond the Trial</h2>
+    <p class="prose">Side workings, cut from the same stone. Nothing ahead is sealed
+    behind them — but what they pay is real.</p>`;
+  extras.forEach((ex) => {
+    const solved = S.isExtraSolved(lesson.id, ex.id);
+    const panel = el('details', { class: `extra-panel extra-${ex.kind}` });
+    panel.innerHTML = `
+      <summary>
+        <span class="extra-kind">${EXTRA_LABELS[ex.kind] || '🜏 Side Working'}</span>
+        <span class="extra-title">${escapeHtml(ex.title)}</span>
+        <span class="extra-status" data-role="extra-status">${solved
+    ? '<span class="tag tag-done">Done</span>'
+    : `<span class="tag tag-accent">+${Number(ex.xp) || 0} XP</span>`}</span>
+      </summary>
+      <div class="extra-body">
+        <div class="prose">${prose(ex.prompt)}</div>
+        <div data-role="extra-forge"></div>
+      </div>`;
+    host.appendChild(panel);
+    let mounted = false;
+    panel.addEventListener('toggle', () => {
+      if (!panel.open || mounted) return;
+      mounted = true;
+      mountForge(panel.querySelector('[data-role="extra-forge"]'), {
+        recordKey: ex.id,
+        challenge: ex,
+        passed: S.isExtraSolved(lesson.id, ex.id),
+        onPass: () => {
+          const first = S.markExtraSolved(lesson.id, ex.id);
+          if (first) {
+            grantXp(Number(ex.xp) || 0, `${EXTRA_LABELS[ex.kind] || 'Side working'} — ${ex.title}`);
+            emit({
+              type: 'extra-solved', lessonId: lesson.id, extraId: ex.id, kind: ex.kind,
+            });
+            const status = panel.querySelector('[data-role="extra-status"]');
+            if (status) status.innerHTML = '<span class="tag tag-done">Done</span>';
+          }
+        },
+      });
+    });
   });
 }
 
@@ -662,7 +869,7 @@ function renderQuizQuestion(hostEl, q, onSolved, { number = 0 } = {}) {
         missed = true;
         btn.classList.add('sel-wrong');
         btn.disabled = true;
-        qr.textContent = 'Wrong. The Codex remembers. Try again.';
+        qr.textContent = 'Wrong. The dark keeps count of nothing here — try again.';
         qr.className = 'q-result bad';
       }
     });
@@ -966,7 +1173,7 @@ function mountBossForge(host, pseudo, handlers) {
       </div>
       <div class="editor-wrap">
         <div class="editor-gutter" aria-hidden="true">1</div>
-        <textarea class="editor" spellcheck="false" autocapitalize="off"
+        <textarea class="editor" spellcheck="false" autocapitalize="off" autocorrect="off"
           aria-label="${EDITOR_LABEL}"></textarea>
       </div>
       <div class="forge-actions">
@@ -989,6 +1196,7 @@ function mountBossForge(host, pseudo, handlers) {
     const lines = editor.value.split('\n').length || 1;
     gutter.textContent = Array.from({ length: lines }, (_, i) => i + 1).join('\n');
   }
+  wireEditorNormalization(editor); // shared editor plumbing (E2) — no boss mechanics touched
   editor.addEventListener('input', () => { syncGutter(); saveDraft(pseudo.id, editor.value); });
   editor.addEventListener('scroll', () => { gutter.scrollTop = editor.scrollTop; });
   wireEditorKeys(editor, () => { saveDraft(pseudo.id, editor.value); syncGutter(); });
@@ -1125,8 +1333,8 @@ export function renderProfile(root) {
         <div class="stat-row"><span class="stat-k">Spells cast</span><span class="stat-v">${st.stats.runs}</span></div>
         <div class="stat-row"><span class="stat-k">Spells that misfired</span><span class="stat-v">${st.stats.failedRuns}</span></div>
         <div class="stat-row"><span class="stat-k">Flawless interrogations</span><span class="stat-v">${st.stats.quizzesPerfect}</span></div>
-        <div class="stat-row"><span class="stat-k">Hints begged</span><span class="stat-v">${st.stats.hintsUsed}</span></div>
-        <div class="stat-row"><span class="stat-k">Solutions peeked</span><span class="stat-v">${st.stats.solutionsViewed}</span></div>
+        <div class="stat-row"><span class="stat-k">Whispers heeded</span><span class="stat-v">${st.stats.hintsUsed}</span></div>
+        <div class="stat-row"><span class="stat-k">Notes studied</span><span class="stat-v">${st.stats.solutionsViewed}</span></div>
         <div class="stat-row"><span class="stat-k">Current streak</span><span class="stat-v">${st.streak.count} day${st.streak.count === 1 ? '' : 's'} (best ${st.streak.best})</span></div>
         <div class="stat-row"><span class="stat-k">Embers banked</span><span class="stat-v">${st.streak.embers} / 2</span></div>
       </div>

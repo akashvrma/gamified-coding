@@ -48,7 +48,7 @@ function checkQuiz(where, quiz, min, max) {
   });
 }
 
-function checkChallenge(where, ch, { hintsRequired }) {
+function checkChallenge(where, ch, { hintsRequired, hintsExact = null, xpRange = null }) {
   const required = hintsRequired ? ['title', 'prompt', 'successText'] : ['title', 'prompt'];
   for (const f of required) {
     if (!ch[f]) err(`${where}: missing ${f}`);
@@ -56,16 +56,43 @@ function checkChallenge(where, ch, { hintsRequired }) {
   checkPyField(`${where}.starter`, ch.starter);
   checkPyField(`${where}.solution`, ch.solution);
   checkPyField(`${where}.validation`, ch.validation);
-  if (hintsRequired) {
+  if (hintsExact !== null) {
+    if (!Array.isArray(ch.hints) || ch.hints.length !== hintsExact) {
+      err(`${where}: needs exactly ${hintsExact} hints, got ${ch.hints?.length}`);
+    }
+  } else if (hintsRequired) {
     if (!Array.isArray(ch.hints) || ch.hints.length < 2) err(`${where}: needs ≥2 hints`);
-    if (!Number.isInteger(ch.xp) || ch.xp < 40 || ch.xp > 120) err(`${where}: challenge xp ${ch.xp} outside 40–120`);
+  }
+  if (hintsRequired || xpRange) {
+    const [lo, hi] = xpRange || [40, 120];
+    if (!Number.isInteger(ch.xp) || ch.xp < lo || ch.xp > hi) err(`${where}: challenge xp ${ch.xp} outside ${lo}–${hi}`);
   }
   if (!/assert/.test(ch.validation || '')) err(`${where}: validation has no assert`);
+  // workedExample: optional kindred working shown by the 6-fail rescue
+  // (schema live now; content arrives Wave 2).
+  if (ch.workedExample !== undefined) {
+    const we = ch.workedExample || {};
+    if (!we.intro || typeof we.intro !== 'string') err(`${where}.workedExample: missing intro`);
+    if (!we.outro || typeof we.outro !== 'string') err(`${where}.workedExample: missing outro`);
+    checkPyField(`${where}.workedExample.code`, we.code);
+  }
 }
+
+// Per-kind laws for optional lesson extras (spec §3 / §3b / §3c).
+const EXTRA_KINDS = {
+  echo: { hints: 2, xp: [15, 25] },
+  cursed: { hints: 3, xp: [20, 40] },
+  ward: { hints: 3, xp: [40, 60] },
+};
+
+const countWords = (s) => String(s || '').trim().split(/\s+/).filter(Boolean).length;
 
 const seenIds = new Set();
 const manifest = [];
 let totalXp = 0;
+let coreXp = 0;
+let extrasXp = 0;
+let traceXp = 0;
 
 curriculum.acts.forEach((act, ai) => {
   const aw = `act${ai + 1}`;
@@ -109,6 +136,85 @@ curriculum.acts.forEach((act, ai) => {
       validation: lesson.challenge?.validation ?? '',
     });
     totalXp += (lesson.xp || 0) + (lesson.challenge?.xp || 0) + QUIZ_XP + QUIZ_PERFECT_BONUS;
+    coreXp += (lesson.xp || 0) + (lesson.challenge?.xp || 0) + QUIZ_XP + QUIZ_PERFECT_BONUS;
+
+    // ---- extras: optional echo / cursed / ward riders (spec §3) ----
+    if (lesson.extras !== undefined) {
+      if (!Array.isArray(lesson.extras) || lesson.extras.length < 1 || lesson.extras.length > 3) {
+        err(`${lw}: extras must be an array of 1–3 items, got ${lesson.extras?.length}`);
+      }
+      const extraIdRe = new RegExp(`^${lesson.id}x\\d+$`);
+      (Array.isArray(lesson.extras) ? lesson.extras : []).forEach((ex, xi) => {
+        const xw = `${lw} extras[${ex?.id || xi + 1}]`;
+        if (!ex.id || !extraIdRe.test(ex.id)) {
+          err(`${xw}: id must match ${lesson.id}x<n> (stable — state keys on it), got ${ex.id}`);
+        }
+        if (ex.id) {
+          if (seenIds.has(ex.id)) err(`${xw}: duplicate id`);
+          seenIds.add(ex.id);
+        }
+        const kind = EXTRA_KINDS[ex.kind];
+        if (!kind) {
+          err(`${xw}: kind must be one of ${Object.keys(EXTRA_KINDS).join(' | ')}, got ${ex.kind}`);
+          return;
+        }
+        checkChallenge(xw, ex, { hintsRequired: true, hintsExact: kind.hints, xpRange: kind.xp });
+        manifest.push({
+          id: ex.id || `${lesson.id}x?`,
+          title: ex.title || xw,
+          starter: ex.starter ?? '',
+          solution: ex.solution ?? '',
+          validation: ex.validation ?? '',
+        });
+        totalXp += ex.xp || 0;
+        extrasXp += ex.xp || 0;
+      });
+    }
+
+    // ---- trace: optional scrying items, executed by the CPython gate ----
+    if (lesson.trace !== undefined) {
+      if (!Array.isArray(lesson.trace) || lesson.trace.length < 1 || lesson.trace.length > 3) {
+        err(`${lw}: trace must be an array of 1–3 items, got ${lesson.trace?.length}`);
+      }
+      const traceIdRe = new RegExp(`^${lesson.id}t\\d+$`);
+      (Array.isArray(lesson.trace) ? lesson.trace : []).forEach((t, ti) => {
+        const tw = `${lw} trace[${t?.id || ti + 1}]`;
+        if (!t.id || !traceIdRe.test(t.id)) {
+          err(`${tw}: id must match ${lesson.id}t<n> (stable — state keys on it), got ${t.id}`);
+        }
+        if (t.id) {
+          if (seenIds.has(t.id)) err(`${tw}: duplicate id`);
+          seenIds.add(t.id);
+        }
+        checkPyField(`${tw}.code`, t.code);
+        if (typeof t.code === 'string' && t.code.trim().split('\n').length > 12) {
+          warn(`${tw}: code runs ${t.code.trim().split('\n').length} lines (target ≤12)`);
+        }
+        if (!t.q || typeof t.q !== 'string') err(`${tw}: missing question text (q)`);
+        if (!Array.isArray(t.options) || t.options.length !== 4) err(`${tw}: needs exactly 4 options`);
+        if (!Number.isInteger(t.answer) || t.answer < 0 || t.answer > 3) err(`${tw}: answer index out of range`);
+        if (!t.explain) err(`${tw}: missing explanation`);
+        if (t.raises !== undefined && (typeof t.raises !== 'string' || !t.raises.trim())) {
+          err(`${tw}: raises must be a non-empty exception type name`);
+        }
+        // The execution gate: run_checks.py executes the code and asserts
+        // the keyed option IS the exact output (or the named exception).
+        manifest.push({
+          kind: 'trace',
+          id: t.id || `${lesson.id}t?`,
+          code: t.code ?? '',
+          expect: Array.isArray(t.options) ? String(t.options[t.answer] ?? '') : '',
+          raises: t.raises,
+        });
+        totalXp += 5; // first-try-correct scrying pays 5 XP
+        traceXp += 5;
+      });
+    }
+
+    // Word budget (warning, never a gate): narrative + section bodies.
+    const words = countWords(lesson.narrative)
+      + (lesson.sections || []).reduce((n, s) => n + countWords(s.body), 0);
+    if (words > 650) warn(`${lw}: narrative+sections run ${words} words (budget ~650)`);
   });
 
   const boss = act.boss || {};
@@ -128,6 +234,7 @@ curriculum.acts.forEach((act, ai) => {
     validation: boss.finalChallenge?.validation ?? '',
   });
   totalXp += (boss.xp || 0) + (boss.flawlessBonus || 0);
+  coreXp += (boss.xp || 0) + (boss.flawlessBonus || 0);
 });
 
 // ----- run CPython grading -----
@@ -150,6 +257,7 @@ console.log(`Warnings: ${warnings.length}`);
 warnings.forEach((w) => console.log(`  warn  ${w}`));
 console.log('');
 console.log(`Total attainable XP from curriculum: ${totalXp}`);
+console.log(`  breakdown: core ${coreXp} / extras ${extrasXp} / trace ${traceXp}`);
 console.log('(plus achievement XP — see js/gamification.js; final rank threshold must stay below the sum)');
 
 if (errors.length || pythonFailed) {

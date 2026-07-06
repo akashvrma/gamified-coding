@@ -1,7 +1,7 @@
 # The Dark Codex — Content Specification (v1)
 
 This document is the **binding contract** for curriculum data files
-(`js/data/act1.js` … `js/data/act5.js`). The engine, the CPython validator
+(`js/data/act1.js` … `js/data/act10.js`). The engine, the CPython validator
 (`tools/validate_content.mjs`), and all review passes assume it exactly.
 
 ## 1. File shape
@@ -26,8 +26,8 @@ written as tagged template literals using `py`, e.g. ``starter: py`...` ``.
 
 ```js
 export default {
-  id: 'act1',              // exactly 'act1' … 'act5'
-  numeral: 'I',            // 'I' 'II' 'III' 'IV' 'V'
+  id: 'act1',              // exactly 'act1' … 'act10'
+  numeral: 'I',            // 'I' … 'X'
   arc: 'Python Fundamentals',       // plain-English subject of the act
   title: 'The Restricted Section',  // themed act name
   tagline: 'one italic sentence of dark flavor',
@@ -50,7 +50,7 @@ export default {
   concept: 'print(), comments, and how Python reads your code',  // PLAIN english
   xp: 30,                  // completion bonus, 25–40
   narrative: 'markdown-lite. 60–120 words of dark story that frames the concept.',
-  sections: [              // 2–4 teaching sections
+  sections: [              // 2–5 teaching sections
     {
       heading: 'themed but descriptive',
       body: 'markdown-lite prose. THE TEACHING LIVES HERE — precise, plain, beginner-honest. Use `inline code`, **bold**, bullet lists ("- " lines).',
@@ -76,8 +76,84 @@ export default {
       explain: 'why the right answer is right (and the tempting wrong one is wrong)',
     },
   ],
+
+  // ---- OPTIONAL riders (all additive; lessons without them stay valid) ----
+
+  extras: [                // 0–3 per lesson; optional side workings after the quiz
+    {
+      id: 'a2l5x1',        // REQUIRED, stable: lessonId + 'x' + n (state keys on it;
+                           // index-keyed records would break on reorder)
+      kind: 'echo',        // 'echo' | 'cursed' | 'ward'
+      title: 'themed',
+      prompt: 'markdown-lite; themed framing then exact requirements',
+      starter: py`...`,
+      solution: py`...`,
+      validation: py`...`, // same quality bar and contract as challenges (§5)
+      successText: 'one dark sentence',
+      hints: ['...'],      // echo: exactly 2 · cursed/ward: exactly 3
+      xp: 20,              // echo 15–25 · cursed 20–40 · ward 40–60
+    },
+  ],
+
+  trace: [                 // 0–3 per lesson; "The Scrying" — rendered between
+    {                      // challenge and quiz; never gating; 5 XP first-try
+      id: 'a1l2t1',        // REQUIRED, stable: lessonId + 't' + n
+      code: py`...`,       // ≤ 12 lines; runs standalone, deterministic, stdlib-only
+      q: 'The scrying: what does this working print?',
+      options: ['...', '...', '...', '...'],  // exactly 4
+      answer: 1,           // MACHINE-VERIFIED: the validator EXECUTES `code` in
+                           // CPython and asserts stripped stdout equals
+                           // options[answer] exactly (repr quoting and all;
+                           // multi-line outputs joined with real newlines in the
+                           // option string). A mis-keyed answer fails the build.
+      raises: 'NameError', // OPTIONAL: the item's truth is "this exception type is
+                           // raised" — the code must die of exactly this exception;
+                           // stdout comparison is skipped.
+      explain: 'must repair the misconception behind each distractor',
+    },
+  ],
 }
 ```
+
+Inside `challenge` (and boss `finalChallenge`), one more optional field:
+
+```js
+  // Shown by the Codex's 6-fail rescue as a kindred working — a solved
+  // sibling problem, never this challenge's own answer. Schema live now;
+  // content arrives Wave 2.
+  workedExample: { intro: '...', code: py`...`, outro: '...' },
+```
+
+**Word budget:** a lesson's narrative plus its section bodies should target
+**≤ ~650 words**. The validator prints a warning (never an error) past that
+line — trim, don't split.
+
+## 3b. Echo design law (`kind: 'echo'`)
+
+- Same **deep structure** as the host lesson's challenge, different surface;
+  at most one direction-reversal per lesson.
+- Starter one notch leaner than the lesson's own starter.
+- Validation quality bar identical to challenges: behavioral, multi-input,
+  diagnostic messages. The CPython gate runs echoes exactly like challenges
+  (solution must pass; unmodified starter must fail).
+- Exactly 2 lean hints; XP 15–25; never gates anything.
+
+## 3c. Cursed-scroll design law (`kind: 'cursed'`)
+
+- The prompt is a **symptom report, never a bug report** — what the haunted
+  program does wrong, not where the wound is.
+- The starter is a complete, runnable, WRONG 15–25-line program with a
+  mend-in-place header comment.
+- Hints in diagnosis order: how to observe → the wrong mental model → the fix.
+- successText names the bug's true name; the bug gains a codex entry.
+- Exactly 3 hints; XP 20–40.
+
+## 3d. Ward-craft law (`kind: 'ward'`)
+
+- The learner writes the tests: a `ward(candidate)` function judged by playing
+  prosecutor — one true implementation must pass silently, each impostor must
+  be bitten, with per-impostor diagnostic messages.
+- Exactly 3 hints; XP 40–60.
 
 ## 4. Boss object schema
 
@@ -101,9 +177,15 @@ export default {
 ## 5. The validation contract (CRITICAL)
 
 Validation code runs **after** the learner's code, in the **same namespace**,
-with one extra binding:
+with two extra bindings:
 
 - `_stdout` — a `str` holding everything the learner's code printed.
+- `_source` — a `str` holding the learner's code exactly as submitted.
+  **Behavior first, source only for intent, use sparingly**: reach for
+  `_source` only when behavior cannot express the requirement (e.g. "the
+  count must be computed with `len()`, never typed by hand"). Never use
+  `inspect.getsource` — code exec'd from `<your-spell>` has no file backing
+  and it raises `OSError` in both harnesses.
 
 Rules:
 
@@ -263,6 +345,14 @@ ML/data-science courses). Everything in this spec still applies, plus:
   Codex's dark-fantasy fiction. Never reference any commercial course, its
   text, or its datasets.
 
+## 8c. Autopsy section format
+
+A misconception autopsy is an ordinary lesson section whose `heading` begins
+`Autopsy:`. Its body, in order: (a) the false belief quoted in second person;
+(b) a ≤10-line runnable exhibit with the prediction stated first; (c) the
+actual output; (d) the true model as one bolded law; (e) one line honoring
+where the false model came from.
+
 ## 9. Hard checklist per act (validated mechanically)
 
 - Exactly 7 lessons, ids `aNl1..aNl7`; one boss; 10–16 codex entries.
@@ -270,3 +360,10 @@ ML/data-science courses). Everything in this spec still applies, plus:
 - Every quiz question: exactly 4 options, `answer` in 0..3, non-empty `explain`.
 - No `input(`, no backticks, no `${` inside any `py` field.
 - All XP values within specified ranges.
+- Every extra (`extras[]`): required stable id `aNlMx<n>`, kind in
+  echo/cursed/ward, per-kind hint count and XP range (§3), solution passes its
+  validation in CPython, unmodified starter fails it.
+- Every trace (`trace[]`): required stable id `aNlMt<n>`, exactly 4 options,
+  `answer` in 0..3, non-empty `explain`; the code is **executed** — stripped
+  stdout must equal `options[answer]` exactly, or the code must die of the
+  exception type named in `raises`.

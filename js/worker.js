@@ -82,6 +82,7 @@ def __dark_run():
     out = buf.getvalue()
     if validation_code:
         ns["_stdout"] = out
+        ns["_source"] = user_code  # mirror of tools/run_checks.py run_pair — keep in sync
         vbuf = io.StringIO()
         sys.stdout = vbuf
         sys.stderr = vbuf

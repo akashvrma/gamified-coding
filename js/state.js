@@ -26,7 +26,10 @@ function defaultState() {
     allegiance: '',            // 'wand' | 'ring'
     createdAt: Date.now(),
     xp: 0,
-    // lessonId -> { challenge, quiz, perfectQuiz, usedSolution, seen }
+    // lessonId -> { challenge, quiz, perfectQuiz, usedSolution, seen,
+    //               fails, hintsRevealed, extras: {}, traces: {} }
+    // Extras' own forge records live in this same map under their stable
+    // extra ids (a2l5x1…) — they never collide with lesson ids.
     lessons: {},
     // actId -> true when its boss has fallen
     bosses: {},
@@ -44,6 +47,7 @@ function defaultState() {
       quizzesPerfect: 0,
       hintsUsed: 0,
       solutionsViewed: 0,
+      unaidedStreak: 0,        // consecutive first-solves without opening the notes
     },
   };
 }
@@ -165,10 +169,14 @@ export function addXp(amount) {
 
 // ---------------- lesson progress ----------------
 
+// NOTE: the load() merge is shallow for lesson records — old saves carry
+// records WITHOUT the newer fields (fails, hintsRevealed, extras, traces),
+// so every read of those fields below stays defensive.
 function lessonRec(lessonId) {
   if (!state.lessons[lessonId]) {
     state.lessons[lessonId] = {
       challenge: false, quiz: false, perfectQuiz: false, usedSolution: false, seen: false,
+      fails: 0, hintsRevealed: 0, extras: {}, traces: {},
     };
   }
   return state.lessons[lessonId];
@@ -177,6 +185,7 @@ function lessonRec(lessonId) {
 export function getLessonProgress(lessonId) {
   return state.lessons[lessonId] || {
     challenge: false, quiz: false, perfectQuiz: false, usedSolution: false, seen: false,
+    fails: 0, hintsRevealed: 0, extras: {}, traces: {},
   };
 }
 
@@ -194,7 +203,14 @@ export function markChallenge(lessonId) {
   const rec = lessonRec(lessonId);
   const first = !rec.challenge;
   rec.challenge = true;
-  if (first) state.stats.challengesSolved += 1;
+  if (first) {
+    state.stats.challengesSolved += 1;
+    // An unbroken run of solves without opening the notes — Parselmouth
+    // watches this counter, not a lifetime scar.
+    if (!rec.usedSolution) {
+      state.stats.unaidedStreak = (Number(state.stats.unaidedStreak) || 0) + 1;
+    }
+  }
   save();
   return first;
 }
@@ -215,16 +231,94 @@ export function markQuiz(lessonId, perfect) {
 
 export function markSolutionViewed(lessonId) {
   const rec = lessonRec(lessonId);
+  // Opening the notes on a trial not yet conquered breaks the unbroken
+  // run; studying a trial already yours costs nothing.
+  if (!rec.challenge) state.stats.unaidedStreak = 0;
   if (!rec.usedSolution) {
     rec.usedSolution = true;
     state.stats.solutionsViewed += 1;
-    save();
   }
+  save();
 }
 
 export function isLessonComplete(lessonId) {
   const rec = state.lessons[lessonId];
   return Boolean(rec && rec.challenge && rec.quiz);
+}
+
+// ---------------- extras & traces (optional workings; never gating) ----------------
+
+export function markExtraSolved(lessonId, extraId) {
+  const rec = lessonRec(lessonId);
+  if (typeof rec.extras !== 'object' || !rec.extras) rec.extras = {};
+  const first = !rec.extras[extraId];
+  rec.extras[extraId] = true;
+  // The extra's own forge record marks its challenge passed too, so
+  // later note-peeks there no longer break the unaided run.
+  lessonRec(extraId).challenge = true;
+  save();
+  return first;
+}
+
+export function isExtraSolved(lessonId, extraId) {
+  const rec = state.lessons[lessonId];
+  return Boolean(rec && rec.extras && rec.extras[extraId]);
+}
+
+export function markTraceSolved(lessonId, traceId) {
+  const rec = lessonRec(lessonId);
+  if (typeof rec.traces !== 'object' || !rec.traces) rec.traces = {};
+  const first = !rec.traces[traceId];
+  rec.traces[traceId] = true;
+  save();
+  return first;
+}
+
+export function isTraceSolved(lessonId, traceId) {
+  const rec = state.lessons[lessonId];
+  return Boolean(rec && rec.traces && rec.traces[traceId]);
+}
+
+// ---------------- the forge's memory (fails + hint ladder) ----------------
+// Keyed by recordKey: a lesson id, or an extra's own stable id.
+
+export function getFails(recordKey) {
+  const rec = state.lessons[recordKey];
+  return rec ? Number(rec.fails) || 0 : 0;
+}
+
+// One more failed cast on the current working; returns the running count.
+export function recordFail(recordKey) {
+  const rec = lessonRec(recordKey);
+  rec.fails = (Number(rec.fails) || 0) + 1;
+  save();
+  return rec.fails;
+}
+
+// A passing cast clears the tally of consecutive misfires.
+export function resetFails(recordKey) {
+  const rec = state.lessons[recordKey];
+  if (rec && Number(rec.fails)) {
+    rec.fails = 0;
+    save();
+  }
+}
+
+export function getHintsRevealed(recordKey) {
+  const rec = state.lessons[recordKey];
+  return rec ? Number(rec.hintsRevealed) || 0 : 0;
+}
+
+// Persist the ladder position. stats.hintsUsed counts only genuinely new
+// reveals — a reload re-rendering old whispers costs nothing.
+export function markHintRevealed(recordKey, count) {
+  const rec = lessonRec(recordKey);
+  const prev = Number(rec.hintsRevealed) || 0;
+  if (count <= prev) return false;
+  rec.hintsRevealed = count;
+  state.stats.hintsUsed += count - prev;
+  save();
+  return true;
 }
 
 export function markBossDefeated(actId) {
@@ -271,11 +365,6 @@ export function actProgress(act) {
 export function recordRun(success) {
   state.stats.runs += 1;
   if (!success) state.stats.failedRuns += 1;
-  save();
-}
-
-export function recordHint() {
-  state.stats.hintsUsed += 1;
   save();
 }
 

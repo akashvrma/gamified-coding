@@ -72,6 +72,13 @@ print("The shelves lean in to listen.")`,
           code: py`print("First: the door.")
 print("Second: the dark behind it.")
 print("Third: this line always speaks last.")`,
+          note: 'Wounds you will take at this threshold, in the machine’s own words: a quote '
+            + 'opened and never closed dies of `SyntaxError: unterminated string literal`. Curly '
+            + 'quotes — the kind tablet keyboards and pasted documents smuggle in — die of '
+            + '`SyntaxError: invalid character \'“\' (U+201C)`; the Forge straightens curly quotes '
+            + 'as you type, but code you write anywhere less merciful will not be healed, so know '
+            + 'the mark. And `Print(` with a capital dies of `NameError: name \'Print\' is not '
+            + 'defined` — the marks are exact, and a capital letter is a different name.',
         },
         {
           heading: 'Margin notes the machine ignores',
@@ -95,9 +102,13 @@ print("Only this line runs.")  # this trailing note is skipped too`,
           + '- `The shelves are watching.`\n'
           + '- `I read at my own peril.`\n\n'
           + 'Capitalisation, spacing and the final periods must match perfectly — the '
-          + 'threshold does not negotiate.',
-        starter: py`# Speak the three lines of entry, in order, one print() per line.
-# Line 1: The candle is lit.
+          + 'threshold does not negotiate.\n\n'
+          + 'The first line is already laid in the Forge. Cast the spell untouched and hear '
+          + 'it speak — then add the two lines it still lacks.',
+        starter: py`# The first line of entry is already spoken for you. Cast, and hear it.
+print("The candle is lit.")
+
+# Now add the other two lines yourself, one print() per line:
 # Line 2: The shelves are watching.
 # Line 3: I read at my own peril.
 `,
@@ -107,7 +118,7 @@ print("I read at my own peril.")`,
         hints: [
           'Three lines means three separate print() spells, one for each phrase, in order.',
           'Each phrase goes inside quotes, inside the parentheses: print("...") — copy the wording exactly, capital letters and periods included.',
-          'The first line is print("The candle is lit.") — now speak the other two the same way.',
+          'Line 1 already burns in the Forge: print("The candle is lit.") — copy its shape for the two lines that remain.',
         ],
         validation: py`_lines = [ln for ln in _stdout.splitlines() if ln.strip()]
 assert len(_lines) >= 3, "The threshold heard fewer than three lines. Use print() three times, once per phrase."
@@ -172,6 +183,96 @@ assert _lines[2] == "I read at my own peril.", "The oath is incomplete. Line 3 m
             + 'with a NameError. Quotes are what make words into a string.',
         },
       ],
+      extras: [
+        {
+          id: 'a1l1x1',
+          kind: 'echo',
+          title: 'The Binding Words',
+          prompt: 'The chained books keep an oath of their own, and they insist every '
+            + 'visitor repeats it back to them.\n\n'
+            + 'Write a program that prints **exactly** these two lines, in this order:\n\n'
+            + '- `The chains hold.`\n'
+            + '- `Tonight, they hold me too.`',
+          starter: py`# Speak the two lines of the binding, in order.
+`,
+          solution: py`print("The chains hold.")
+print("Tonight, they hold me too.")`,
+          hints: [
+            'Two lines means two print() spells, each with its phrase in quotes.',
+            'print("The chains hold.") is the whole first line — the second follows the same shape, comma and period exact.',
+          ],
+          validation: py`_lines = [ln for ln in _stdout.splitlines() if ln.strip()]
+assert len(_lines) >= 2, "The books heard fewer than two lines. Use print() twice, once per phrase."
+assert _lines[0] == "The chains hold.", "Line 1 is wrong. It must be exactly: The chains hold."
+assert _lines[1] == "Tonight, they hold me too.", "Line 2 is wrong. It must be exactly: Tonight, they hold me too."`,
+          successText: 'The chains do not loosen. But they stop tightening, which here passes for welcome.',
+          xp: 15,
+        },
+        {
+          id: 'a1l1x2',
+          kind: 'echo',
+          title: 'The Margin Stays Silent',
+          prompt: 'A watchman’s report must be copied into the record — and the watchman’s '
+            + 'private warning must not.\n\n'
+            + 'Write a program that prints **exactly** these two lines, in this order:\n\n'
+            + '- `The lantern passes the third shelf.`\n'
+            + '- `Nothing follows it.`\n\n'
+            + 'Then add the watchman’s warning — `do not look up` — to your code as a '
+            + '**comment** on its own line: present in the program, silent in the output.',
+          starter: py`# The report is two spoken lines. The warning stays in the margin.
+`,
+          solution: py`# do not look up
+print("The lantern passes the third shelf.")
+print("Nothing follows it.")`,
+          hints: [
+            'A line beginning with # is a comment — Python never reads it, so it can hold the warning without speaking it.',
+            'Three lines of code: the comment # do not look up, then the two print() spells of the report.',
+          ],
+          validation: py`_lines = [ln for ln in _stdout.splitlines() if ln.strip()]
+assert len(_lines) >= 2, "The record holds fewer than two lines. Print the two lines of the report."
+assert _lines[0] == "The lantern passes the third shelf.", "Line 1 is wrong. It must be exactly: The lantern passes the third shelf."
+assert _lines[1] == "Nothing follows it.", "Line 2 is wrong. It must be exactly: Nothing follows it."
+assert "do not look up" not in _stdout, "The warning was spoken aloud. Put do not look up behind a # so the machine skips it."
+assert "do not look up" in _source, "The warning is missing from the code. Add the comment line: # do not look up"`,
+          successText: 'The record accepts the report. The margin keeps its warning — and you, wisely, do not look up.',
+          xp: 20,
+        },
+      ],
+      trace: [
+        {
+          id: 'a1l1t1',
+          code: py`print("The lamps go out in order.")
+# print("The second lamp resists.")
+print("The dark is patient.")`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            'The lamps go out in order.\nThe second lamp resists.\nThe dark is patient.',
+            'The lamps go out in order.',
+            'The lamps go out in order.\nThe dark is patient.',
+            'The lamps go out in order.\n# print("The second lamp resists.")\nThe dark is patient.',
+          ],
+          answer: 2,
+          explain: 'The middle line begins with #, so it is a comment — the interpreter skips it '
+            + 'entirely, even though it looks like code. It is neither run (first option) nor printed '
+            + 'as text (last option); and the third print still runs, so two lines speak, not one.',
+        },
+        {
+          id: 'a1l1t2',
+          code: py`print("wards: 3 # one flickers")  # the night count
+print("sealed")`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            'wards: 3 # one flickers\nsealed',
+            'wards: 3\nsealed',
+            'wards: 3 # one flickers  # the night count\nsealed',
+            'sealed',
+          ],
+          answer: 0,
+          explain: 'A # *inside* quotes is only a character, so the first # is printed with the rest '
+            + 'of the string. The second # stands outside the quotes, so everything after it — the '
+            + 'night count — is skipped. Both prints run: two lines, flicker included.',
+        },
+      ],
     },
 
     // ------------------------------------------------------------
@@ -221,6 +322,10 @@ print(soul_fragment)`,
 _veiled = "hidden"    # legal — a name may begin with an underscore
 # 13th_victim = ...   -> refused: a name cannot begin with a digit
 # victim count = ...  -> refused: a name cannot contain spaces`,
+          note: 'A wound to expect here: give a two-word *value* no quotes — `vessel = cursed locket` '
+            + '— and the spell dies of `SyntaxError: invalid syntax`, the machine’s bluntest mark; it '
+            + 'cannot even guess what you meant. When you see it, look for words standing naked where '
+            + 'a quoted string should be.',
         },
         {
           heading: 'Souls have types; vessels do not',
@@ -269,6 +374,8 @@ assert "fragments" in _names, "The ledger finds no fragments. Create a variable 
 assert vessel == "cursed locket", "vessel holds the wrong inscription. It must be exactly the string: cursed locket"
 assert isinstance(fragments, int) and not isinstance(fragments, bool), "fragments must hold an integer - the number 7 without quotes."
 assert fragments == 7, "fragments holds the wrong count. It must be exactly 7."
+assert not any(ln.strip() == "vessel" for ln in _stdout.splitlines()), "The ledger heard the word vessel, in quotes. Print the vessel itself - print(vessel), no quote marks around the name."
+assert not any(ln.strip() == "fragments" for ln in _stdout.splitlines()), "The ledger heard the word fragments, in quotes. Print the vessel itself - print(fragments), no quote marks around the name."
 assert "cursed locket" in _stdout, "The vessel's name never reached the ledger. Print vessel."
 assert "7" in _stdout, "The count of fragments never reached the ledger. Print fragments."
 assert "<class 'int'>" in _stdout, "The count's nature was never proven. Print type(fragments)."`,
@@ -321,6 +428,112 @@ assert "<class 'int'>" in _stdout, "The count's nature was never proven. Print t
           explain: 'The type belongs to the value inside the vessel, not to the vessel’s '
             + 'name. Rebinding a name to a value of another kind is legal — which is power, '
             + 'and a responsibility the language leaves entirely to you.',
+        },
+      ],
+      extras: [
+        {
+          id: 'a1l2x1',
+          kind: 'echo',
+          title: 'The Second Intake',
+          prompt: 'A second artifact reaches the ledger before the ink of the first is dry, '
+            + 'and the ledger’s appetite is unchanged: the vessel, the count, and proof of '
+            + 'nature.\n\n'
+            + 'Write a program that does exactly this:\n\n'
+            + '- Create a variable named `relic` bound to the string `black diadem`.\n'
+            + '- Create a variable named `claims` bound to the integer `3` — a bare number, no quotes.\n'
+            + '- Print the value of `relic`.\n'
+            + '- Print the value of `claims`.\n'
+            + '- Print `type(relic)` by passing it straight to print — this time the ledger wants the *string’s* nature proven.',
+          starter: py`# Bind relic and claims, then print relic, claims, and type(relic).
+`,
+          solution: py`relic = "black diadem"
+claims = 3
+print(relic)
+print(claims)
+print(type(relic))`,
+          hints: [
+            'Two assignments: relic = "black diadem" wears quotes; claims = 3 goes bare.',
+            "Three prints, ending with print(type(relic)) - it reports <class 'str'>, the nature of captured text.",
+          ],
+          validation: py`_names = dir()
+assert "relic" in _names, "The ledger finds no relic. Create a variable named relic bound to the string black diadem."
+assert "claims" in _names, "The ledger finds no claims. Create a variable named claims bound to the integer 3."
+assert relic == "black diadem", "relic holds the wrong inscription. It must be exactly the string: black diadem"
+assert isinstance(claims, int) and not isinstance(claims, bool), "claims must hold an integer - the number 3 without quotes."
+assert claims == 3, "claims holds the wrong count. It must be exactly 3."
+assert not any(ln.strip() == "relic" for ln in _stdout.splitlines()), "The ledger heard the word relic, in quotes. Print the vessel itself - print(relic), no quote marks around the name."
+assert "black diadem" in _stdout, "The relic's name never reached the ledger. Print relic."
+assert "3" in _stdout, "The count of claims never reached the ledger. Print claims."
+assert "<class 'str'>" in _stdout, "The relic's nature was never proven. Print type(relic)."`,
+          successText: 'The ledger rules the diadem genuine and the claims false — all three of them.',
+          xp: 20,
+        },
+        {
+          id: 'a1l2x2',
+          kind: 'echo',
+          title: 'The Watchword Changes',
+          prompt: 'The stacks change their watchword at midnight, and the record must hold '
+            + 'the changing of it — the old word spoken once, then gone for good.\n\n'
+            + 'Write a program that:\n\n'
+            + '- Binds `watchword` to the string `mimblewimble`, and prints it.\n'
+            + '- Rebinds the **same name** to the string `obliviate`, and prints it again.\n\n'
+            + 'Two lines of output: the old word, then the new. One vessel, twice sealed.',
+          starter: py`# One vessel, two watchwords: bind, print, rebind, print again.
+`,
+          solution: py`watchword = "mimblewimble"
+print(watchword)
+watchword = "obliviate"
+print(watchword)`,
+          hints: [
+            'Assigning to a name that already exists replaces its value — the old one is released and forgotten.',
+            'Four lines: watchword = "mimblewimble", print(watchword), watchword = "obliviate", print(watchword).',
+          ],
+          validation: py`_lines = [ln.strip() for ln in _stdout.splitlines() if ln.strip()]
+assert "watchword" in dir(), "The record finds no watchword. Bind the name watchword with =."
+assert "mimblewimble" in _lines, "The old watchword was never spoken. Print watchword once BEFORE rebinding it."
+assert "obliviate" in _lines, "The new watchword was never spoken. Rebind watchword to obliviate and print it again."
+assert _lines.index("mimblewimble") < _lines.index("obliviate"), "The watchwords spoke out of order. Print the old word first, then rebind, then print the new."
+assert watchword == "obliviate", "watchword ends the night still holding the old word. The final binding must be obliviate."`,
+          successText: 'Midnight passes. The old word is nowhere in the vessel — only the record remembers it existed.',
+          xp: 20,
+        },
+      ],
+      trace: [
+        {
+          id: 'a1l2t1',
+          code: py`vessel = "goblet"
+vessel = "diadem"
+print(vessel)
+print(type(vessel))`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            "goblet\n<class 'str'>",
+            "goblet diadem\n<class 'str'>",
+            'diadem\nstr',
+            "diadem\n<class 'str'>",
+          ],
+          answer: 3,
+          explain: 'The second assignment replaces the first — a vessel answers with what it was '
+            + 'given most recently, so goblet is gone, not kept alongside. And type() reports in its '
+            + "full form, <class 'str'>, never the bare word str. Rebinding is replacement, not accumulation.",
+        },
+        {
+          id: 'a1l2t2',
+          code: py`Keeper = "the tall one"
+keeper = "the quiet one"
+print(Keeper)`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            'the quiet one',
+            'the tall one',
+            'It dies of a NameError — a name cannot be bound twice',
+            'the tall one\nthe quiet one',
+          ],
+          answer: 1,
+          explain: 'Names are case-sensitive: Keeper and keeper are two different vessels, so the '
+            + 'second line is a fresh binding, not a rebinding — the capital vessel is untouched, and '
+            + 'print(Keeper) summons it. One print, one line, no error: which is exactly what makes '
+            + 'this wound so quiet when you take it by accident.',
         },
       ],
     },
@@ -384,6 +597,11 @@ print(word[5:])    # isk   - omit the stop to run to the end`,
 print(whisper.strip())            # the serpent stirs
 print(whisper.strip().upper())    # THE SERPENT STIRS
 print("open the gate".replace("open", "seal"))   # seal the gate`,
+          note: 'A wound to take now, cheaply: `whisper.strip` *names* the spell; `whisper.strip()` '
+            + '*casts* it. Name it without casting and nothing fails on that line — you have bound '
+            + 'the tool itself, not its result — but the moment you treat it as text, the working '
+            + 'dies of `AttributeError: \'builtin_function_or_method\' object has no attribute '
+            + '\'upper\'`. When an AttributeError follows a dot, hunt for the parentheses you forgot.',
         },
         {
           heading: 'The joining rune',
@@ -435,6 +653,8 @@ assert proclaimed == "THE CHAMBER IS OPEN", "proclaimed must be cleansed in ALL 
 assert sealed == "the chamber is sealed", "sealed must be cleansed with the word open exchanged for sealed - use .replace(\"open\", \"sealed\")."
 assert "THE CHAMBER IS OPEN" in _stdout, "The proclamation was never printed. Print proclaimed."
 assert "the chamber is sealed" in _stdout, "The countermand was never printed. Print sealed."
+_live = "\n".join(ln for ln in _source.splitlines() if not ln.lstrip().startswith("#"))
+assert "len(" in _live, "The count must be counted, never typed by hand - the ward finds no len( anywhere in your spell. Hand len(cleansed) straight to print."
 assert any(ln.strip() == "19" for ln in _stdout.splitlines()), "The count was never spoken. Print len(cleansed) - a line holding the bare number 19."`,
         successText: 'The wall drinks the corrected words. Far below the floorboards, something very long changes direction.',
         xp: 60,
@@ -489,6 +709,132 @@ assert any(ln.strip() == "19" for ln in _stdout.splitlines()), "The count was ne
           explain: 'String methods never alter the original — they return a new string, '
             + 'and a result no name catches is discarded on the spot. To keep it, bind it: '
             + 'spell = spell.upper().',
+        },
+      ],
+      extras: [
+        {
+          id: 'a1l3x1',
+          kind: 'echo',
+          title: 'The Order on the Door',
+          prompt: 'An order has been scraped off the east door, ragged and shouting. Before '
+            + 'the door will obey, the order must be hushed, redirected, and measured.\n\n'
+            + 'The starter binds `order` to the raw text. Write a program that:\n\n'
+            + '- Binds `hushed` to `order` stripped of its surrounding spaces **and** in all lowercase — chain `.strip()` and `.lower()`.\n'
+            + '- Binds `redirected` to `hushed` with the word `west` replaced by `north` (use `.replace()`).\n'
+            + '- Prints `hushed`, then prints `redirected`.\n'
+            + '- Prints `len(hushed)` — the bare count, `17`, computed, never typed by hand.',
+          starter: py`# The order, exactly as scraped from the east door:
+order = "   BAR THE WEST DOOR   "
+
+# hushed     = order, stripped and lowered
+# redirected = hushed, with west exchanged for north
+# print hushed, then redirected, then the character count of hushed
+`,
+          solution: py`order = "   BAR THE WEST DOOR   "
+hushed = order.strip().lower()
+redirected = hushed.replace("west", "north")
+print(hushed)
+print(redirected)
+print(len(hushed))`,
+          hints: [
+            'Methods chain left to right: order.strip().lower() strips first, then lowers the result — one motion, one binding.',
+            'redirected = hushed.replace("west", "north") — then print all three: hushed, redirected, and len(hushed).',
+          ],
+          validation: py`assert "hushed" in dir(), "There is no vessel named hushed. Bind it to order.strip().lower()."
+assert hushed == "bar the west door", "hushed is not fully cleansed. It must be order stripped of its outer spaces AND lowered: bar the west door"
+assert redirected == "bar the north door", "redirected must be hushed with west exchanged for north - use .replace(\"west\", \"north\")."
+_lines = [ln.strip() for ln in _stdout.splitlines() if ln.strip()]
+assert "bar the west door" in _lines, "The hushed order was never printed on its own line. Print hushed."
+assert "bar the north door" in _lines, "The redirected order was never printed. Print redirected."
+_live = "\n".join(ln for ln in _source.splitlines() if not ln.lstrip().startswith("#"))
+assert "len(" in _live, "The count must be counted, never typed by hand - the ward finds no len( in your spell. Hand len(hushed) straight to print."
+assert "17" in _lines, "The count was never spoken. Print len(hushed) - a line holding the bare number 17."`,
+          successText: 'The door reads its corrected order and, with the sound of a resentful bolt, obeys.',
+          xp: 20,
+        },
+        {
+          id: 'a1l3x2',
+          kind: 'echo',
+          title: 'Cut, Never Copied',
+          prompt: 'A poisoner’s label must be divided for the evidence ledger — and the '
+            + 'ledger accepts only pieces *cut* from the original, never pieces retyped.\n\n'
+            + 'The starter binds `herb`. Write a program that:\n\n'
+            + '- Binds `dark` to the **first five** characters of `herb` — a slice.\n'
+            + '- Binds `veil` to everything from position 5 **onward** — a slice.\n'
+            + '- Binds `last` to the final character of `herb` — a negative index.\n'
+            + '- Prints `dark`, then `veil`, then `last`, each on its own line.\n'
+            + '- Prints `len(herb)` — the bare count, `10`, on its own line.',
+          starter: py`# The label, whole:
+herb = "nightshade"
+
+# dark = the first five characters; veil = position 5 onward; last = the final character
+# print dark, veil, last, then the character count of herb
+`,
+          solution: py`herb = "nightshade"
+dark = herb[:5]
+veil = herb[5:]
+last = herb[-1]
+print(dark)
+print(veil)
+print(last)
+print(len(herb))`,
+          hints: [
+            'A slice takes a run: herb[:5] keeps positions 0 through 4 — five characters, the stop excluded — and herb[5:] takes everything from there on.',
+            'The final character is herb[-1]; negatives count from the end. Then four prints, ending with len(herb).',
+          ],
+          validation: py`assert "dark" in dir(), "There is no vessel named dark. Bind it to the first five characters: herb[:5]."
+assert dark == "night", "dark holds the wrong cut. The first five characters of nightshade are night - slice herb[:5]."
+assert veil == "shade", "veil holds the wrong cut. Position 5 onward of nightshade is shade - slice herb[5:]."
+assert last == "e", "last must be the final character, e - reach it with herb[-1]."
+_live = "\n".join(ln for ln in _source.splitlines() if not ln.lstrip().startswith("#"))
+assert "[" in _live, "The ledger accepts only pieces CUT from herb - slice with herb[start:stop], never retype the letters."
+_lines = [ln.strip() for ln in _stdout.splitlines() if ln.strip()]
+assert "night" in _lines, "dark was never spoken on its own line. Print dark."
+assert "shade" in _lines, "veil was never spoken. Print veil."
+assert "e" in _lines, "The last character was never spoken. Print last."
+assert "10" in _lines, "The count was never spoken. Print len(herb) - a line holding the bare number 10."`,
+          successText: 'Five and five, and the last letter accounted for twice. The ledger finds no seam in your cuts.',
+          xp: 20,
+        },
+      ],
+      trace: [
+        {
+          id: 'a1l3t1',
+          code: py`relic = "grimoire"
+print(relic[0])
+print(relic[2:6])
+print(relic[-1])`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            'g\nimoi\ne',
+            'g\nimoir\ne',
+            'g\nrimo\ne',
+            'grimoire\nimoi\ne',
+          ],
+          answer: 0,
+          explain: 'Positions start at 0, so relic[0] is the single character g — not the whole word. '
+            + 'The slice [2:6] keeps positions 2, 3, 4 and 5 — imoi — because the stop is excluded; '
+            + 'imoir would need the stop included, and rimo would need counting from 1. And [-1] is '
+            + 'the last character, e.',
+        },
+        {
+          id: 'a1l3t2',
+          code: py`chant = "nox"
+chant.upper()
+print(chant)
+print(chant.upper())`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            'NOX\nNOX',
+            'nox\nnox',
+            'nox\nNOX',
+            'NOX\nnox',
+          ],
+          answer: 2,
+          explain: 'A method never edits the original: the bare chant.upper() on line 2 built a new '
+            + 'string and, with no name to catch it, let it fall — chant still holds nox. The last '
+            + 'line calls .upper() again and prints the result directly, so NOX appears only there. '
+            + 'To keep a method’s work, bind it: chant = chant.upper().',
         },
       ],
     },
@@ -622,8 +968,11 @@ print(f"The ledger holds {total} souls.")`,
         validation: py`assert "per_cell" in dir(), "The ledger finds no per_cell. Bind it with floor division: prisoners // cells."
 assert per_cell == 17, "per_cell is miscounted. Floor division prisoners // cells gives 17."
 assert isinstance(per_cell, int), "per_cell must be a whole number - use // (floor division), not / (true division)."
+assert "left_over" in dir(), "The ledger finds no left_over. Bind it with modulo: prisoners % cells."
 assert left_over == 6, "left_over is miscounted. The remainder prisoners % cells is 6."
+assert "total" in dir(), "The ledger finds no total. Bind it to prisoners plus the old count, converted: prisoners + int(old_ledger)."
 assert total == 272, "total is miscounted. Convert the old count with int(old_ledger), then add it to prisoners: 272."
+assert "{per_cell}" not in _stdout and "{left_over}" not in _stdout and "{total}" not in _stdout, "Your braces printed literally - the ledger read {per_cell} as ink, not number. The f before the opening quote is missing."
 assert "Each cell takes 17." in _stdout, "The ledger's first line is missing or wrong. It must read exactly: Each cell takes 17."
 assert "6 wait in the corridor." in _stdout, "The ledger's second line is missing or wrong. It must read exactly: 6 wait in the corridor."
 assert "The ledger holds 272 souls." in _stdout, "The ledger's third line is missing or wrong. It must read exactly: The ledger holds 272 souls."`,
@@ -683,6 +1032,135 @@ assert "The ledger holds 272 souls." in _stdout, "The ledger's third line is mis
           explain: 'Python will not guess between arithmetic and joining, so it refuses. '
             + 'int("13") + 4 gives 17; "13" + str(4) gives "134". You must name which fate '
             + 'you intend.',
+        },
+      ],
+      extras: [
+        {
+          id: 'a1l4x1',
+          kind: 'echo',
+          title: 'The Venom Ledger',
+          prompt: 'The poisoner’s stores are counted tonight, and venom forgives a miscount '
+            + 'even less than wardens do. The last keeper, as ever, counted in ink.\n\n'
+            + 'The starter provides `drams`, `vials`, and `old_count` (a count kept as a '
+            + 'string). Write a program that:\n\n'
+            + '- Binds `per_vial` to the whole number of drams each vial receives — floor division.\n'
+            + '- Binds `left` to the remainder — modulo.\n'
+            + '- Binds `total` to `drams` plus the old count — convert `old_count` with `int()` first.\n'
+            + '- Prints, using f-strings, exactly these three lines:\n\n'
+            + '- `Each vial takes 11.`\n'
+            + '- `24 drams remain.`\n'
+            + '- `The stores hold 423 drams.`',
+          starter: py`drams = 365
+vials = 31
+old_count = "58"   # the last keeper's tally, in ink
+
+# per_vial, left, total - then the three exact lines, by f-string
+`,
+          solution: py`drams = 365
+vials = 31
+old_count = "58"
+per_vial = drams // vials
+left = drams % vials
+total = drams + int(old_count)
+print(f"Each vial takes {per_vial}.")
+print(f"{left} drams remain.")
+print(f"The stores hold {total} drams.")`,
+          hints: [
+            'The same pair as the prison ledger: // keeps the whole times, % keeps what remains — and int(old_count) turns ink into number before the addition.',
+            'Three f-strings: print(f"Each vial takes {per_vial}.") — the f before the quote is what brings the braces to life.',
+          ],
+          validation: py`assert "per_vial" in dir(), "The stores find no per_vial. Bind it with floor division: drams // vials."
+assert per_vial == 11, "per_vial is miscounted. Floor division drams // vials gives 11."
+assert "left" in dir(), "The stores find no left. Bind it with modulo: drams % vials."
+assert left == 24, "left is miscounted. The remainder drams % vials is 24."
+assert "total" in dir(), "The stores find no total. Bind it to drams plus the converted old count."
+assert total == 423, "total is miscounted. Convert with int(old_count), then add: 365 + 58 is 423."
+assert "{per_vial}" not in _stdout and "{left}" not in _stdout and "{total}" not in _stdout, "Your braces printed literally - the f before the opening quote is missing, so the vessels never poured into the sentence."
+assert "Each vial takes 11." in _stdout, "The first line is missing or wrong. It must read exactly: Each vial takes 11."
+assert "24 drams remain." in _stdout, "The second line is missing or wrong. It must read exactly: 24 drams remain."
+assert "The stores hold 423 drams." in _stdout, "The third line is missing or wrong. It must read exactly: The stores hold 423 drams."`,
+          successText: 'Four hundred twenty-three, to the dram. The poisoner initials the page without checking — the highest compliment the trade allows.',
+          xp: 20,
+        },
+        {
+          id: 'a1l4x2',
+          kind: 'echo',
+          title: 'Seven Doublings',
+          prompt: 'A single flame was left burning in the vigil hall, and someone — no one '
+            + 'admits who — doubled it, seven nights running. The candles must now be racked '
+            + 'in rows of 12, and the hall demands its arithmetic exact.\n\n'
+            + 'Write a program that:\n\n'
+            + '- Binds `candles` to two raised to the seventh power — computed with the `**` rune, never typed as a bare number.\n'
+            + '- Binds `rows` to the whole number of full rows of 12 — floor division.\n'
+            + '- Binds `stray` to the candles left over — modulo.\n'
+            + '- Prints, using f-strings, exactly these three lines:\n\n'
+            + '- `Candles burning: 128`\n'
+            + '- `Full rows: 10`\n'
+            + '- `Left alone: 8`',
+          starter: py`# candles = seven doublings of one flame (the ** rune)
+# rows    = full rows of 12; stray = what remains
+# then the three exact lines, by f-string
+`,
+          solution: py`candles = 2 ** 7
+rows = candles // 12
+stray = candles % 12
+print(f"Candles burning: {candles}")
+print(f"Full rows: {rows}")
+print(f"Left alone: {stray}")`,
+          hints: [
+            '2 ** 7 is seven 2s multiplied — bind it once, and let rows and stray both draw from that vessel.',
+            'rows = candles // 12 and stray = candles % 12 — then three f-strings, e.g. print(f"Full rows: {rows}").',
+          ],
+          validation: py`assert "candles" in dir(), "The hall finds no candles. Bind candles to 2 ** 7."
+assert candles == 128, "candles is miscounted. Two raised to the seventh - 2 ** 7 - is 128."
+_live = "\n".join(ln for ln in _source.splitlines() if not ln.lstrip().startswith("#"))
+assert "**" in _live, "The doubling must be computed with the power rune - write 2 ** 7, never the bare number it comes to."
+assert "rows" in dir() and rows == 10, "rows is missing or miscounted. Floor division candles // 12 gives 10."
+assert "stray" in dir() and stray == 8, "stray is missing or miscounted. The remainder candles % 12 is 8."
+assert "{candles}" not in _stdout and "{rows}" not in _stdout and "{stray}" not in _stdout, "Your braces printed literally - the f before the opening quote is missing."
+assert "Candles burning: 128" in _stdout, "The first line is missing or wrong. It must read exactly: Candles burning: 128"
+assert "Full rows: 10" in _stdout, "The second line is missing or wrong. It must read exactly: Full rows: 10"
+assert "Left alone: 8" in _stdout, "The third line is missing or wrong. It must read exactly: Left alone: 8"`,
+          successText: 'Ten rows stand perfect and eight flames stand apart — and the hall, briefly, stops counting you instead.',
+          xp: 20,
+        },
+      ],
+      trace: [
+        {
+          id: 'a1l4t1',
+          code: py`print(12 / 3)
+print(13 // 5)
+print(13 % 5)`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            '4\n2\n3',
+            '4.0\n2\n3',
+            '4.0\n2.6\n3',
+            '4.0\n3\n2',
+          ],
+          answer: 1,
+          explain: 'True division / always yields a float, even when it divides cleanly — 12 / 3 is 4.0, '
+            + 'never 4. Floor division // keeps only the whole times (13 // 5 is 2, not 2.6 — the decimal '
+            + 'belongs to /), and % keeps the remainder, 3. Swapping the last two is the classic misread: '
+            + '// answers *how many fit*, % answers *what is left*.',
+        },
+        {
+          id: 'a1l4t2',
+          code: py`owed = 45
+print("The ledger records " + owed)`,
+          q: 'The scrying: what is the fate of this working?',
+          options: [
+            'It prints: The ledger records 45',
+            'It prints: The ledger records owed',
+            'It prints: The ledger records "45"',
+            'It dies - TypeError: can only concatenate str (not "int") to str',
+          ],
+          answer: 3,
+          raises: 'TypeError',
+          explain: 'The + rune will not guess between arithmetic and joining: a string and a bare '
+            + 'integer refuse each other, and the spell dies of a TypeError before printing anything. '
+            + 'Python never converts silently — you must name the fate: str(owed) to join it as text, '
+            + 'or an f-string, which performs the conversion for you.',
         },
       ],
     },
@@ -852,6 +1330,136 @@ assert "Silent: True" in _stdout, "The gate never heard the third verdict. Print
             + 'natural way to ask whether text is empty.',
         },
       ],
+      extras: [
+        {
+          id: 'a1l5x1',
+          kind: 'echo',
+          title: 'The Vault Weighs a Thief',
+          prompt: 'The vault beneath the stacks asks its own three questions of anyone who '
+            + 'reaches it — and like the gate above, it accepts only verdicts.\n\n'
+            + 'The starter provides `depth`, `torch_lit`, and `inscription`. Write a program that:\n\n'
+            + '- Binds `deep_enough` to the verdict of the comparison: is `depth` at least 10?\n'
+            + '- Binds `safe` to the verdict: `deep_enough` **and** `torch_lit`.\n'
+            + '- Binds `unmarked` to the verdict: **not** `inscription` — the truthiness of occupied text.\n'
+            + '- Prints, using f-strings, exactly these three lines:\n\n'
+            + '- `Deep enough: True`\n'
+            + '- `Safe: False`\n'
+            + '- `Unmarked: False`',
+          starter: py`# The thief, as the vault perceives one:
+depth = 12
+torch_lit = False
+inscription = "vinctus"
+
+# deep_enough, safe, unmarked - then the three exact lines
+`,
+          solution: py`depth = 12
+torch_lit = False
+inscription = "vinctus"
+deep_enough = depth >= 10
+safe = deep_enough and torch_lit
+unmarked = not inscription
+print(f"Deep enough: {deep_enough}")
+print(f"Safe: {safe}")
+print(f"Unmarked: {unmarked}")`,
+          hints: [
+            'Each binding is a bare expression with a verdict of its own: depth >= 10 needs no if around it.',
+            'and demands both sides True — one dead torch fails it. And inscription holds text, so it counts True; not overturns it to False.',
+          ],
+          validation: py`assert "deep_enough" in dir(), "The vault finds no deep_enough. Bind it to the comparison depth >= 10."
+assert deep_enough is True, "deep_enough must be the verdict of depth >= 10 - and at a depth of 12, that verdict is True."
+assert "safe" in dir() and safe is False, "safe must be deep_enough and torch_lit - and with the torch dead, and fails: False."
+assert "unmarked" in dir() and unmarked is False, "unmarked must be not inscription - occupied text counts True, so not overturns it to False."
+assert "Deep enough: True" in _stdout, "The vault never heard the first verdict. Print exactly: Deep enough: True"
+assert "Safe: False" in _stdout, "The vault never heard the second verdict. Print exactly: Safe: False"
+assert "Unmarked: False" in _stdout, "The vault never heard the third verdict. Print exactly: Unmarked: False"`,
+          successText: 'Three verdicts, none of them flattering, all of them exact. The vault respects nothing else.',
+          xp: 20,
+        },
+        {
+          id: 'a1l5x2',
+          kind: 'echo',
+          title: 'The Night Ledger of Seals',
+          prompt: 'At closing, the night ledger rules on the state of the wards — in '
+            + 'verdicts, as always, for stories cannot be audited.\n\n'
+            + 'The starter provides `seals`, `bell_rung`, and `password`. Write a program that:\n\n'
+            + '- Binds `unsealed` to the verdict of the comparison: does `seals` equal 0?\n'
+            + '- Binds `alarm` to the verdict: `bell_rung` **or** is `seals` greater than 3?\n'
+            + '- Binds `spoken` to the verdict of `bool(password)` — the truthiness of the text.\n'
+            + '- Prints, using f-strings, exactly these three lines:\n\n'
+            + '- `Unsealed: True`\n'
+            + '- `Alarm: False`\n'
+            + '- `Spoken: True`',
+          starter: py`# The wards, at closing:
+seals = 0
+bell_rung = False
+password = "nox"
+
+# unsealed, alarm, spoken - then the three exact lines
+`,
+          solution: py`seals = 0
+bell_rung = False
+password = "nox"
+unsealed = seals == 0
+alarm = bell_rung or seals > 3
+spoken = bool(password)
+print(f"Unsealed: {unsealed}")
+print(f"Alarm: {alarm}")
+print(f"Spoken: {spoken}")`,
+          hints: [
+            'Equality is asked with two signs: seals == 0. One sign would bind; two signs inquire.',
+            'or is satisfied by either side — tonight both fail, so alarm is False. And bool("nox") weighs occupied text: True.',
+          ],
+          validation: py`assert "unsealed" in dir(), "The ledger finds no unsealed. Bind it to the comparison seals == 0 - two signs, asking."
+assert unsealed is True, "unsealed must be the verdict of seals == 0 - and with zero seals, that verdict is True."
+assert "alarm" in dir() and alarm is False, "alarm must be bell_rung or seals > 3 - both sides fail tonight, so or yields False."
+assert "spoken" in dir() and spoken is True, "spoken must be bool(password) - the text nox is occupied, so its verdict is True."
+assert "Unsealed: True" in _stdout, "The ledger never heard the first verdict. Print exactly: Unsealed: True"
+assert "Alarm: False" in _stdout, "The ledger never heard the second verdict. Print exactly: Alarm: False"
+assert "Spoken: True" in _stdout, "The ledger never heard the third verdict. Print exactly: Spoken: True"`,
+          successText: 'The ledger closes itself on three clean verdicts. Nothing rings. Tonight, that counts as victory.',
+          xp: 20,
+        },
+      ],
+      trace: [
+        {
+          id: 'a1l5t1',
+          code: py`print(bool("0"))
+print(bool(""))
+print(not "")`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            'False\nFalse\nTrue',
+            'True\nFalse\nFalse',
+            'True\nFalse\nTrue',
+            'False\nTrue\nFalse',
+          ],
+          answer: 2,
+          explain: 'Truthiness weighs emptiness, not meaning: "0" holds a character, so it is occupied '
+            + 'and True — only the *number* 0 is falsy. The empty string "" holds nothing: False. And '
+            + 'not works on any value, so not "" overturns that emptiness to True — the idiomatic way '
+            + 'to ask *is this text empty?*',
+        },
+        {
+          id: 'a1l5t2',
+          code: py`age = 16
+signed = True
+print(age >= 17)
+print(age >= 17 or signed)
+print(age >= 17 and signed)`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            'False\nTrue\nFalse',
+            'False\nTrue\nTrue',
+            'True\nTrue\nFalse',
+            'False\nFalse\nFalse',
+          ],
+          answer: 0,
+          explain: '16 falls short of 17, so the comparison is False. or is satisfied by either side — '
+            + 'the signed slip rescues it: True. and demands both — the failed age condemns it: False. '
+            + 'The same two verdicts, twice combined, with opposite outcomes: that is the whole '
+            + 'difference between the two runes.',
+        },
+      ],
     },
 
     // ------------------------------------------------------------
@@ -885,6 +1493,12 @@ if threat > 5:
     print("Ward the door.")
     print("Both these lines belong to the if.")
 print("This line stands outside. It runs regardless.")`,
+          note: 'The law has a voice; hear it now, before it speaks to you. Forget to indent the '
+            + 'block and the mark reads `IndentationError: expected an indented block after \'if\' '
+            + 'statement` — naming the very line of the offending `if`. Mix tabs with spaces and it '
+            + 'reads `TabError: inconsistent use of tabs and spaces in indentation`. Both are the '
+            + 'same verdict: the shape of your lines broke the promise your colon made. Indent with '
+            + 'four spaces, always four, and the law stays silent.',
         },
         {
           heading: 'else and elif — the first true door wins',
@@ -1028,6 +1642,131 @@ assert "The aisle is empty. For now." not in _stdout, "The empty-aisle line spok
             + 'the program runs a single line.',
         },
       ],
+      extras: [
+        {
+          id: 'a1l6x1',
+          kind: 'echo',
+          title: 'What the Cauldron Says',
+          prompt: 'The cauldron in the restricted annex reports in colors, and your ward '
+            + 'must translate — one branch, one truth, no babbling.\n\n'
+            + 'The starter provides `draught` and `stirred_thrice`. Write a single '
+            + 'if / elif / else chain:\n\n'
+            + '- If `draught` equals `"black"`: print `Black as a closed eye.` — and then, '
+            + '**nested inside that branch**, if `stirred_thrice` is true print `It settles, obedient.`, '
+            + 'otherwise print `It climbs the cauldron wall.`\n'
+            + '- Otherwise, if `draught` equals `"silver"`: print `Moonlight. Harmless.`\n'
+            + '- Otherwise: print `Pour it away. Quickly.`\n\n'
+            + 'With the starter’s values, exactly two lines appear: the black report, then the obedient one.',
+          starter: py`draught = "black"
+stirred_thrice = True
+
+# The fork: black -> its line, then nested on stirred_thrice;
+# silver -> its line; anything else -> pour it away
+`,
+          solution: py`draught = "black"
+stirred_thrice = True
+if draught == "black":
+    print("Black as a closed eye.")
+    if stirred_thrice:
+        print("It settles, obedient.")
+    else:
+        print("It climbs the cauldron wall.")
+elif draught == "silver":
+    print("Moonlight. Harmless.")
+else:
+    print("Pour it away. Quickly.")`,
+          hints: [
+            'The comparison is draught == "black" — and the second if stands INSIDE that branch, indented one level deeper (eight spaces).',
+            'Chain shape: if draught == "black": its print, then the nested if/else pair; elif draught == "silver": its print; else: the pouring. Colons on every door.',
+          ],
+          validation: py`assert "Black as a closed eye." in _stdout, 'The black branch never spoke. Compare with draught == "black" and print: Black as a closed eye.'
+assert "It settles, obedient." in _stdout, "stirred_thrice is True, so the nested if must print: It settles, obedient."
+assert "It climbs the cauldron wall." not in _stdout, "The climbing line spoke although stirred_thrice is True - your nested if is not weighing the verdict."
+assert "Moonlight. Harmless." not in _stdout, "The silver line spoke for a black draught - only ONE branch of a chain may run."
+assert "Pour it away. Quickly." not in _stdout, "The else spoke although the draught is black - your conditions are not guarding their doors."`,
+          successText: 'Two lines, and only two. The cauldron settles — this once — like something choosing to be patient.',
+          xp: 25,
+        },
+        {
+          id: 'a1l6x2',
+          kind: 'echo',
+          title: 'Knocks at the North Door',
+          prompt: 'Something knocks at the north door after hours, and the door keeps its '
+            + 'own protocol.\n\n'
+            + 'The starter provides `knocks`. Write an if / elif / else chain:\n\n'
+            + '- If `knocks` equals 0: print `No one. Which is worse.`\n'
+            + '- Otherwise, if `knocks` is less than 5: print `A visitor with manners.`\n'
+            + '- Otherwise: print `That is not knocking anymore.`\n\n'
+            + 'With the starter’s value, exactly one line may appear.',
+          starter: py`knocks = 4
+
+# The protocol: 0 -> no one; fewer than 5 -> manners; anything more -> not knocking
+`,
+          solution: py`knocks = 4
+if knocks == 0:
+    print("No one. Which is worse.")
+elif knocks < 5:
+    print("A visitor with manners.")
+else:
+    print("That is not knocking anymore.")`,
+          hints: [
+            'Three doors: if knocks == 0:, elif knocks < 5:, else: — a colon on each, each body indented four spaces.',
+            'Four knocks fail the first door and pass the second — so exactly one line prints: A visitor with manners.',
+          ],
+          validation: py`assert "A visitor with manners." in _stdout, "The middle door never opened. Four knocks fail knocks == 0 but pass knocks < 5 - print: A visitor with manners."
+assert "No one. Which is worse." not in _stdout, "The first door spoke for four knocks - knocks == 0 is False, and its branch must stay silent."
+assert "That is not knocking anymore." not in _stdout, "The else spoke although an earlier door was True - once a door opens, the chain ends."
+_spoken = [ln for ln in _stdout.splitlines() if ln.strip()]
+assert len(_spoken) == 1, "The door must speak exactly one line - a chain runs one branch, never several."`,
+          successText: 'One answer for one visitor. The knocking stops, satisfied — or at the very least, it stops.',
+          xp: 20,
+        },
+      ],
+      trace: [
+        {
+          id: 'a1l6t1',
+          code: py`depth = 9
+if depth > 20:
+    print("the abyss")
+elif depth > 5:
+    print("the deep stacks")
+elif depth > 8:
+    print("the drowned shelf")
+else:
+    print("the threshold")`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            'the deep stacks\nthe drowned shelf',
+            'the deep stacks',
+            'the drowned shelf',
+            'the threshold',
+          ],
+          answer: 1,
+          explain: 'A chain runs exactly one branch: 9 > 20 fails, 9 > 5 succeeds — and the corridor '
+            + 'below goes dark. That 9 > 8 is *also* True changes nothing, because the third door is '
+            + 'never even tried; two branches can never both speak. The else is only for walkers no '
+            + 'door claimed.',
+        },
+        {
+          id: 'a1l6t2',
+          code: py`sighting = "ghoul"
+if sighting == "wraith":
+    print("Run.")
+    print("Do not look back.")
+print("The aisle continues.")`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            'Run.\nDo not look back.\nThe aisle continues.',
+            'Nothing — the if failed, so nothing prints',
+            'Run.\nThe aisle continues.',
+            'The aisle continues.',
+          ],
+          answer: 3,
+          explain: 'Both indented lines belong to the if, and a ghoul is not a wraith, so neither runs. '
+            + 'But the last print stands at the margin — outside the block — so it runs regardless of '
+            + 'the verdict. Indentation decides ownership: where a line stands is what it obeys.',
+        },
+      ],
     },
 
     // ------------------------------------------------------------
@@ -1066,17 +1805,23 @@ assert "The aisle is empty. For now." not in _stdout, "The empty-aisle line spok
 # to the name candel. The misspelling is now obvious.`,
         },
         {
-          heading: 'The four marks you will meet first',
-          body: 'Four wounds account for most early deaths:\n\n'
+          heading: 'The five marks you will meet first',
+          body: 'Five wounds account for most early deaths:\n\n'
             + '- `SyntaxError` — broken grammar: a missing colon, an unclosed parenthesis or quote. Python refuses to start; **nothing runs at all**.\n'
+            + '- `IndentationError` — grammar of a special kind: a block that does not stand where the law demands. You took this mark already, in the aisles of the Forks; its cousin `TabError` walks beside it.\n'
             + '- `NameError` — a name that was never bound, usually a misspelling of one that was.\n'
             + '- `TypeError` — sound grammar, wrong kinds: `"souls: " + 3` asks text and number to join unconverted, and they refuse.\n'
             + '- `IndexError` — a position past the end of a sequence: `"nox"[7]` when the string ends at index 2.\n\n'
-            + 'SyntaxError stands apart from the other three: it is caught **before** '
-            + 'execution, so not even line one has run. The rest strike mid-flight, and '
-            + 'every line above the wound has already done its work.',
+            + 'The first two stand apart from the rest: they are caught **before** '
+            + 'execution, so not even line one has run. The others strike mid-flight, and '
+            + 'every line above the wound has already done its work. A sixth mark prowls '
+            + 'close behind these five — `AttributeError`, taken by naming a method without '
+            + 'casting it: `.strip` where you meant `.strip()`.',
           code: py`# SyntaxError - grammar broken; nothing runs at all:
 #     print("nox"          <- the parenthesis was never closed
+# IndentationError - the block never stood where the law demands:
+#     if lit:
+#     print("dark")        <- expected an indented block
 # NameError - the name was never bound (often a misspelling):
 #     print(candel)
 # TypeError - the kinds refuse to combine:
@@ -1204,6 +1949,119 @@ assert _lines[4] == "First letter: l", "Line 5 is wrong - the first letter lives
           explain: 'Syntax is checked before execution begins, so a SyntaxError means not '
             + 'even line one has run. The other marks strike mid-flight, with every line '
             + 'above the wound already executed.',
+        },
+      ],
+      extras: [
+        {
+          id: 'a1l7x1',
+          kind: 'echo',
+          title: 'The Wounded Seal',
+          prompt: 'A seal on the evidence cabinet carries three wounds — one `NameError`, '
+            + 'one `TypeError`, one `IndexError` — and the cabinet will not open until the '
+            + 'seal speaks cleanly.\n\n'
+            + 'Cast the seal as it stands, read the **last line** of each mark, and mend '
+            + 'one wound per cast until it speaks exactly these three lines:\n\n'
+            + '- `The seal is wax and word.`\n'
+            + '- `Letters sworn: 12`\n'
+            + '- `Initial: w`\n\n'
+            + 'Mend the wounds; keep the ritual.',
+          starter: py`# Three wounds. Cast, read the LAST line of the mark, mend, cast again.
+oath = "wax and word"
+print("The seal is " + oathe + ".")
+print("Letters sworn: " + len(oath))
+print("Initial: " + oath[20])
+`,
+          solution: py`oath = "wax and word"
+print("The seal is " + oath + ".")
+print("Letters sworn: " + str(len(oath)))
+print("Initial: " + oath[0])`,
+          hints: [
+            'One wound per cast: the first mark is a NameError — a vessel sealed under one spelling and summoned under another.',
+            'Then str(len(oath)) lets the count join text (the TypeError), and the initial lives at index 0, not 20 (the IndexError).',
+          ],
+          validation: py`_lines = [ln for ln in _stdout.splitlines() if ln.strip()]
+assert len(_lines) == 3, "The mended seal must speak exactly three lines - compare against the three demanded."
+assert _lines[0] == "The seal is wax and word.", "Line 1 is wrong - the misspelled vessel (the NameError wound) still bleeds on this print."
+assert _lines[1] == "Letters sworn: 12", "Line 2 is wrong - a raw number cannot join text; wrap len(oath) in str(...) (the TypeError wound)."
+assert _lines[2] == "Initial: w", "Line 3 is wrong - the initial lives at index 0, not 20 (the IndexError wound)."`,
+          successText: 'The cabinet unseals with a sound like a held breath released. Three marks read, three wounds closed.',
+          xp: 25,
+        },
+        {
+          id: 'a1l7x2',
+          kind: 'echo',
+          title: 'The Law Speaks Twice',
+          prompt: 'A night-watch charm refuses to run at all — two wounds of grammar, both '
+            + 'caught before a single line executes. You have met both marks in the aisles: '
+            + 'one `SyntaxError`, one `IndentationError`.\n\n'
+            + 'Cast it, read the last line of the mark, mend, and cast again until it '
+            + 'speaks exactly these three lines:\n\n'
+            + '- `The hour is late.`\n'
+            + '- `The stacks are listening.`\n'
+            + '- `The candle disagrees.`\n\n'
+            + 'Keep the charm’s shape: the first two lines belong to the if; the last stands outside it.',
+          starter: py`# Two wounds of grammar. Neither lets the charm start at all.
+watch = 3
+if watch > 2
+    print("The hour is late.")
+        print("The stacks are listening.")
+print("The candle disagrees.")
+`,
+          solution: py`watch = 3
+if watch > 2:
+    print("The hour is late.")
+    print("The stacks are listening.")
+print("The candle disagrees.")`,
+          hints: [
+            "The first mark is SyntaxError: expected ':' — every if needs its colon before the law will even read the block.",
+            'The second is IndentationError: unexpected indent — the listening line stands deeper than its block. Both if-lines take exactly four spaces; the candle line takes none.',
+          ],
+          validation: py`_lines = [ln for ln in _stdout.splitlines() if ln.strip()]
+assert len(_lines) == 3, "The mended charm must speak exactly three lines - the candle line runs whatever the if decides."
+assert _lines[0] == "The hour is late.", "Line 1 is wrong. With watch = 3 the if holds, and its first line is: The hour is late."
+assert _lines[1] == "The stacks are listening.", "Line 2 is wrong - the listening line belongs to the if, indented exactly four spaces like its sibling."
+assert _lines[2] == "The candle disagrees.", "Line 3 is wrong - the candle line stands at the margin, outside the if, and always runs."`,
+          successText: 'The charm runs at last, and the law falls silent — grammar mended is grammar forgiven.',
+          xp: 25,
+        },
+      ],
+      trace: [
+        {
+          id: 'a1l7t1',
+          code: py`spell = "lumos"
+print("letters: " + str(len(spell)))
+print(spell[0] + spell[-1])`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            'letters: 5\nls',
+            'It dies - TypeError: len(spell) is a number and refuses to join text',
+            'letters: 5\nsl',
+            'letters: five\nls',
+          ],
+          answer: 0,
+          explain: 'str(len(spell)) is the mend for the TypeError a bare len(spell) would earn: '
+            + 'converted, the count joins text without complaint — as the digit 5, not the word five. '
+            + 'Then spell[0] is l and spell[-1] is s, joined in exactly that order: ls. Read joins '
+            + 'left to right, always.',
+        },
+        {
+          id: 'a1l7t2',
+          code: py`runes = "vex"
+print(runes[0])
+print(runes[3])`,
+          q: 'The scrying: what is the fate of this working?',
+          options: [
+            'It prints v, then x',
+            'It prints v, then dies - IndexError: string index out of range',
+            'It prints v, then an empty line',
+            'It refuses to start - the wound is caught before line one runs',
+          ],
+          answer: 1,
+          raises: 'IndexError',
+          explain: 'vex holds positions 0, 1 and 2 — its last character x lives at index 2, so '
+            + 'runes[3] reaches past the end and dies of an IndexError. The grammar is sound, so '
+            + 'nothing is caught before execution: the first print has already spoken by the time '
+            + 'the wound strikes. Mid-flight deaths leave their work above them done.',
         },
       ],
     },

@@ -215,16 +215,16 @@ print(night_watch(rack, 2))`,
 rack = np.array([[7, 3, 8],
                  [2, 9, 4]])
 
-def shelf_history(readings, shelf):
+def shelf_history(readings: np.ndarray, shelf: int) -> np.ndarray:
     return readings[shelf]
 
-def night_watch(readings, night):
+def night_watch(readings: np.ndarray, night: int) -> np.ndarray:
     return readings[:, night]
 
-def amplify(readings, factor):
+def amplify(readings: np.ndarray, factor: float) -> np.ndarray:
     return readings * factor
 
-def refold(readings, rows, cols):
+def refold(readings: np.ndarray, rows: int, cols: int) -> np.ndarray:
     return readings.reshape(rows, cols)
 
 print(shelf_history(rack, 0))
@@ -489,16 +489,16 @@ rack = np.array([[4, 9, 2],
                  [7, 5, 7],
                  [3, 3, 3]])
 
-def burning(readings, threshold):
+def burning(readings: np.ndarray, threshold: float) -> np.ndarray:
     return readings[readings > threshold]
 
-def brightest_shelf(readings):
+def brightest_shelf(readings: np.ndarray) -> int:
     return int(np.argmax(readings.sum(axis=1)))
 
-def veil(readings, threshold):
+def veil(readings: np.ndarray, threshold: float) -> np.ndarray:
     return np.where(readings < threshold, 0, readings)
 
-def conjure_omens(count):
+def conjure_omens(count: int) -> np.ndarray:
     rng = np.random.default_rng(0)
     return rng.integers(1, 10, size=count)
 
@@ -530,6 +530,25 @@ assert np.array_equal(conjure_omens(64), np.random.default_rng(0).integers(1, 10
         successText: 'The sieve holds: ten thousand dim futures fall away, and the burning few remain in your hand.',
         xp: 85,
       },
+      trace: [
+        {
+          id: 'a6l2t1',
+          code: py`import numpy as np
+
+glow = np.array([4, 9, 2, 7, 7, 1])
+mask = (glow > 3) & (glow < 8)
+print(int(mask.sum()))`,
+          q: 'The scrying: what does this working print?',
+          options: ['3', '4', '2', 'It raises a ValueError'],
+          answer: 0,
+          explain: 'The comparisons build two boolean masks; `&` fuses them element by '
+            + 'element, and only positions where BOTH hold stay True — glow of 4, 7, and 7 '
+            + '(indices 0, 3, 4). Summing a boolean array counts its Trues, so `mask.sum()` '
+            + 'is 3. `4` forgets that the 9 fails the `< 8` half; `2` drops one of the two '
+            + 'sevens; and it never raises — `&` is the elementwise operator masks are built '
+            + 'on. The word `and` on whole arrays is what would raise the ambiguity error.',
+        },
+      ],
       quiz: [
         {
           q: 'Why does `glow[(glow > 3) & (glow < 8)]` use `&` instead of `and`?',
@@ -583,6 +602,54 @@ assert np.array_equal(conjure_omens(64), np.random.default_rng(0).integers(1, 10
           explain: 'The seed fixes the entire stream of draws. That determinism is the '
             + 'law of reproducible analysis: anyone can rerun your working and get '
             + 'your numbers. Clocks have nothing to do with it once a seed is given.',
+        },
+      ],
+      extras: [
+        {
+          id: 'a6l2x1',
+          kind: 'echo',
+          title: 'Echo: The Quiet Ones',
+          prompt: 'The sieve runs the other way tonight. The Keeper wants the orbs that '
+            + 'have gone **quiet**, and the shelf that carries the least.\n\n'
+            + 'Write two functions, no loops:\n\n'
+            + '- `faint(readings, threshold)` — return a 1-D array of every reading '
+            + '**strictly less than** `threshold`, in reading order (a mask flattens 2-D '
+            + 'input naturally).\n'
+            + '- `busiest_shelf(readings)` — for a 2-D rack (rows = shelves), return the '
+            + '**index** of the shelf with the greatest total. Sum along `axis=1`, then '
+            + '`argmax`.',
+          starter: py`import numpy as np
+
+def faint(readings, threshold):
+    # TODO: mask — readings strictly BELOW the threshold
+    pass
+
+def busiest_shelf(readings):
+    # TODO: total each shelf (axis=1), then argmax
+    pass
+`,
+          solution: py`import numpy as np
+
+def faint(readings: np.ndarray, threshold: float) -> np.ndarray:
+    return readings[readings < threshold]
+
+def busiest_shelf(readings: np.ndarray) -> int:
+    return int(np.argmax(readings.sum(axis=1)))
+`,
+          hints: [
+            'faint is one line: readings[readings < threshold] — the comparison builds the mask, the brackets apply it. This is burning turned around: below, not above.',
+            'busiest_shelf: readings.sum(axis=1) totals each shelf, and np.argmax of those totals hands back the winning index (wrap it in int()).',
+          ],
+          validation: py`import numpy as np
+_r = np.array([[4, 9, 2], [7, 5, 7], [3, 3, 3]])
+assert np.array_equal(faint(_r, 4), [2, 3, 3, 3]), "faint must return exactly the readings BELOW the threshold, in reading order"
+assert np.array_equal(faint(np.array([5, 6, 7]), 5), []), "strictly less: a reading equal to the threshold is not faint — 5 is not below 5"
+assert np.array_equal(faint(np.array([9, 9, 9]), 100), [9, 9, 9]), "when every reading is below the threshold, all of them are faint"
+assert busiest_shelf(_r) == 1, "shelf 1 holds the greatest total (19) — sum along axis=1, then argmax"
+assert busiest_shelf(np.array([[0, 0], [1, 1], [9, 0]])) == 2, "busiest_shelf must follow the totals, not the first row it sees"
+assert isinstance(busiest_shelf(_r), int), "busiest_shelf must return a plain int index — wrap np.argmax(...) in int()"`,
+          successText: 'The quiet orbs fall into your hand and the loudest shelf names itself — the sieve reads in both directions now.',
+          xp: 20,
         },
       ],
     },
@@ -961,7 +1028,7 @@ ledger["toll"] = ledger["years_dead"] * ledger["unrest"]
 
 eldest = ledger.loc[ledger["years_dead"].idxmax(), "name"]
 
-def restless_names(df, threshold):
+def restless_names(df: pd.DataFrame, threshold: float) -> list:
     return df.loc[df["unrest"] >= threshold, "name"].tolist()
 
 print(eldest)
@@ -1000,6 +1067,52 @@ assert restless_names(_other, 1.0) == ["Wren", "Sorrel"], "at least means >= —
         successText: 'The book accepts the six without complaint, and somewhere below the floor, one of them turns over.',
         xp: 90,
       },
+      trace: [
+        {
+          id: 'a6l4t1',
+          code: py`import pandas as pd
+
+ledger = pd.DataFrame({
+    "name": ["Elspeth", "Odo", "Marlow", "Ivo"],
+    "unrest": [7.0, 3.0, 9.0, 2.0],
+})
+kept = ledger[ledger["unrest"] > 4]
+print(kept.iloc[0]["name"], kept.loc[2]["name"])`,
+          q: 'The scrying: what does this working print?',
+          options: ['Elspeth Marlow', 'Elspeth Elspeth', 'Marlow Marlow', 'Odo Marlow'],
+          answer: 0,
+          explain: 'The filter keeps Elspeth (label 0) and Marlow (label 2); the labels '
+            + 'travel with their rows, so `kept` is indexed 0, 2. `iloc[0]` counts from zero '
+            + 'into the survivors and lands on the first one, Elspeth. `loc[2]` asks for the '
+            + 'row still labeled 2 — Marlow. `Elspeth Elspeth` treats loc as a second '
+            + 'position; `Marlow Marlow` treats iloc as a label; `Odo Marlow` forgets that '
+            + 'Odo was filtered out entirely.',
+        },
+        {
+          id: 'a6l4t2',
+          code: py`import pandas as pd
+
+ledger = pd.DataFrame({
+    "name": ["Elspeth", "Odo", "Marlow"],
+    "unrest": [7.0, 3.0, 9.0],
+})
+restless = ledger[ledger["unrest"] > 5]
+print(restless["Unrest"].tolist())`,
+          q: 'The scrying: what happens when this working runs?',
+          options: [
+            'It raises a KeyError',
+            "It prints [7.0, 9.0]",
+            "It prints ['Elspeth', 'Marlow']",
+            'It prints an empty list',
+          ],
+          answer: 0,
+          raises: 'KeyError',
+          explain: 'The column is named `unrest`, lowercase; `"Unrest"` names no column at '
+            + 'all, so pandas raises KeyError rather than guessing. Column labels are exact '
+            + 'strings — case and spelling included. The filter itself was fine; the wound is '
+            + 'the mistyped column name, and no filtered rows or values are ever reached.',
+        },
+      ],
       quiz: [
         {
           q: 'What is the difference between `.loc` and `.iloc`?',
@@ -1052,6 +1165,151 @@ assert restless_names(_other, 1.0) == ["Wren", "Sorrel"], "at least means >= —
           explain: 'Assigning to an unknown column name creates it, and the '
             + 'column-by-column arithmetic is vectorized over every row at once — the '
             + 'numpy law, wearing names.',
+        },
+      ],
+      extras: [
+        {
+          id: 'a6l4x1',
+          kind: 'echo',
+          title: 'Echo: The Roster of Wards',
+          prompt: 'A second ledger crosses your table — the living, not the dead. The '
+            + 'watch-wards of the Department, each with the towers they hold and the '
+            + 'strain it costs them.\n\n'
+            + 'Using the lists in the starter:\n\n'
+            + '- Build a DataFrame named `roster` with columns exactly `name`, `tower`, '
+            + '`watches`, `strain` — in that order.\n'
+            + '- Add a computed column `burden` equal to `watches * strain`.\n'
+            + '- Write `slack_names(df, limit)` returning a plain **list** of the names '
+            + 'whose `strain` is **at most** `limit`, in roster order — use `.tolist()`.',
+          starter: py`import pandas as pd
+
+names = ["Sable", "Corr", "Wren", "Adder", "Nyle"]
+towers = ["North", "South", "North", "West", "South"]
+watches = [12, 5, 9, 20, 7]
+strain = [8.0, 2.0, 9.0, 4.0, 3.0]
+
+# TODO: build the DataFrame named roster (name, tower, watches, strain)
+
+# TODO: add the computed column: burden = watches * strain
+
+def slack_names(df, limit):
+    # TODO: list of names with strain <= limit, in roster order
+    pass
+`,
+          solution: py`import pandas as pd
+
+names = ["Sable", "Corr", "Wren", "Adder", "Nyle"]
+towers = ["North", "South", "North", "West", "South"]
+watches = [12, 5, 9, 20, 7]
+strain = [8.0, 2.0, 9.0, 4.0, 3.0]
+
+roster = pd.DataFrame({
+    "name": names,
+    "tower": towers,
+    "watches": watches,
+    "strain": strain,
+})
+roster["burden"] = roster["watches"] * roster["strain"]
+
+def slack_names(df: pd.DataFrame, limit: float) -> list:
+    return df.loc[df["strain"] <= limit, "name"].tolist()
+`,
+          hints: [
+            'Build the frame from a dict — pd.DataFrame({"name": names, "tower": towers, ...}) — then roster["burden"] = roster["watches"] * roster["strain"].',
+            'slack_names is the filter turned around: df.loc[df["strain"] <= limit, "name"].tolist() — the mask picks the rows, "name" the column, tolist() makes it a plain list.',
+          ],
+          validation: py`import pandas as pd
+assert list(roster.columns) == ["name", "tower", "watches", "strain", "burden"], "roster must carry exactly name, tower, watches, strain, burden — in that order"
+assert roster.shape == (5, 5), "five wards, five columns — the frame is the wrong size"
+assert abs(roster.loc[0, "burden"] - 96.0) < 1e-9, "burden must be watches * strain — Sable carries 12 * 8.0 = 96.0"
+assert abs(float(roster["burden"].sum()) - 288.0) < 1e-6, "the burdens do not sum true — burden must be watches * strain for every row"
+try:
+    _s = slack_names(roster, 4.0)
+except ValueError:
+    raise AssertionError("slack_names collapsed before the ward could weigh it: ValueError. pandas cannot judge a whole column with the word and — combine masks with & and parenthesize each comparison") from None
+assert isinstance(_s, list), "the ward received a Series, not a plain list — end the spell with .tolist()"
+assert _s == ["Corr", "Adder", "Nyle"], "slack_names(roster, 4.0) must name every ward with strain of at most 4, in roster order, as a plain list"
+assert slack_names(roster, 100.0) == ["Sable", "Corr", "Wren", "Adder", "Nyle"], "a limit above every strain must return them all"
+_other = pd.DataFrame({"name": ["Ash", "Vex"], "tower": ["East", "East"], "watches": [1, 2], "strain": [1.0, 9.0]})
+assert slack_names(_other, 1.0) == ["Ash"], "slack_names must work on ANY roster, not only yours — at most means <=, so a ward exactly at the limit is counted"`,
+          successText: 'The living answer the same grammar as the dead — filtered by name, weighed by column, handed back as a plain list.',
+          xp: 20,
+        },
+        {
+          id: 'a6l4x2',
+          kind: 'cursed',
+          title: 'Cursed Scroll: The Branding That Never Took',
+          prompt: 'A haunted working crossed the Ledger clerks\' desk and they could not '
+            + 'lay it to rest. It is meant to brand every restless soul — write '
+            + '`"restless"` into a `mark` column and a `50.0` bounty on its head — and '
+            + 'then hand the branded ledger back.\n\n'
+            + 'It raises no error. It runs to the end and prints a ledger. And every soul '
+            + 'in it still reads `quiet`, every bounty still `0.0`, as though the branding '
+            + 'iron passed straight through the page. The restless are not marked. Mend it '
+            + 'in place so the branding takes — for every ledger, not only this one.',
+          starter: py`# MEND IN PLACE. brand() should stamp every restless soul, yet after it runs
+# every mark still reads 'quiet' and every bounty is still 0.0. No error stops
+# it; the writes simply vanish. Find where they are going, and make them land.
+import pandas as pd
+
+def brand(ledger):
+    ledger = ledger.copy()
+    ledger["mark"] = "quiet"
+    ledger["bounty"] = 0.0
+    restless = ledger["unrest"] > 5.0
+    ledger[restless]["mark"] = "restless"
+    ledger[restless]["bounty"] = 50.0
+    return ledger
+
+souls = pd.DataFrame({
+    "name": ["Elspeth", "Odo", "Marlow", "Ivo", "Rook"],
+    "unrest": [7.0, 3.0, 9.0, 2.0, 8.0],
+})
+branded = brand(souls)
+print(branded[["name", "mark", "bounty"]])
+`,
+          solution: py`import pandas as pd
+
+def brand(ledger: pd.DataFrame) -> pd.DataFrame:
+    ledger = ledger.copy()
+    ledger["mark"] = "quiet"
+    ledger["bounty"] = 0.0
+    restless = ledger["unrest"] > 5.0
+    ledger.loc[restless, "mark"] = "restless"
+    ledger.loc[restless, "bounty"] = 50.0
+    return ledger
+
+souls = pd.DataFrame({
+    "name": ["Elspeth", "Odo", "Marlow", "Ivo", "Rook"],
+    "unrest": [7.0, 3.0, 9.0, 2.0, 8.0],
+})
+branded = brand(souls)
+print(branded[["name", "mark", "bounty"]])
+`,
+          hints: [
+            'Watch it work: print branded before and after the two branding lines, or just trust the output — the restless souls were never touched. The writes went somewhere, and it was not the ledger you returned.',
+            'The wrong mental model: ledger[restless] is not a window onto ledger — it is a fresh copy of the matching rows. Assigning ledger[restless]["mark"] = ... brands that throwaway copy, which is discarded the instant the line ends. The original is never reached. pandas even warns you, quietly, on the way past.',
+            'One selection reaches the real ledger: .loc, addressing rows and column in a single step. Replace both chained assignments with ledger.loc[restless, "mark"] = "restless" and ledger.loc[restless, "bounty"] = 50.0.',
+          ],
+          validation: py`import pandas as pd
+_souls = pd.DataFrame({
+    "name": ["Wren", "Sorrel", "Bram", "Hollis", "Nance", "Odo"],
+    "unrest": [9.0, 1.0, 6.0, 4.0, 8.0, 5.0],
+})
+_out = brand(_souls)
+assert _out is not None, "brand must return the branded ledger — did you forget the return?"
+assert "mark" in _out.columns and "bounty" in _out.columns, "the branded ledger must carry a mark column and a bounty column"
+_marks = _out.set_index("name")["mark"].to_dict()
+assert _marks["Wren"] == "restless" and _marks["Bram"] == "restless" and _marks["Nance"] == "restless", "every soul with unrest above 5 must be branded 'restless' — the branding still is not landing on the real ledger"
+assert _marks["Sorrel"] == "quiet" and _marks["Hollis"] == "quiet" and _marks["Odo"] == "quiet", "souls at or below unrest 5 must stay 'quiet' — 5.0 is not above 5.0"
+_bounty = _out.set_index("name")["bounty"].to_dict()
+assert abs(_bounty["Wren"] - 50.0) < 1e-9 and abs(_bounty["Nance"] - 50.0) < 1e-9, "a restless soul must carry a bounty of 50.0"
+assert abs(_bounty["Sorrel"] - 0.0) < 1e-9 and abs(_bounty["Odo"] - 0.0) < 1e-9, "a quiet soul's bounty must remain 0.0"
+_single = brand(pd.DataFrame({"name": ["Ash"], "unrest": [7.0]}))
+assert _single.loc[0, "mark"] == "restless" and abs(_single.loc[0, "bounty"] - 50.0) < 1e-9, "brand must work on ANY ledger handed to it — a lone restless soul must still be branded"
+assert _souls["unrest"].tolist() == [9.0, 1.0, 6.0, 4.0, 8.0, 5.0], "the caller's own ledger must be left untouched — brand works on a .copy()"`,
+          successText: 'Chained assignment named and broken: the branding lands, and every restless soul answers for it. The scroll is quiet at last.',
+          xp: 30,
         },
       ],
     },
@@ -1163,6 +1421,32 @@ ledger = pd.read_csv(io.StringIO(RAW))
 print(ledger.shape)      # (2, 3)
 print(ledger["unrest"].sum())   # 10.0 — parsed as numbers, not text`,
         },
+        {
+          heading: 'Dissection: The Loudest House',
+          body: 'Read this working aloud, one line at a time — every instrument of the '
+            + 'lesson stands in it.\n\n'
+            + '- **Lines 1–4** summon `io` and `pandas` and lay out the raw page: a '
+            + 'header and four souls, one nameless (the empty field before `Vane,9`).\n'
+            + '- **Line 5** parses the text into a frame; the blank name arrives as `NaN`.\n'
+            + '- **Line 6** drops that nameless row and only it — three souls remain.\n'
+            + '- **Line 7** gathers the survivors by house and means each: Grimm holds '
+            + 'Odo (3) and Tace (5), mean 4; Vane holds Elspeth alone, mean 7.\n'
+            + '- **Lines 8–9** sort loudest-first and read the top label — `Vane`.\n\n'
+            + 'Two questions worth the light. *Delete line 6:* the nameless Vane soul '
+            + '(unrest 9) rejoins, and Vane\'s mean climbs from 7 to 8 — a gap filled by '
+            + 'a nameless record is a number you cannot defend. *Ask line 8 for '
+            + '`ascending=True`:* `index[0]` names the **quietest** house, Grimm '
+            + 'instead — one word, the opposite verdict.',
+          code: py`import io
+import pandas as pd
+
+RAW = "name,house,unrest\nElspeth,Vane,7\nOdo,Grimm,3\n,Vane,9\nTace,Grimm,5\n"
+ledger = pd.read_csv(io.StringIO(RAW))
+ledger = ledger.dropna(subset=["name"])
+by_house = ledger.groupby("house")["unrest"].mean()
+loudest = by_house.sort_values(ascending=False)
+print(loudest.index[0])   # Vane`,
+        },
       ],
       challenge: {
         title: 'The Unquiet Census',
@@ -1225,19 +1509,19 @@ Ivo,Hollow,2.0
 Rook,Vane,8.0
 """
 
-def clean_ledger(text):
+def clean_ledger(text: str) -> pd.DataFrame:
     df = pd.read_csv(io.StringIO(text))
     df = df.dropna(subset=["name"])
     df["unrest"] = df["unrest"].fillna(0.0)
     return df
 
-def unrest_by_house(df):
+def unrest_by_house(df: pd.DataFrame) -> pd.Series:
     return df.groupby("house")["unrest"].mean()
 
-def most_common_house(df):
+def most_common_house(df: pd.DataFrame) -> str:
     return df["house"].value_counts().index[0]
 
-def heaviest(df, n):
+def heaviest(df: pd.DataFrame, n: int) -> list:
     return df.sort_values("unrest", ascending=False).head(n)["name"].tolist()
 
 ledger = clean_ledger(RAW)
@@ -1279,6 +1563,26 @@ assert heaviest(_df, 99) == ["Sorrel", "Nance", "Wren", "Hollis", "Bram"], "aski
         successText: 'The census closes clean: every gap decided, every house counted, the restless ranked from loudest down.',
         xp: 95,
       },
+      trace: [
+        {
+          id: 'a6l5t1',
+          code: py`import pandas as pd
+
+ledger = pd.DataFrame({
+    "house": ["Vane", "Grimm", "Vane", "Vane", "Grimm"],
+    "unrest": [1, 2, 3, 4, 5],
+})
+print(ledger.groupby("house").size().tolist())`,
+          q: 'The scrying: what does this working print?',
+          options: ['[2, 3]', '[3, 2]', '[5, 2]', '[2, 5]'],
+          answer: 0,
+          explain: 'groupby gathers rows by house and sorts the groups by key, so Grimm '
+            + 'comes before Vane. `.size()` counts the ROWS in each group: Grimm holds 2 '
+            + '(Odo-slots at unrest 2 and 5), Vane holds 3 — as a list, [2, 3]. `[3, 2]` '
+            + 'reads the groups in first-seen order instead of sorted order; `[5, 2]` and '
+            + '`[2, 5]` sum the unrest values rather than counting the rows.',
+        },
+      ],
       quiz: [
         {
           q: 'A value in the ledger is `NaN`. How do you test for it?',
@@ -1508,25 +1812,25 @@ records = [
 
 PAGE = "<html><body><h1>Gazette</h1><blockquote>He comes twice.</blockquote><blockquote>The ninth door opens inward.</blockquote></body></html>"
 
-def load_archive(records):
+def load_archive(records: list) -> sqlite3.Connection:
     conn = sqlite3.connect(":memory:")
     conn.execute("CREATE TABLE prophecies (seer TEXT, year INTEGER, dread INTEGER)")
     conn.executemany("INSERT INTO prophecies VALUES (?, ?, ?)", records)
     conn.commit()
     return conn
 
-def dire(conn, threshold):
+def dire(conn: sqlite3.Connection, threshold: int) -> list:
     return conn.execute(
         "SELECT seer, year FROM prophecies WHERE dread >= ? ORDER BY year",
         (threshold,),
     ).fetchall()
 
-def tally(conn):
+def tally(conn: sqlite3.Connection) -> list:
     return conn.execute(
         "SELECT seer, COUNT(*) FROM prophecies GROUP BY seer ORDER BY seer"
     ).fetchall()
 
-def voices(html):
+def voices(html: str) -> list:
     soup = BeautifulSoup(html, "html.parser")
     return [q.get_text() for q in soup.find_all("blockquote")]
 
@@ -1623,15 +1927,13 @@ assert voices("<html><body><p>No prophecy spoke today.</p></body></html>") == []
       title: 'The Weight of Truth',
       concept: 'weighted and trimmed means, median, variance, standard deviation, z-scores, and MAD',
       xp: 40,
-      narrative: 'One orb on the ninth shelf screams. It has screamed for a century, '
-        + 'and every clerk who ever averaged that shelf reported a hall in crisis — '
-        + 'because a single monstrous number drags the mean wherever it pleases, and '
-        + 'the mean goes willingly. The Keeper’s ledger is full of such lies told by '
-        + 'honest arithmetic. Tonight you learn the counter-craft: means that weigh '
-        + 'their witnesses, means that trim their extremes, the median that cannot '
-        + 'be bribed, and the z-score — the instrument that does not silence the '
-        + 'screamer, but names it, measures it, and writes down exactly how far from '
-        + 'truth it stands.',
+      narrative: 'One orb on the ninth shelf screams, and has for a century — so every '
+        + 'clerk who averaged that shelf reported a hall in crisis, because a single '
+        + 'monstrous number drags the mean wherever it pleases and the mean goes '
+        + 'willingly. Tonight you learn the counter-craft: means that weigh their '
+        + 'witnesses, means that trim their extremes, the median that cannot be bribed, '
+        + 'and the z-score, which does not silence the screamer but names it and '
+        + 'measures its distance from truth.',
       sections: [
         {
           heading: 'The mean, and how it lies',
@@ -1641,10 +1943,10 @@ assert voices("<html><body><p>No prophecy spoke today.</p></body></html>") == []
             + 'dread per wing* across a wing of nine thousand orbs and a wing of '
             + 'one hundred, and the plain mean lets the small wing shout as loudly '
             + 'as the large. The **weighted mean** — `np.average(values, '
-            + 'weights=w)` — multiplies each value by its weight, sums, and divides '
-            + 'by the total weight: every orb counted once, no wing counted twice.\n\n'
-            + 'Second: a single extreme drags the mean toward itself without limit. '
-            + 'For that failure, read on.',
+            + 'weights=w)` — weights each value, sums, and divides by the total '
+            + 'weight: every orb counted once, no wing counted twice.\n\n'
+            + 'Second: a single extreme drags the mean toward itself without limit — '
+            + 'read on.',
           code: py`import numpy as np
 
 wing_means = np.array([4.0, 10.0])   # mean dread per wing
@@ -1657,14 +1959,13 @@ print(np.average(wing_means, weights=wing_sizes))   # 4.06... — every orb coun
           heading: 'Trimming, and the incorruptible median',
           body: 'When extremes cannot be trusted, blunt their voice:\n\n'
             + '- The **trimmed mean** sorts the data — `np.sort` — slices off the k '
-            + 'lowest and k highest, and averages what remains. The scream is '
-            + 'simply not invited.\n'
+            + 'lowest and k highest, and averages what remains.\n'
             + '- The **median** — `np.median` — is the middle value of the sorted '
-            + 'data (the average of the middle two when the count is even). Make '
-            + 'the largest value ten times larger and the median does not move at '
-            + 'all: it is **robust**, and the mean is not.\n\n'
+            + 'data (the average of the middle two when the count is even). Ten times '
+            + 'the largest value, and the median does not move at all — it is '
+            + '**robust**; the mean is not.\n\n'
             + 'When mean and median disagree badly, believe neither — something in '
-            + 'the data is screaming, and your next task is to find it.',
+            + 'the data is screaming, and finding it is your next task.',
           code: py`import numpy as np
 
 days = np.array([3, 4, 4, 5, 6, 200])   # one miracle... or one lie
@@ -1679,18 +1980,17 @@ print(srt[1:-1].mean())   # 4.75 — trimmed: deaf to both extremes`,
           body: 'Two shelves can share a mean and share nothing else — one placid, '
             + 'one violent. **Variance** (`.var()`) is the mean of the squared '
             + 'distances from the mean; its square root, the **standard deviation** '
-            + '(`.std()`), speaks in the data’s own units and serves as its '
-            + 'standard candle. For bell-shaped data, roughly 68% of readings fall '
-            + 'within one standard deviation of the mean, and 95% within two.\n\n'
+            + '(`.std()`), speaks in the data’s own units — its standard candle. For '
+            + 'bell-shaped data, roughly 68% of readings fall within one standard '
+            + 'deviation of the mean, and 95% within two.\n\n'
             + 'Divide each reading’s distance from the mean by that candle and you '
             + 'get its **z-score**:\n\n'
             + '- `z = (x - mean) / std`\n'
             + '- z near 0 — unremarkable. z past ±2 — far into a tail. z past ±3 — '
             + 'begin asking questions.\n\n'
-            + 'One rite differs between tools: numpy’s `.std()` divides by n; '
-            + 'pandas’ `.std()` divides by n−1 (the sample convention, `ddof=1`). '
-            + 'Both are lawful. Know which your instrument performs, or your '
-            + 'z-scores will drift.',
+            + 'One rite differs between tools: numpy’s `.std()` divides by n, '
+            + 'pandas’ by n−1 (the sample convention, `ddof=1`). Both are lawful — '
+            + 'know which your instrument performs, or your z-scores will drift.',
           code: py`import numpy as np
 
 dread = np.array([2, 4, 4, 4, 5, 5, 7, 9])
@@ -1703,17 +2003,16 @@ print(z)              # [-1.5 -0.5 -0.5 -0.5  0.   0.   1.   2. ]`,
         },
         {
           heading: 'MAD, and the naming of outliers',
-          body: 'The z-score has a quiet flaw: the mean and std it stands on are '
+          body: 'The z-score has a quiet flaw: the mean and std beneath it are '
             + 'themselves dragged by the very outliers it hunts. The robust '
             + 'alternative is the **median absolute deviation**:\n\n'
             + '- `MAD = median(|x - median(x)|)`\n\n'
-            + '— the typical distance from the middle, judged by the middle. No '
-            + 'single screamer can move it.\n\n'
-            + 'The full rite of naming: compute each reading’s z-score, choose a '
-            + 'limit (2 or 3 standard candles, by the stakes), and name every '
-            + 'reading whose `abs(z)` exceeds it. An outlier so named is not yet '
-            + 'guilt — it is a summons for questioning. Some outliers are clerks’ '
-            + 'errors. Some are miracles. Some are the one true warning in ten '
+            + '— the typical distance from the middle, judged by the middle, which no '
+            + 'single screamer can move.\n\n'
+            + 'The full rite: z-score each reading, choose a limit (2 or 3 candles), '
+            + 'and name every reading whose `abs(z)` exceeds it. An '
+            + 'outlier so named is not guilt but a summons for questioning. Some are '
+            + 'clerks’ errors, some miracles, some the one true warning in ten '
             + 'thousand quiet records.',
           code: py`import numpy as np
 
@@ -1727,18 +2026,17 @@ print(mad)   # 1.0 — the typical distance from the middle`,
           heading: 'Bytes, and the fingerprint of the sealed',
           body: 'Beneath its ink, every record in the Hall is a run of **bytes** — whole '
             + 'numbers from 0 to 255 — and the distribution of those values is a '
-            + 'fingerprint. Count how often each value occurs with '
-            + '`np.bincount(data, minlength=256)` — one count per possible byte — and '
-            + 'read the shape:\n\n'
+            + 'fingerprint. Count each value’s occurrences with '
+            + '`np.bincount(data, minlength=256)` and read the shape:\n\n'
             + '- Ordinary script clusters in a **narrow band**: letters, digits, and '
-            + 'spaces carry nearly everything, while two hundred other bins sit close '
-            + 'to empty. The profile is lumpy, its spread enormous.\n'
+            + 'spaces carry nearly everything while two hundred other bins sit near '
+            + 'empty — a lumpy profile, its spread enormous.\n'
             + '- Enchanted contents — **encrypted or compressed** — spread almost '
-            + 'perfectly evenly across all 256 values. Nothing favored, nothing '
-            + 'spared. The profile is flat.\n\n'
-            + 'So the tell runs backwards from every other hunt tonight: here it is a '
-            + '**low** relative standard deviation across the bin counts — '
-            + '`counts.std() / counts.mean()` — that betrays the sealed thing. Honest '
+            + 'perfectly evenly across all 256 values, favoring nothing. The profile '
+            + 'is flat.\n\n'
+            + 'So the tell runs backwards from every other hunt tonight: a **low** '
+            + 'relative standard deviation across the bin counts — '
+            + '`counts.std() / counts.mean()` — betrays the sealed thing. Honest '
             + 'structure is lumpy; enchantment is flat.',
           code: py`import numpy as np
 
@@ -1802,23 +2100,23 @@ dread = np.array([2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0])
 print(z_scores(dread))`,
         solution: py`import numpy as np
 
-def weighted_mean(values, weights):
+def weighted_mean(values, weights) -> float:
     return float(np.average(values, weights=weights))
 
-def trimmed_mean(values, k):
+def trimmed_mean(values, k: int) -> float:
     srt = np.sort(np.asarray(values, dtype=float))
     srt = srt[k:len(srt) - k]
     return float(srt.mean())
 
-def z_scores(values):
+def z_scores(values) -> np.ndarray:
     v = np.asarray(values, dtype=float)
     return (v - v.mean()) / v.std()
 
-def mad(values):
+def mad(values) -> float:
     v = np.asarray(values, dtype=float)
     return float(np.median(np.abs(v - np.median(v))))
 
-def name_outliers(names, values, limit):
+def name_outliers(names, values, limit: float) -> list:
     z = z_scores(values)
     return [name for name, score in zip(names, z) if abs(score) > limit]
 
@@ -1944,6 +2242,50 @@ assert name_outliers(_names, _vals, 5.0) == [], "when none stray far enough, nam
     victoryText: 'The Keeper enters your name among the trusted, and every shelf in the Hall turns its light toward you.',
     xp: 475,
     flawlessBonus: 50,
+    barks: {
+      intro: [
+        'I have counted every soul that ever entered this Hall. Tonight I count you.',
+        'Six questions, then the ledger. Weigh true, or be weighed.',
+      ],
+      hit: [
+        'Wrong. I have filed that error a thousand times, under a thousand names.',
+        'The mean drags you where it pleases, and you go willingly.',
+        'You read the number and not the lie inside it. The Hall keeps no mercy for that.',
+        'Another miscount. The orbs remember every one.',
+        'You averaged the screamer in, and now the whole shelf lies through you.',
+      ],
+      playerFail: [
+        'Your working collapsed before I could read it. Begin again.',
+        'The forge spat your spell back. The dead are not so easily ordered.',
+        'A gap unfilled, a mask left open — and the reckoning fails.',
+        'Broken arithmetic. I do not file the unfinished.',
+      ],
+      lastCandle: [
+        'One candle. I have outlasted brighter lights than yours.',
+        'The last flame. Miscount now and the ledger closes over your name.',
+        'You stand at one life, and I have not yet begun to count.',
+      ],
+      death: [
+        'The ledger... balances. I did not foresee that.',
+        'You weighed what could not be bribed. The Hall turns its light to you.',
+        'Counted, and found true. Go — the shelves are yours.',
+      ],
+    },
+    premortem: {
+      prompt: 'The Keeper hands you a raw, gap-shot ledger and demands the full '
+        + 'reckoning. What must you settle before you fill a single gap or weigh a '
+        + 'single house?',
+      options: [
+        'Drop the seerless rows first — every median, mean, and z-score that follows is computed over the rows that remain.',
+        'Compute the z-scores first; outliers are easiest to name while the raw data is untouched.',
+        'Fill the missing dread before dropping anything, so no row is ever discarded.',
+        'Draw the histogram first, to learn how many bins the data will need.',
+      ],
+      answer: 0,
+      explain: 'Order is the whole trap. Dropping the rows with no seer changes which '
+        + 'values the median fill and the groupby means ever see — so it comes first, '
+        + 'then the fill, then the weighing. Clean, then compute; never the reverse.',
+    },
     gauntlet: [
       {
         q: 'An Unspeakable lays out `np.array([[4, 9], [2, 7], [5, 5]])`. Its shape is…',
@@ -2170,5 +2512,6 @@ assert _ax.get_ylabel() == "Orbs", "the y-axis must be labeled exactly: Orbs"`,
     { term: 'sqlite3 cursor', def: 'The speaking-tube of a SQL connection: `cur.execute(...)` asks in SQL with `?` placeholders for data, and `fetchall()` returns the answer as a list of row-tuples.' },
     { term: 'BeautifulSoup', def: 'The bs4 parser that turns an HTML string into a searchable tree: `find` returns the first matching tag, `find_all` every match, `get_text()` the words inside.' },
     { term: 'z-score', def: 'A reading’s distance from the mean measured in standard deviations — `(x - mean) / std` — the yardstick by which outliers are named.' },
+    { term: 'chained assignment', def: 'The silent pandas trap: `df[mask]["col"] = value` writes into a throwaway copy of the matching rows, so the assignment vanishes and the frame is never touched; the cure is a single `.loc` — `df.loc[mask, "col"] = value` — addressing rows and column together in one step.' },
   ],
 };

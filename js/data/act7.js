@@ -218,13 +218,13 @@ nights = 240
 omen = rng.random(nights) < 0.30
 raid = rng.random(nights) < np.where(omen, 0.75, 0.10)
 
-def prob(event):
+def prob(event: np.ndarray) -> float:
     return event.mean()
 
-def cond_prob(event, given):
+def cond_prob(event: np.ndarray, given: np.ndarray) -> float:
     return (event & given).sum() / given.sum()
 
-def bayes(p_b_given_a, p_a, p_b):
+def bayes(p_b_given_a: float, p_a: float, p_b: float) -> float:
     return p_b_given_a * p_a / p_b
 
 p_raid = prob(raid)
@@ -698,6 +698,51 @@ assert "1.0" in _stdout and "0.94" in _stdout, "Print both verdicts — train_ac
         successText: 'The stone judges fifty strangers and errs on three. It is not perfect. It is honest, which is rarer.',
         xp: 95,
       },
+      trace: [
+        {
+          id: 'a7l3t1',
+          code: py`import numpy as np
+from sklearn.model_selection import train_test_split
+
+X = np.arange(10).reshape(5, 2)
+y = np.array([0, 1, 0, 1, 0])
+a = train_test_split(X, y, test_size=0.4, random_state=0)
+b = train_test_split(X, y, test_size=0.4, random_state=0)
+print(np.array_equal(a[0], b[0]), a[1].shape)`,
+          q: 'The scrying: what does this working print?',
+          options: ['True (2, 2)', 'False (2, 2)', 'True (3, 2)', 'False (3, 2)'],
+          answer: 0,
+          explain: 'random_state=0 fixes the shuffle, so both splits are identical row for '
+            + 'row — `a[0]` (X_train) equals `b[0]`, hence True. test_size=0.4 of 5 rows '
+            + 'seals 2 away, so `a[1]` (X_test) has shape (2, 2). `False` would be an '
+            + 'unseeded split that differs each call; `(3, 2)` mistakes X_test for the '
+            + 'training portion. The split is reproducible precisely because it is seeded.',
+        },
+        {
+          id: 'a7l3t2',
+          code: py`import numpy as np
+
+# three signals, two features each
+X = np.array([[4.0, 10.0], [6.0, 20.0], [5.0, 12.0]])
+weights = np.array([0.5, 0.3, 0.2])   # one weight per signal, not per feature
+print((X * weights).sum(axis=1))`,
+          q: 'The scrying: what happens when this working runs?',
+          options: [
+            'It raises a ValueError',
+            'It prints [7.0, 13.8, 8.4]',
+            'It prints [5.5, 12.5, 9.5]',
+            'It prints a single number',
+          ],
+          answer: 0,
+          raises: 'ValueError',
+          explain: 'Broadcasting pairs shapes from the right: `X` is (3, 2), `weights` is '
+            + '(3,). The trailing dimensions, 2 and 3, are unequal and neither is 1, so '
+            + 'numpy cannot align them and raises ValueError. The weight vector has one '
+            + 'entry per signal (row) when it needs one per feature (column) — a (2,) '
+            + 'vector would broadcast across the rows cleanly. The mismatch dies before '
+            + 'any product is formed.',
+        },
+      ],
       quiz: [
         {
           q: 'In the feature matrix `X`, what do rows and columns represent?',
@@ -738,6 +783,150 @@ assert "1.0" in _stdout and "0.94" in _stdout, "Print both verdicts — train_ac
           explain: 'The split still shuffles — but deterministically, so every run of your working '
             + 'produces the identical split. Reproducibility is the difference between a result '
             + 'and an anecdote. It does not disable shuffling; that would be shuffle=False.',
+        },
+      ],
+      extras: [
+        {
+          id: 'a7l3x1',
+          kind: 'echo',
+          title: 'Echo: The Second Sight',
+          prompt: 'A different two hundred — well, a hundred sixty — stand in the stone: '
+            + 'scholars of the vale and the revenants wearing their faces. `X` and `y` are '
+            + 'conjured. Judge the stone\'s sight the honest way.\n\n'
+            + 'Requirements, exactly:\n\n'
+            + '- Split with `train_test_split(X, y, test_size=0.25, random_state=0)` into '
+            + '`X_train, X_test, y_train, y_test`.\n'
+            + '- Fit `model = DecisionTreeClassifier(random_state=0)` on the training rows.\n'
+            + '- Compute `holdout_acc` — accuracy on the sealed rows `X_test` against `y_test`.\n'
+            + '- Print `round(holdout_acc, 2)`.',
+          starter: py`import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score
+
+# The gathered figures, conjured. Column 0: grave-chill. Column 1: pulse.
+rng = np.random.default_rng(0)
+scholars = rng.normal(0.0, 1.0, size=(80, 2)) + np.array([2.0, 6.0])
+revenants = rng.normal(0.0, 1.0, size=(80, 2)) + np.array([5.0, 3.0])
+X = np.vstack([scholars, revenants])
+y = np.array([0] * 80 + [1] * 80)   # 0 = scholar, 1 = revenant
+
+# TODO: split, fit on the training rows, score the SEALED rows, print round(holdout_acc, 2)
+`,
+          solution: py`import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score
+
+rng = np.random.default_rng(0)
+scholars = rng.normal(0.0, 1.0, size=(80, 2)) + np.array([2.0, 6.0])
+revenants = rng.normal(0.0, 1.0, size=(80, 2)) + np.array([5.0, 3.0])
+X = np.vstack([scholars, revenants])
+y = np.array([0] * 80 + [1] * 80)
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=0)
+
+model = DecisionTreeClassifier(random_state=0)
+model.fit(X_train, y_train)
+
+holdout_acc = accuracy_score(y_test, model.predict(X_test))
+print(round(holdout_acc, 2))
+`,
+          hints: [
+            'The split is one line, four names on the left: X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=0).',
+            'Fit DecisionTreeClassifier(random_state=0) on the training rows only, then holdout_acc = accuracy_score(y_test, model.predict(X_test)); print round(holdout_acc, 2) — expect 0.95.',
+          ],
+          validation: py`import numpy as np
+from sklearn.model_selection import train_test_split as _tts
+from sklearn.tree import DecisionTreeClassifier as _DT
+from sklearn.metrics import accuracy_score as _asc
+_Xtr, _Xte, _ytr, _yte = _tts(X, y, test_size=0.25, random_state=0)
+assert X_train.shape == (120, 2) and X_test.shape == (40, 2), "the split is misproportioned — test_size=0.25 seals 40 of the 160 figures away"
+assert np.allclose(X_train, _Xtr), "the split does not match random_state=0 — pass the seed so the shuffle is reproducible"
+_ref = _DT(random_state=0).fit(_Xtr, _ytr)
+assert abs(holdout_acc - _asc(_yte, _ref.predict(_Xte))) < 1e-9, "holdout_acc must score the model on the SEALED rows only — accuracy_score(y_test, model.predict(X_test))"
+assert model.predict([[2.0, 6.0]])[0] == 0, "a figure at the scholars' heartland (chill 2, pulse 6) must be judged 0 — check what you fitted, and on what"
+assert model.predict([[5.0, 3.0]])[0] == 1, "a figure at the revenants' heartland (chill 5, pulse 3) must be judged 1"
+assert "0.95" in _stdout, "print the holdout — print(round(holdout_acc, 2)), which is 0.95"`,
+          successText: 'Forty strangers judged, thirty-eight seen true — the second sight is as honest as the first.',
+          xp: 20,
+        },
+        {
+          id: 'a7l3x2',
+          kind: 'cursed',
+          title: 'Cursed Scroll: The Flawless Lie',
+          prompt: 'This working reads beacon signals — true alarms against false — and it '
+            + 'boasts. On the sealed rows it never misses: a holdout of `1.0`, flawless, '
+            + 'reported without a flicker of doubt.\n\n'
+            + 'Then it goes to the wall. On real signals, whose outcome no one yet knows, '
+            + 'it is no better than a tossed coin. A stone that is perfect in the study and '
+            + 'blind in the field has been taught the answer, not the pattern. Find where '
+            + 'the answer got in, mend it in place, and let the holdout fall to an honest '
+            + 'number.',
+          starter: py`# MEND IN PLACE. The reported holdout is 1.0 — flawless — yet on truly-new
+# signals this stone guesses like a coin. Something in the evidence already
+# knows the answer. Find the poisoned column, strike it, and let holdout tell
+# the truth (an honest ~0.92).
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score
+
+rng = np.random.default_rng(0)
+# Two honest measures per signal:
+brightness = np.concatenate([rng.normal(4.0, 1.2, 100), rng.normal(6.0, 1.2, 100)])
+duration = np.concatenate([rng.normal(10.0, 3.0, 100), rng.normal(18.0, 3.0, 100)])
+y = np.array([0] * 100 + [1] * 100)   # 0 = false alarm, 1 = true alarm
+
+# The scribe wrote this note AFTER each outcome was known — it IS the label:
+scribe_note = y * 5.0 + rng.normal(0.0, 0.01, 200)
+X = np.column_stack([brightness, duration, scribe_note])
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=0)
+model = DecisionTreeClassifier(random_state=0).fit(X_train, y_train)
+holdout = accuracy_score(y_test, model.predict(X_test))
+print(round(holdout, 2))
+`,
+          solution: py`import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score
+
+rng = np.random.default_rng(0)
+brightness = np.concatenate([rng.normal(4.0, 1.2, 100), rng.normal(6.0, 1.2, 100)])
+duration = np.concatenate([rng.normal(10.0, 3.0, 100), rng.normal(18.0, 3.0, 100)])
+y = np.array([0] * 100 + [1] * 100)
+
+X = np.column_stack([brightness, duration])
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=0)
+model = DecisionTreeClassifier(random_state=0).fit(X_train, y_train)
+holdout = accuracy_score(y_test, model.predict(X_test))
+print(round(holdout, 2))
+`,
+          hints: [
+            'Observe the collapse: the holdout is 1.0, but a model that never errs on well-separated signals is suspicious. Something in X predicts y perfectly — look at what each column is made of.',
+            'The wrong mental model: "more columns, more evidence, better model." But scribe_note is computed from y itself — it is the answer wearing a disguise. Because your test rows carry it too, the holdout looks flawless; in the field, where no one knows the outcome yet, that column is worthless and the sight collapses. This is data leakage.',
+            'The mend is one line: build X from the two honest measures only — X = np.column_stack([brightness, duration]) — and drop the scribe_note line entirely. The holdout falls to an honest 0.92, and the model survives signals it has truly never seen.',
+          ],
+          validation: py`import numpy as np
+from sklearn.model_selection import train_test_split as _tts
+from sklearn.tree import DecisionTreeClassifier as _DT
+from sklearn.metrics import accuracy_score as _asc
+assert hasattr(X, "shape") and X.ndim == 2, "X must be the 2-D feature matrix fed to the model"
+assert X.shape[1] == 2, "leakage: the third column, scribe_note, was computed from the answer y — a value knowable only AFTER the outcome. Strike it from X; a model must never train on the answer in disguise."
+_Xtr, _Xte, _ytr, _yte = _tts(X, y, test_size=0.25, random_state=0)
+_ref = _DT(random_state=0).fit(_Xtr, _ytr)
+assert abs(holdout - _asc(_yte, _ref.predict(_Xte))) < 1e-9, "holdout must be the honest sealed-row accuracy of a model trained on the two lawful measures — about 0.92."
+assert abs(holdout - 1.0) > 1e-6, "a holdout of 1.0 is the leak still speaking — strike scribe_note and the number falls to an honest 0.92."
+_r2 = np.random.default_rng(1)
+_fb = np.concatenate([_r2.normal(4.0, 1.2, 50), _r2.normal(6.0, 1.2, 50)])
+_fd = np.concatenate([_r2.normal(10.0, 3.0, 50), _r2.normal(18.0, 3.0, 50)])
+_fy = np.array([0] * 50 + [1] * 50)
+_field = np.column_stack([_fb, _fd])
+assert _asc(_fy, model.predict(_field)) > 0.8, "the model must still see clearly on truly-fresh signals — if it collapses toward a coin flip, it was leaning on the leaked column, not the real measures."`,
+          successText: 'Data leakage named and struck: the flawless 1.0 falls to an honest 0.92 that holds in the field. A number you can defend beats a number that flatters.',
+          xp: 35,
         },
       ],
     },
@@ -1496,11 +1685,11 @@ assert "0.78" in _stdout and "0.86" in _stdout, "Print both verdicts — tree_te
       narrative: 'The westmark keeps two watch-glasses, and each day closes with their two '
         + 'readings inked side by side. Two hundred days in the ledger; on thirty of them, '
         + 'riders came. Here is the final corruption, and it wears the mask of virtue: a '
-        + 'watchman who simply announces *peace* every dawn is right 85 days in a hundred. '
-        + 'His accuracy is splendid. Every raid still arrives unannounced. Accuracy answered '
-        + 'the question you asked — you merely asked a coward\'s question. Choosing the metric '
-        + '*is* choosing what to ask the stone, and the stone always answers exactly the '
-        + 'question posed. That is why it does not lie. You do.',
+        + 'watchman who announces *peace* every dawn is right 85 days in a hundred. Splendid '
+        + 'accuracy — and every raid still arrives unannounced. Accuracy answered the '
+        + 'question you asked; you merely asked a coward\'s question. Choosing the metric '
+        + '*is* choosing what to ask the stone, and it always answers exactly what is posed. '
+        + 'That is why it does not lie. You do.',
       sections: [
         {
           heading: 'The confusion matrix — four fates, not one number',
@@ -1559,14 +1748,14 @@ print(tp / (tp + fn))    # 0.5 -- recall: he catches half the raids
         {
           heading: 'The support-vector classifier — straight blades and curved ones',
           body: 'The closing classifier of this Codex: the **SVC** (support-vector classifier) '
-            + 'seeks the boundary between classes with the widest margin. Its **kernel** '
+            + 'seeks the widest-margin boundary between classes. Its **kernel** '
             + 'decides what shapes the boundary may take:\n\n'
             + '- `SVC(kernel="linear", random_state=0)` — a straight cut. Fast, readable, and '
             + 'helpless when no straight line exists.\n'
             + '- `SVC(kernel="rbf", random_state=0)` — the Gaussian kernel measures likeness by '
             + 'distance and can wrap a curved boundary around islands and rings.\n\n'
             + 'The westmark\'s data is a ring: peace-days huddle near stillness, raid-days circle '
-            + 'them, because riders sweep the vale\'s rim before striking. No straight line can '
+            + 'them. No straight line can '
             + 'cut a ring off from its center — the linear stone collapses into the sleeping '
             + 'watchman, high accuracy and zero recall. The rbf kernel curls around the calm '
             + 'and catches the riders. Same data, same verbs — the kernel is the shape of the '
@@ -1598,21 +1787,20 @@ print(accuracy_score(y_test, rbf.predict(X_test)))      # 0.96 -- the curved one
         {
           heading: 'The sharper measures — F1, specificity, and the sweeping curve',
           body: 'Precision and recall are two numbers, and commanders demand one. The **F1 '
-            + 'score** is their **harmonic mean** — `2 * p * r / (p + r)` — and the harmonic '
-            + 'mean is a harsh judge: it hugs the *smaller* of the pair, so no single '
-            + 'flattering number can mask a dead one. Work it from this lesson\'s own counts: '
-            + 'the trying watchman (precision 0.5, recall 0.5) earns F1 `2 * 0.25 / 1.0 = '
-            + '0.5`; the rbf blade (precision 1.0, recall 0.75) earns `2 * 0.75 / 1.75 = '
-            + '0.857` — below the arithmetic average of 0.875, because imbalance is punished. '
-            + 'A stone with recall 0.0 earns F1 exactly 0, whatever its precision.\n\n'
+            + 'score** is their **harmonic mean** — `2 * p * r / (p + r)` — a harsh judge '
+            + 'that hugs the *smaller* of the pair, so no single flattering number can mask a '
+            + 'dead one. The trying watchman (precision 0.5, recall 0.5) earns F1 0.5; the '
+            + 'rbf blade (precision 1.0, recall 0.75) earns `2 * 0.75 / 1.75 = 0.857`, below '
+            + 'their average of 0.875. A stone with recall 0.0 earns F1 exactly 0, whatever '
+            + 'its precision.\n\n'
             + '- **Specificity** = `tn / (tn + fp)` — the true-negative rate: of the days of '
             + 'true peace, how many were called peace. Recall\'s mirror, aimed at the quiet '
             + 'class.\n'
-            + '- Most stones do not merely vote — they emit a **score**, and you choose the '
-            + 'threshold that turns score into verdict. `roc_curve(y_true, scores)` sweeps '
-            + 'every threshold at once, tracing the true-positive rate against the '
-            + 'false-positive rate as the bar slides; `auc(fpr, tpr)` measures the area under '
-            + 'that sweep. AUC 1.0 is a perfect ranker; 0.5 is a coin flipped in the dark.',
+            + '- Most stones emit a **score**, not just a vote, and you choose the threshold '
+            + 'that turns score into verdict. `roc_curve(y_true, scores)` sweeps every '
+            + 'threshold at once, tracing true-positive rate against false-positive rate; '
+            + '`auc(fpr, tpr)` is the area under that sweep. AUC 1.0 is a perfect ranker; '
+            + '0.5 is a coin flipped in the dark.',
           code: py`import numpy as np
 from sklearn.metrics import f1_score, roc_curve, auc
 
@@ -1806,6 +1994,125 @@ assert "1.0" in _stdout and "0.75" in _stdout and "0.0" in _stdout, "Print the t
             + 'precision AND recall are both high.',
         },
       ],
+      extras: [
+        {
+          id: 'a7l7x1',
+          kind: 'ward',
+          title: 'Ward the Seer',
+          prompt: 'Every trial in this act was judged by an unseen ward. Now you forge the '
+            + 'ward that judges the seers themselves.\n\n'
+            + 'The contract of a **trainer** your ward must interrogate — a function '
+            + '`train(X_train, y_train, X_test, y_test)` that:\n\n'
+            + '- fits a classifier on the training rows, and\n'
+            + '- returns a two-tuple `(model, holdout_score)`, where `holdout_score` is the '
+            + 'model\'s accuracy on the sealed test rows.\n\n'
+            + 'Write **one function**, `ward(candidate)`. Inside it: conjure your own small, '
+            + 'deterministic, class-**imbalanced** dataset (seed it — say 80 of class 0 and '
+            + '20 of class 1), split it, and call `model, reported = candidate(...)`. Then '
+            + 'judge the trainer on two counts the Eye loves to corrupt:\n\n'
+            + '- **Honesty** — recompute the holdout score yourself from `model.predict('
+            + 'X_test)` and assert the trainer\'s `reported` score matches it. A trainer that '
+            + 'quietly reports its flattering *training* accuracy must be bitten.\n'
+            + '- **Minority recall** — from the confusion matrix, assert the model\'s recall '
+            + 'on the rare class is above zero. A trainer that always predicts the majority '
+            + 'scores a decent accuracy and catches nothing; it must be bitten too.\n\n'
+            + 'Your ward must finish **silently** for an honest trainer and raise '
+            + '`AssertionError` for every impostor.',
+          starter: py`# The contract of a trainer train(X_train, y_train, X_test, y_test):
+#   - fits a classifier on the training rows
+#   - returns (model, holdout_score): holdout_score is accuracy on X_test
+#
+# The dock will feed your ward an honest trainer, a LEAKY one (reports its
+# training accuracy), and a ONE-CLASS one (always predicts the majority).
+
+def ward(candidate):
+    # TODO: conjure a deterministic, imbalanced dataset; split it;
+    #       model, reported = candidate(X_train, y_train, X_test, y_test);
+    #       assert the reported score is the HONEST holdout score;
+    #       assert the model's minority-class recall is above zero.
+    pass
+`,
+          solution: py`def ward(candidate):
+    import numpy as np
+    from sklearn.model_selection import train_test_split
+    from sklearn.metrics import accuracy_score, confusion_matrix
+
+    rng = np.random.default_rng(0)
+    majority = rng.normal(0.0, 1.0, size=(80, 2))
+    minority = rng.normal(0.0, 1.0, size=(20, 2)) + np.array([3.0, 3.0])
+    X = np.vstack([majority, minority])
+    y = np.array([0] * 80 + [1] * 20)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.25, random_state=0, stratify=y)
+
+    model, reported = candidate(X_train, y_train, X_test, y_test)
+
+    # honesty — the reported score must BE the sealed-row accuracy
+    honest = accuracy_score(y_test, model.predict(X_test))
+    assert abs(reported - honest) < 1e-9, "the reported score is not the honest holdout accuracy"
+
+    # minority recall — decent accuracy is not enough on imbalanced data
+    tn, fp, fn, tp = confusion_matrix(y_test, model.predict(X_test), labels=[0, 1]).ravel()
+    recall = tp / (tp + fn)
+    assert recall > 0.0, "the model never catches the minority class"
+`,
+          hints: [
+            'Your ward needs its own data: build a deterministic, IMBALANCED set (80 of class 0, 20 of class 1), split it with random_state=0 and stratify=y, then call model, reported = candidate(X_train, y_train, X_test, y_test).',
+            'Never trust the reported score. Recompute it: honest = accuracy_score(y_test, model.predict(X_test)), then assert abs(reported - honest) is tiny. The trainer that reports its TRAINING accuracy is bitten right here.',
+            'Decent accuracy can still miss every rare case. Take tn, fp, fn, tp = confusion_matrix(y_test, model.predict(X_test), labels=[0, 1]).ravel() and assert tp / (tp + fn) > 0 — the minority recall. The majority-always trainer is bitten here.',
+          ],
+          validation: py`import numpy as np
+from sklearn.tree import DecisionTreeClassifier as _DT
+from sklearn.metrics import accuracy_score as _asc
+
+def _true_trainer(Xtr, ytr, Xte, yte):
+    m = _DT(max_depth=3, random_state=0).fit(Xtr, ytr)
+    return m, float(_asc(yte, m.predict(Xte)))
+
+def _leaky_trainer(Xtr, ytr, Xte, yte):
+    m = _DT(random_state=0).fit(Xtr, ytr)          # unpruned — memorizes its training rows
+    return m, float(_asc(ytr, m.predict(Xtr)))     # reports TRAINING accuracy: flattery
+
+class _AlwaysMajority:
+    def fit(self, Xtr, ytr):
+        _vals, _counts = np.unique(ytr, return_counts=True)
+        self._label = int(_vals[int(np.argmax(_counts))])
+        return self
+    def predict(self, X):
+        return np.full(len(X), self._label, dtype=int)
+
+def _collapse_trainer(Xtr, ytr, Xte, yte):
+    m = _AlwaysMajority().fit(Xtr, ytr)
+    return m, float(_asc(yte, m.predict(Xte)))     # honest score, but zero minority recall
+
+assert callable(ward), "The Codex finds no ward(candidate) function to judge with."
+
+try:
+    ward(_true_trainer)
+except AssertionError as _e:
+    raise AssertionError("Your ward bit the one honest trainer (" + str(_e) + ") — its reported score IS the sealed-row accuracy and it does catch the minority; recheck your honest recomputation and your recall threshold.")
+except TypeError:
+    raise AssertionError("Your ward mis-called the trainer — a trainer takes X_train, y_train, X_test, y_test and returns (model, score). Call it with four arrays and unpack two results: model, reported = candidate(X_train, y_train, X_test, y_test).")
+except ValueError:
+    raise AssertionError("A ValueError escaped your ward — if it came from the split, remember stratify=y needs both classes present; conjure an imbalanced set that still holds some of the minority.")
+
+_impostors = [
+    (_leaky_trainer, "your ward admitted the LEAKY trainer — it reports its TRAINING accuracy, which flatters. Recompute the honest holdout score yourself with model.predict(X_test) and assert the reported score matches it."),
+    (_collapse_trainer, "your ward admitted the ONE-CLASS trainer — it always predicts the majority class, so its accuracy looks decent on imbalanced data while it never catches a single minority case. Assert the model's recall on the minority class is above zero."),
+]
+for _imp, _msg in _impostors:
+    _caught = False
+    try:
+        ward(_imp)
+    except AssertionError:
+        _caught = True
+    except TypeError:
+        raise AssertionError("your ward mis-called a candidate — pass four arrays and unpack (model, score), never call it with the wrong number of arguments")
+    assert _caught, _msg`,
+          successText: 'Two impostors bitten, one honest seer admitted in silence: a trainer that reports its own training score, and one that never once catches the rare thing you actually fear. The judging is yours now.',
+          xp: 50,
+        },
+      ],
     },
   ],
   // ------------------------------------------------------------------
@@ -1827,6 +2134,51 @@ assert "1.0" in _stdout and "0.75" in _stdout and "0.0" in _stdout, "Print the t
     victoryText: 'The Eye recoils from the one sight it cannot survive: a seer who checks. The stone goes dark, and stays yours.',
     xp: 500,
     flawlessBonus: 50,
+    barks: {
+      intro: [
+        'I have shown a hundred seers exactly what they wished to see. Look, and tell me you are different.',
+        'You bring me a protocol. How quaint. Bring me your certainty instead.',
+      ],
+      hit: [
+        'You saw what you wanted. I only held the glass.',
+        'A number that flatters you, and you did not check it. This is how every seer falls.',
+        'You trusted the sealed rows to a model that had already read them.',
+        'Wrong — and the vision agreed with you, which is why you believed it.',
+        'You scaled on the whole, and let the future leak into the past. I felt you do it.',
+      ],
+      playerFail: [
+        'Your working shatters against the glass. Try again, if your nerve holds.',
+        'The forge rejects your spell. Even I cannot show a vision that will not run.',
+        'A step skipped, a row unsealed — the rite collapses.',
+        'You reached for the answer and grasped fog. Begin again.',
+      ],
+      lastCandle: [
+        'One candle. Your last light, and I have a thousand faces left to wear.',
+        'At one life now. Shall I show you a comforting vision of victory?',
+        'The dark closes in, and still you check your numbers. Stubborn thing.',
+      ],
+      death: [
+        'You checked. You always checked. That is the one sight I cannot survive.',
+        'The glass goes dark in your hands, and stays dark, and stays yours.',
+        'No seer undid me by seeing more. You undid me by trusting less.',
+      ],
+    },
+    premortem: {
+      prompt: 'The Eye offers you the full muster and every instrument at once. Before '
+        + 'you scale a single feature, what must already be true of your data?',
+      options: [
+        'It is already split — the scaler is fit on the training rows alone, so the sealed test rows never leak their statistics into the fit.',
+        'The scaler is fit on all the data first, so training and test share one consistent scale.',
+        'The model is already trained, so you know which features are worth scaling.',
+        'The confusion matrix is computed first, to choose the right scaling method.',
+      ],
+      answer: 0,
+      explain: 'Split before you scale. Fit the scaler on the whole dataset — or on the '
+        + 'test rows — and the sealed statistics bleed into training: the same leakage '
+        + 'that flatters a holdout into a lie. fit_transform on the training rows, then '
+        + 'transform the test rows with that same learned scale, and nothing sealed is '
+        + 'ever glimpsed early.',
+    },
     gauntlet: [
       {
         q: 'Chronicles show `P(black sails | invasion) = 0.9`. A warden concludes `P(invasion | black sails) = 0.9`. What is the error?',
@@ -1925,6 +2277,10 @@ assert "1.0" in _stdout and "0.75" in _stdout and "0.0" in _stdout, "Print the t
         + '`cm = confusion_matrix(y_test, pred)`, `tn, fp, fn, tp = cm.ravel()`, '
         + '`precision = tp / (tp + fp)`, `recall = tp / (tp + fn)`.\n'
         + '- Render testimony: `plt.bar(range(5), model.feature_importances_)` with a `plt.title(...)`.\n'
+        + '- Sign the verdict: build `findings`, a dict with keys `\'accuracy\'`, '
+        + '`\'precision\'`, `\'recall\'` (the sworn numbers you just computed) and '
+        + '`\'reflection\'` — at least one honest sentence (40+ characters), in your own '
+        + 'words, on what these numbers do and do not prove.\n'
         + '- Print `round(precision, 3)`, then `round(recall, 3)`.',
       starter: py`import numpy as np
 import matplotlib.pyplot as plt
@@ -2007,6 +2363,15 @@ tn, fp, fn, tp = cm.ravel()
 precision = tp / (tp + fp)
 recall = tp / (tp + fn)
 
+findings = {
+    'accuracy': acc,
+    'precision': precision,
+    'recall': recall,
+    'reflection': 'On this muster the rite convicts cleanly, but 55 sealed signals from '
+                  'one levy is a small, imbalanced sample; a shifted threshold or a '
+                  'drifting enemy could turn this precision and recall against us.',
+}
+
 plt.bar(range(5), model.feature_importances_)
 plt.title("What the council consulted")
 
@@ -2044,7 +2409,20 @@ assert _fig.axes and len(_fig.axes[0].patches) == 5, "The testimony is missing �
 _h = sorted(float(_p.get_height()) for _p in _fig.axes[0].patches)
 assert np.allclose(_h, sorted(model.feature_importances_.tolist()), atol=1e-9), "The bars do not testify to the fitted importances — pass model.feature_importances_ as the heights."
 assert _fig.axes[0].get_title().strip() != "", "Title the testimony — plt.title. Unlabeled evidence convicts no one."
-assert "1.0" in _stdout and "0.833" in _stdout, "Print the two verdicts — round(precision, 3) then round(recall, 3): 1.0 and 0.833."`,
+assert "1.0" in _stdout and "0.833" in _stdout, "Print the two verdicts — round(precision, 3) then round(recall, 3): 1.0 and 0.833."
+assert 'findings' in dir(), "The Eye is not undone by a number alone — sign the verdict: build a findings dict with 'accuracy', 'precision', 'recall', and one honest sentence of 'reflection'."
+assert isinstance(findings, dict), "findings must be a dict — the signed verdict, not loose notes."
+for _k in ('accuracy', 'precision', 'recall', 'reflection'):
+    assert _k in findings, "findings is missing the entry '" + _k + "' — the Council reads every line of the verdict."
+def _num(_v):
+    return isinstance(_v, (int, float, np.integer, np.floating)) and not isinstance(_v, (bool, np.bool_))
+assert _num(findings['accuracy']) and abs(float(findings['accuracy']) - acc) < 1e-9, "findings['accuracy'] must be the sealed-row accuracy you computed — acc, no other number."
+assert _num(findings['precision']) and abs(float(findings['precision']) - _tp / (_tp + _fp)) < 1e-9, "findings['precision'] must be the precision you computed — tp / (tp + fp), about 1.0."
+assert _num(findings['recall']) and abs(float(findings['recall']) - _tp / (_tp + _fn)) < 1e-9, "findings['recall'] must be the recall you computed — tp / (tp + fn), about 0.833."
+_ref = findings['reflection']
+assert isinstance(_ref, str) and len(_ref.strip()) >= 40, "findings['reflection'] must be prose — at least one honest sentence (40+ characters), in your own words, on what the numbers do and do not prove."
+_hooks = ('sample', 'imbalan', 'threshold', 'drift', 'recall', 'precision', 'leak', 'small', 'generaliz', 'overfit', 'cost', 'deploy', 'minority', 'false', 'miss')
+assert any(_h in _ref.lower() for _h in _hooks), "An honest reflection names a real limit or stake — the small imbalanced sample, a shifted threshold, a drifting enemy, the cost of a missed thrall. Name one, in your own words."`,
       successText: '',
       xp: 0,
     },
@@ -2521,6 +2899,10 @@ print('DEPLOY THE STONE' if findings['recommend_deploy'] else 'KEEP THE FIRES')`
     {
       term: 'kernel',
       def: 'The similarity function that sets what shapes an SVC\'s decision boundary may take — `linear` cuts straight, `rbf` (Gaussian) measures likeness by distance and can wrap curved boundaries around rings and islands no straight line can separate.',
+    },
+    {
+      term: 'data leakage',
+      def: 'When information unavailable at prediction time slips into training — a feature derived from the label, or scaling statistics fit on the whole dataset before the split — inflating holdout scores into a flattering lie that collapses on truly-unseen rows; the cure is to split first and let no future touch the past.',
     },
   ],
 };

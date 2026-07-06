@@ -7,6 +7,8 @@
 
 const py = String.raw;
 
+import rite from './act3rite.js';
+
 export default {
   id: 'act3',
   numeral: 'III',
@@ -2614,6 +2616,847 @@ assert safe_cast(grimoire, "Gravemist") == "the spell fizzles", "safe_cast must 
       xp: 0,
     },
   },
+
+  // ----------------------------------------------------------
+  // The Great Working — GW-A: The Drowned Ledger
+  // Post-boss epilogue project (spec §9). Five stages over one
+  // messy fixture file; validations are cumulative by hand.
+  // ----------------------------------------------------------
+  working: {
+    id: 'gwledger',
+    title: 'The Drowned Ledger',
+    brief: 'The divers brought it up in oilcloth: the lake’s own ledger, the roll of everyone '
+      + 'the flooded levels ever kept. The water has been at it for years — entries bloated '
+      + 'with whitespace, pages gone blank, souls recorded twice and three times by clerks '
+      + 'writing in a panic as the levels rose, lines dissolved past reading. The Unspeakables '
+      + 'want it *filed*: restored, tallied, and fair-copied into a report the archive will '
+      + 'accept. That is your commission. One working, raised in five stages, each stage '
+      + 'standing on the one before — draw the surviving lines, name the drowned, tally the '
+      + 'chambers, write the fair copy, then harden the whole against the water’s next '
+      + 'attempt. The sodden page is poured anew before every run, and your code carries '
+      + 'forward from stage to stage. What you finish here leaves the Department with you.',
+    epigraph: {
+      text: 'The lake returns what it takes. Never in the condition it was lent.',
+      source: 'plaque above the ledger-room drain, ninth level',
+    },
+    stages: [
+      {
+        id: 'gwledgers1',
+        title: 'Drawing the Pages',
+        brief: 'The oilcloth is unrolled and the page laid flat: names, water, and worse. '
+          + 'Before anything can be judged, it must be legible.\n\n'
+          + 'Write `clean_lines(path)`:\n\n'
+          + '- open `path` for reading, using `with`\n'
+          + '- **strip** each line of leading and trailing whitespace\n'
+          + '- **drop** every line that is blank once stripped\n'
+          + '- **return** the survivors as a list of strings, in their original order\n\n'
+          + 'Nothing more — no splitting, no judging. Half-dissolved entries ride through '
+          + 'untouched, inner spaces and all. The ledger waits in `drowned_ledger.txt`, '
+          + 'poured anew before every run; seventeen lines should come back from it.',
+        starter: py`# The Drowned Ledger — stage 1: draw the pages.
+# The lake's page waits in drowned_ledger.txt; the Codex
+# pours it anew before every run.
+
+def clean_lines(path):
+    # TODO: open path for reading, using with;
+    # strip each line of leading and trailing whitespace;
+    # drop every line that is blank once stripped;
+    # return the survivors as a list of strings, in order
+    pass
+`,
+        setup: py`_LEDGER_PAGES = [
+    "Broderick Bode|Space|1899",
+    "",
+    "  Elspeth Crane|Time|1877",
+    "Augustus Rookwood|Prophecy|1881",
+    "Silas Vane|1885",
+    "   ",
+    "Broderick Bode|Space|1899",
+    "Marlowe Fen|Thought|1877",
+    "Odile Marsh|Time|1869",
+    "the ninth level",
+    "   Augustus Rookwood|Prophecy|1881   ",
+    "Corvus Selwyn | Death | 1877",
+    "",
+    "Tobias Whitlock|Prophecy|1885",
+    "Odile Marsh|Time|1869",
+    "Hesper Gaunt|Death|1866",
+    "what the water kept",
+    "  Una Thorn|Thought|1902",
+    "Marlowe Fen|Thought|1877   ",
+    "Edric Blackwood|Prophecy|1902",
+]
+with open("drowned_ledger.txt", "w") as _page:
+    _page.write("\n".join(_LEDGER_PAGES) + "\n")
+`,
+        validation: py`assert "clean_lines" in dir(), "The Codex finds no clean_lines — the working must bear exactly that name, taking one parameter: the path."
+try:
+    _drawn = clean_lines("drowned_ledger.txt")
+except FileNotFoundError:
+    raise AssertionError("clean_lines went diving for a page that was never lent to it — open exactly the path it is handed, nothing else.")
+except TypeError:
+    raise AssertionError("clean_lines could not be summoned with a single argument — define it as clean_lines(path), one parameter, the path to the ledger.")
+assert _drawn is not None, "clean_lines handed back None — return the cleaned lines; what is not returned, the lake keeps."
+assert isinstance(_drawn, list), "clean_lines must return a list of strings, one per surviving line."
+assert all(isinstance(_l, str) for _l in _drawn), "clean_lines must return the lines as strings, untouched — no splitting, no converting; that work belongs to a later stage."
+assert all(_l == _l.strip() for _l in _drawn), "A line came back still dripping — strip leading and trailing whitespace from every line."
+assert all(_l != "" for _l in _drawn), "A blank line slipped through the net — drop every line that is empty once stripped."
+assert len(_drawn) == 17, "Seventeen entries survive once the blanks are drained — clean_lines returned " + str(len(_drawn)) + "."
+assert _drawn[0] == "Broderick Bode|Space|1899", "The first entry must come back exactly as written: Broderick Bode|Space|1899."
+assert _drawn[1] == "Elspeth Crane|Time|1877", "The second survivor should be Elspeth Crane, stripped bare — blanks are dropped entirely, not kept as ghosts in the order."
+assert "Silas Vane|1885" in _drawn, "Silas Vane has dissolved past reading, but his line must SURVIVE this stage — cleaning is not judging; the malformed are dealt with later."
+assert "Corvus Selwyn | Death | 1877" in _drawn, "Corvus Selwyn arrives with water between his fields — at this stage strip only the ends of each line; the inner spaces are a later stage's burden."
+with open("_probe.txt", "w") as _pf:
+    _pf.write("  one \n\n two\n   \nthree  \n")
+_probe = clean_lines("_probe.txt")
+assert _probe == ["one", "two", "three"], "Handed a different page, clean_lines must do the same work — expected ['one', 'two', 'three'], got " + repr(_probe) + "."`,
+        canon: py`# The Drowned Ledger — stage 1: draw the pages.
+
+def clean_lines(path):
+    with open(path, "r") as page:
+        raw = page.read().splitlines()
+    cleaned = []
+    for line in raw:
+        line = line.strip()
+        if line != "":
+            cleaned.append(line)
+    return cleaned
+`,
+        xp: 35,
+      },
+      {
+        id: 'gwledgers2',
+        title: 'Naming the Drowned',
+        brief: 'Legible is not the same as whole. Write `parse_entries(lines)` — it takes the '
+          + 'cleaned lines and reads each against the ledger’s rule of three: '
+          + '`name|chamber|year`.\n\n'
+          + '- split each line on the pipe `|`\n'
+          + '- a line that does not yield **exactly three** fields is malformed: add one to a '
+          + 'count and move on — it never becomes a record\n'
+          + '- for lawful lines, **strip each field** and build the dict '
+          + '`{"name": ..., "chamber": ..., "year": ...}` with the year as an `int`\n'
+          + '- **return the pair** `(records, malformed)` — the list first, the count second\n\n'
+          + 'Keep the duplicates: the clerks re-recorded souls as the water rose, and folding '
+          + 'them is the next stage’s work. Stage one must still hold — the ward re-reads it.',
+        starter: py`# The Drowned Ledger — stage 2: name the drowned.
+# (Your stage-1 working carries forward; this text is the fallback.)
+
+def clean_lines(path):
+    with open(path, "r") as page:
+        raw = page.read().splitlines()
+    cleaned = []
+    for line in raw:
+        line = line.strip()
+        if line != "":
+            cleaned.append(line)
+    return cleaned
+
+
+def parse_entries(lines):
+    # TODO: split each line on "|".
+    # Exactly three fields -> a record dict:
+    #   {"name": ..., "chamber": ..., "year": int(...)}
+    # with each field stripped.
+    # Anything else adds one to the malformed count and is skipped.
+    # return records, malformed
+    pass
+`,
+        setup: py`_LEDGER_PAGES = [
+    "Broderick Bode|Space|1899",
+    "",
+    "  Elspeth Crane|Time|1877",
+    "Augustus Rookwood|Prophecy|1881",
+    "Silas Vane|1885",
+    "   ",
+    "Broderick Bode|Space|1899",
+    "Marlowe Fen|Thought|1877",
+    "Odile Marsh|Time|1869",
+    "the ninth level",
+    "   Augustus Rookwood|Prophecy|1881   ",
+    "Corvus Selwyn | Death | 1877",
+    "",
+    "Tobias Whitlock|Prophecy|1885",
+    "Odile Marsh|Time|1869",
+    "Hesper Gaunt|Death|1866",
+    "what the water kept",
+    "  Una Thorn|Thought|1902",
+    "Marlowe Fen|Thought|1877   ",
+    "Edric Blackwood|Prophecy|1902",
+]
+with open("drowned_ledger.txt", "w") as _page:
+    _page.write("\n".join(_LEDGER_PAGES) + "\n")
+`,
+        validation: py`assert "clean_lines" in dir(), "Stage one has gone missing — clean_lines(path) must still stand; every later floor rests on it."
+_drawn = clean_lines("drowned_ledger.txt")
+assert isinstance(_drawn, list) and len(_drawn) == 17, "clean_lines has regressed — it must still return the 17 stripped survivors. A later stage may not break an earlier one."
+assert all(_l == _l.strip() and _l != "" for _l in _drawn), "clean_lines has regressed — lines must still come back stripped, with every blank dropped."
+assert "parse_entries" in dir(), "The Codex finds no parse_entries — the working must bear exactly that name, taking one parameter: the cleaned lines."
+try:
+    _got = parse_entries(_drawn)
+except ValueError:
+    raise AssertionError("parse_entries died turning a rotten field into a number — count the fields FIRST and skip any line that does not split into exactly three; only then trust the year.")
+except IndexError:
+    raise AssertionError("parse_entries reached for a field the water already took — a malformed line has fewer than three parts; count it and move on, never index into it.")
+assert _got is not None, "parse_entries handed back None — return the records AND the malformed count, together."
+assert isinstance(_got, (tuple, list)) and len(_got) == 2, "parse_entries must return the pair (records, malformed) — the list of records first, the count of the unreadable second."
+_records, _malformed = _got
+assert isinstance(_records, list), "The first of the pair must be the list of records."
+assert _malformed == 3, "Three entries dissolved beyond reading — the malformed count should be 3, got " + str(_malformed) + "."
+assert len(_records) == 14, "Fourteen entries still parse, duplicates and all — got " + str(len(_records)) + ". Folding the duplicates is the NEXT stage; keep them for now."
+assert isinstance(_records[0], dict), "Each record must be a dict carrying the keys name, chamber, and year."
+assert set(_records[0].keys()) == {"name", "chamber", "year"}, "Each record carries exactly three keys — name, chamber, year — got " + str(sorted(_records[0].keys())) + "."
+assert _records[0] == {"name": "Broderick Bode", "chamber": "Space", "year": 1899}, "The first record is misread — it should be Broderick Bode, chamber Space, year 1899."
+assert isinstance(_records[0]["year"], int), "The year must come back as an int — pass the third field through int()."
+_selwyn = [_r for _r in _records if "Selwyn" in _r["name"]]
+assert len(_selwyn) == 1, "Corvus Selwyn should parse to exactly one record."
+assert _selwyn[0]["name"] == "Corvus Selwyn" and _selwyn[0]["chamber"] == "Death", "Corvus Selwyn drowned with water around his pipes — strip EACH FIELD after splitting, or his name comes back still wet."
+_r2, _m2 = parse_entries(["A|B|1", "gone under", "C|D|2", "x|y", "p|q|r|4"])
+assert _m2 == 3, "Handed other lines, the count must still hold: one bare phrase, one two-field line, one four-field line — 3 malformed, got " + str(_m2) + "."
+assert _r2 == [{"name": "A", "chamber": "B", "year": 1}, {"name": "C", "chamber": "D", "year": 2}], "parse_entries must work on whatever lines it is handed, in order — not only the pages of this lake."`,
+        canon: py`# The Drowned Ledger — stage 2: name the drowned.
+
+def clean_lines(path):
+    with open(path, "r") as page:
+        raw = page.read().splitlines()
+    cleaned = []
+    for line in raw:
+        line = line.strip()
+        if line != "":
+            cleaned.append(line)
+    return cleaned
+
+
+def parse_entries(lines):
+    records = []
+    malformed = 0
+    for line in lines:
+        parts = line.split("|")
+        if len(parts) != 3:
+            malformed = malformed + 1
+            continue
+        records.append({
+            "name": parts[0].strip(),
+            "chamber": parts[1].strip(),
+            "year": int(parts[2].strip()),
+        })
+    return records, malformed
+`,
+        xp: 40,
+      },
+      {
+        id: 'gwledgers3',
+        title: 'The Tally of the Lake',
+        brief: 'Now the ledger stops being lines and becomes the dead. Write '
+          + '`ledger_report(records)`, returning a dict of exactly six keys:\n\n'
+          + '- `souls` — the count of **unique** entries; two records are the same soul only '
+          + 'when name, chamber AND year all match; keep each soul’s first record, in order\n'
+          + '- `duplicates` — how many records were folded away as re-recordings\n'
+          + '- `chambers` — a dict of chamber to unique-soul count\n'
+          + '- `earliest` / `latest` — the lowest and highest year among the unique souls\n'
+          + '- `first_drowned` — the **name** of the earliest-year soul\n\n'
+          + 'Stages one and two must still hold — regressions are how ledgers drown twice.',
+        starter: py`# The Drowned Ledger — stage 3: the tally of the lake.
+# (Your stage-2 working carries forward; this text is the fallback.)
+
+def clean_lines(path):
+    with open(path, "r") as page:
+        raw = page.read().splitlines()
+    cleaned = []
+    for line in raw:
+        line = line.strip()
+        if line != "":
+            cleaned.append(line)
+    return cleaned
+
+
+def parse_entries(lines):
+    records = []
+    malformed = 0
+    for line in lines:
+        parts = line.split("|")
+        if len(parts) != 3:
+            malformed = malformed + 1
+            continue
+        records.append({
+            "name": parts[0].strip(),
+            "chamber": parts[1].strip(),
+            "year": int(parts[2].strip()),
+        })
+    return records, malformed
+
+
+def ledger_report(records):
+    # TODO: fold the duplicates — same name, chamber AND year —
+    # keeping each soul's first record, in order. Then return a
+    # dict with exactly six keys:
+    #   souls, duplicates, chambers, earliest, latest, first_drowned
+    pass
+`,
+        setup: py`_LEDGER_PAGES = [
+    "Broderick Bode|Space|1899",
+    "",
+    "  Elspeth Crane|Time|1877",
+    "Augustus Rookwood|Prophecy|1881",
+    "Silas Vane|1885",
+    "   ",
+    "Broderick Bode|Space|1899",
+    "Marlowe Fen|Thought|1877",
+    "Odile Marsh|Time|1869",
+    "the ninth level",
+    "   Augustus Rookwood|Prophecy|1881   ",
+    "Corvus Selwyn | Death | 1877",
+    "",
+    "Tobias Whitlock|Prophecy|1885",
+    "Odile Marsh|Time|1869",
+    "Hesper Gaunt|Death|1866",
+    "what the water kept",
+    "  Una Thorn|Thought|1902",
+    "Marlowe Fen|Thought|1877   ",
+    "Edric Blackwood|Prophecy|1902",
+]
+with open("drowned_ledger.txt", "w") as _page:
+    _page.write("\n".join(_LEDGER_PAGES) + "\n")
+`,
+        validation: py`assert "clean_lines" in dir(), "Stage one has gone missing — clean_lines(path) must still stand."
+assert "parse_entries" in dir(), "Stage two has gone missing — parse_entries(lines) must still stand."
+_drawn = clean_lines("drowned_ledger.txt")
+assert isinstance(_drawn, list) and len(_drawn) == 17 and all(_l == _l.strip() and _l != "" for _l in _drawn), "clean_lines has regressed — 17 stripped, non-blank survivors, exactly as stage one swore. A later stage may not break an earlier one."
+_records, _malformed = parse_entries(_drawn)
+assert len(_records) == 14 and _malformed == 3, "parse_entries has regressed — 14 records and 3 malformed from the ledger, as stage two swore."
+assert _records[0] == {"name": "Broderick Bode", "chamber": "Space", "year": 1899}, "parse_entries has regressed — the first record must still read Broderick Bode, Space, 1899."
+assert "ledger_report" in dir(), "The Codex finds no ledger_report — the working must bear exactly that name, taking the list of records."
+try:
+    _report = ledger_report(_records)
+except KeyError:
+    raise AssertionError("ledger_report reached into a record for a key that is not there — every record holds exactly name, chamber, and year.")
+except ValueError:
+    raise AssertionError("ledger_report collapsed mid-tally — likely min() or max() over an empty gathering. Fold the duplicates first, then measure what remains.")
+assert _report is not None, "ledger_report handed back None — return the report dict."
+assert isinstance(_report, dict), "ledger_report must return a dict — the report itself."
+for _k in ["souls", "duplicates", "chambers", "earliest", "latest", "first_drowned"]:
+    assert _k in _report, "The report is missing its " + _k + " entry — six keys, named exactly."
+assert _report["souls"] == 10, "Ten souls remain once the panicked re-recordings are folded — got " + str(_report["souls"]) + ". Two records are the same soul only when name, chamber AND year all match."
+assert _report["duplicates"] == 4, "Four entries were re-recordings of souls already filed — got " + str(_report["duplicates"]) + "."
+assert _report["chambers"] == {"Space": 1, "Time": 2, "Prophecy": 3, "Thought": 2, "Death": 2}, "The chamber tally is wrong — count each UNIQUE soul once under its chamber; got " + str(_report["chambers"]) + "."
+assert _report["earliest"] == 1866 and _report["latest"] == 1902, "The years are misread — among the unique souls the earliest drowning is 1866 and the latest 1902."
+assert _report["first_drowned"] == "Hesper Gaunt", "first_drowned holds the NAME of the earliest-year soul — Hesper Gaunt, taken 1866; got " + repr(_report["first_drowned"]) + "."
+_small = [
+    {"name": "A", "chamber": "X", "year": 5},
+    {"name": "B", "chamber": "X", "year": 3},
+    {"name": "A", "chamber": "X", "year": 5},
+    {"name": "A", "chamber": "Y", "year": 5},
+]
+_sr = ledger_report(_small)
+assert _sr["souls"] == 3 and _sr["duplicates"] == 1, "Handed other records the tally must still hold: A|X|5 recorded twice is ONE soul, and A in a DIFFERENT chamber is another soul entirely — expected 3 souls and 1 duplicate, got " + str(_sr["souls"]) + " and " + str(_sr["duplicates"]) + "."
+assert _sr["chambers"] == {"X": 2, "Y": 1}, "On those records chamber X holds two unique souls and Y one — got " + str(_sr["chambers"]) + "."
+assert _sr["first_drowned"] == "B" and _sr["earliest"] == 3 and _sr["latest"] == 5, "On those records B went under first, in year 3, and the latest year is 5."`,
+        canon: py`# The Drowned Ledger — stage 3: the tally of the lake.
+
+def clean_lines(path):
+    with open(path, "r") as page:
+        raw = page.read().splitlines()
+    cleaned = []
+    for line in raw:
+        line = line.strip()
+        if line != "":
+            cleaned.append(line)
+    return cleaned
+
+
+def parse_entries(lines):
+    records = []
+    malformed = 0
+    for line in lines:
+        parts = line.split("|")
+        if len(parts) != 3:
+            malformed = malformed + 1
+            continue
+        records.append({
+            "name": parts[0].strip(),
+            "chamber": parts[1].strip(),
+            "year": int(parts[2].strip()),
+        })
+    return records, malformed
+
+
+def ledger_report(records):
+    unique = []
+    seen = set()
+    for record in records:
+        key = (record["name"], record["chamber"], record["year"])
+        if key not in seen:
+            seen.add(key)
+            unique.append(record)
+    chambers = {}
+    for record in unique:
+        chambers[record["chamber"]] = chambers.get(record["chamber"], 0) + 1
+    years = [record["year"] for record in unique]
+    first = min(unique, key=lambda record: record["year"])
+    return {
+        "souls": len(unique),
+        "duplicates": len(records) - len(unique),
+        "chambers": chambers,
+        "earliest": min(years),
+        "latest": max(years),
+        "first_drowned": first["name"],
+    }
+`,
+        xp: 45,
+      },
+      {
+        id: 'gwledgers4',
+        title: 'The Fair Copy',
+        brief: 'The Unspeakables file nothing they cannot read at arm’s length. Write '
+          + '`file_report(src_path, dst_path)`: run the whole restoration — `clean_lines`, '
+          + 'then `parse_entries`, then `ledger_report` — on `src_path`; add the malformed '
+          + 'count to the report dict under the key `malformed`; write the fair copy to '
+          + '`dst_path`; **return** the enlarged dict.\n\n'
+          + 'The copy, line by line, each line built with an **f-string**:\n\n'
+          + '- `THE DROWNED LEDGER`\n'
+          + '- `souls: N`, `duplicates: N`, `malformed: N`, `earliest: Y`, `latest: Y`, '
+          + '`first drowned: NAME` — in that order\n'
+          + '- then one line per chamber, `CHAMBER: COUNT`, in alphabetical order\n\n'
+          + 'All three earlier stages must still hold — the ward reads the copy back, '
+          + 'character by character.',
+        starter: py`# The Drowned Ledger — stage 4: the fair copy.
+# (Your stage-3 working carries forward; this text is the fallback.)
+
+def clean_lines(path):
+    with open(path, "r") as page:
+        raw = page.read().splitlines()
+    cleaned = []
+    for line in raw:
+        line = line.strip()
+        if line != "":
+            cleaned.append(line)
+    return cleaned
+
+
+def parse_entries(lines):
+    records = []
+    malformed = 0
+    for line in lines:
+        parts = line.split("|")
+        if len(parts) != 3:
+            malformed = malformed + 1
+            continue
+        records.append({
+            "name": parts[0].strip(),
+            "chamber": parts[1].strip(),
+            "year": int(parts[2].strip()),
+        })
+    return records, malformed
+
+
+def ledger_report(records):
+    unique = []
+    seen = set()
+    for record in records:
+        key = (record["name"], record["chamber"], record["year"])
+        if key not in seen:
+            seen.add(key)
+            unique.append(record)
+    chambers = {}
+    for record in unique:
+        chambers[record["chamber"]] = chambers.get(record["chamber"], 0) + 1
+    years = [record["year"] for record in unique]
+    first = min(unique, key=lambda record: record["year"])
+    return {
+        "souls": len(unique),
+        "duplicates": len(records) - len(unique),
+        "chambers": chambers,
+        "earliest": min(years),
+        "latest": max(years),
+        "first_drowned": first["name"],
+    }
+
+
+def file_report(src_path, dst_path):
+    # TODO: clean_lines -> parse_entries -> ledger_report on src_path;
+    # add the malformed count to the report under the key "malformed";
+    # write the fair copy to dst_path, every line an f-string:
+    #   THE DROWNED LEDGER
+    #   souls / duplicates / malformed / earliest / latest / first drowned
+    #   then CHAMBER: COUNT lines in alphabetical order;
+    # return the enlarged report dict
+    pass
+`,
+        setup: py`_LEDGER_PAGES = [
+    "Broderick Bode|Space|1899",
+    "",
+    "  Elspeth Crane|Time|1877",
+    "Augustus Rookwood|Prophecy|1881",
+    "Silas Vane|1885",
+    "   ",
+    "Broderick Bode|Space|1899",
+    "Marlowe Fen|Thought|1877",
+    "Odile Marsh|Time|1869",
+    "the ninth level",
+    "   Augustus Rookwood|Prophecy|1881   ",
+    "Corvus Selwyn | Death | 1877",
+    "",
+    "Tobias Whitlock|Prophecy|1885",
+    "Odile Marsh|Time|1869",
+    "Hesper Gaunt|Death|1866",
+    "what the water kept",
+    "  Una Thorn|Thought|1902",
+    "Marlowe Fen|Thought|1877   ",
+    "Edric Blackwood|Prophecy|1902",
+]
+with open("drowned_ledger.txt", "w") as _page:
+    _page.write("\n".join(_LEDGER_PAGES) + "\n")
+`,
+        validation: py`assert "clean_lines" in dir() and "parse_entries" in dir() and "ledger_report" in dir(), "An earlier stage has gone missing — clean_lines, parse_entries, and ledger_report must all still stand."
+_drawn = clean_lines("drowned_ledger.txt")
+assert isinstance(_drawn, list) and len(_drawn) == 17 and all(_l == _l.strip() and _l != "" for _l in _drawn), "clean_lines has regressed — 17 stripped, non-blank survivors, exactly as stage one swore. A later stage may not break an earlier one."
+_records, _malformed = parse_entries(_drawn)
+assert len(_records) == 14 and _malformed == 3, "parse_entries has regressed — 14 records and 3 malformed, as stage two swore."
+_prior = ledger_report(_records)
+assert _prior["souls"] == 10 and _prior["duplicates"] == 4 and _prior["first_drowned"] == "Hesper Gaunt", "ledger_report has regressed — ten souls, four re-recordings, Hesper Gaunt first taken, as stage three swore."
+assert "file_report" in dir(), "The Codex finds no file_report — the working must bear exactly that name: file_report(src_path, dst_path)."
+try:
+    _summary = file_report("drowned_ledger.txt", "fair_copy.txt")
+except FileNotFoundError:
+    raise AssertionError("file_report went looking for the wrong page — read exactly src_path and write exactly dst_path, the two paths it is handed.")
+except TypeError:
+    raise AssertionError("file_report could not be summoned with two arguments — define it as file_report(src_path, dst_path), and hand each path to the right rite.")
+assert _summary is not None, "file_report handed back None — return the enlarged report dict."
+assert isinstance(_summary, dict), "file_report must return the summary dict — the report, enlarged with the malformed count."
+assert _summary.get("malformed") == 3, "The summary must carry the malformed count under the key malformed — 3 for this page, got " + repr(_summary.get("malformed")) + "."
+assert _summary.get("souls") == 10 and _summary.get("duplicates") == 4, "The summary must carry the whole report — souls 10 and duplicates 4 alongside the rest."
+import os as _os
+assert _os.path.exists("fair_copy.txt"), "No fair copy was written — file_report must write the report file at dst_path."
+with open("fair_copy.txt", "r") as _fc:
+    _lines = _fc.read().splitlines()
+assert len(_lines) == 12, "The fair copy runs twelve lines — the header, six counts, and five chambers; got " + str(len(_lines)) + "."
+assert _lines[0] == "THE DROWNED LEDGER", "The fair copy must open with the header, exactly: THE DROWNED LEDGER — got " + repr(_lines[0]) + "."
+assert _lines[1] == "souls: 10", "Line two must read exactly souls: 10 — got " + repr(_lines[1]) + "."
+assert _lines[2] == "duplicates: 4" and _lines[3] == "malformed: 3", "Lines three and four must read exactly duplicates: 4, then malformed: 3."
+assert _lines[4] == "earliest: 1866" and _lines[5] == "latest: 1902", "Lines five and six must read exactly earliest: 1866, then latest: 1902."
+assert _lines[6] == "first drowned: Hesper Gaunt", "Line seven must read exactly first drowned: Hesper Gaunt — got " + repr(_lines[6]) + "."
+assert _lines[7:] == ["Death: 2", "Prophecy: 3", "Space: 1", "Thought: 2", "Time: 2"], "The chambers close the copy, one per line as CHAMBER: COUNT, in alphabetical order — got " + str(_lines[7:]) + "."
+with open("_second_page.txt", "w") as _sp:
+    _sp.write("Mira Voss|Time|1900\n\nMira Voss|Time|1900\ngone under\n")
+_s2 = file_report("_second_page.txt", "_second_copy.txt")
+assert _s2.get("souls") == 1 and _s2.get("duplicates") == 1 and _s2.get("malformed") == 1, "Handed a different page, file_report must run the whole restoration on THAT page — one soul, one re-recording, one line beyond reading."
+with open("_second_copy.txt", "r") as _sc:
+    _l2 = _sc.read().splitlines()
+assert _l2[0] == "THE DROWNED LEDGER" and _l2[1] == "souls: 1" and _l2[7:] == ["Time: 1"], "The second fair copy must wear the same form — the header, then souls: 1, closing with a single chamber line: Time: 1."
+assert ('f"' in _source) or ("f'" in _source), "The fair copy is to be written with f-strings — build each line as an f-string, not by stitching pieces together with +."`,
+        canon: py`# The Drowned Ledger — stage 4: the fair copy.
+
+def clean_lines(path):
+    with open(path, "r") as page:
+        raw = page.read().splitlines()
+    cleaned = []
+    for line in raw:
+        line = line.strip()
+        if line != "":
+            cleaned.append(line)
+    return cleaned
+
+
+def parse_entries(lines):
+    records = []
+    malformed = 0
+    for line in lines:
+        parts = line.split("|")
+        if len(parts) != 3:
+            malformed = malformed + 1
+            continue
+        records.append({
+            "name": parts[0].strip(),
+            "chamber": parts[1].strip(),
+            "year": int(parts[2].strip()),
+        })
+    return records, malformed
+
+
+def ledger_report(records):
+    unique = []
+    seen = set()
+    for record in records:
+        key = (record["name"], record["chamber"], record["year"])
+        if key not in seen:
+            seen.add(key)
+            unique.append(record)
+    chambers = {}
+    for record in unique:
+        chambers[record["chamber"]] = chambers.get(record["chamber"], 0) + 1
+    years = [record["year"] for record in unique]
+    first = min(unique, key=lambda record: record["year"])
+    return {
+        "souls": len(unique),
+        "duplicates": len(records) - len(unique),
+        "chambers": chambers,
+        "earliest": min(years),
+        "latest": max(years),
+        "first_drowned": first["name"],
+    }
+
+
+def file_report(src_path, dst_path):
+    lines = clean_lines(src_path)
+    records, malformed = parse_entries(lines)
+    report = ledger_report(records)
+    report["malformed"] = malformed
+    with open(dst_path, "w") as fair:
+        fair.write("THE DROWNED LEDGER\n")
+        fair.write(f"souls: {report['souls']}\n")
+        fair.write(f"duplicates: {report['duplicates']}\n")
+        fair.write(f"malformed: {report['malformed']}\n")
+        fair.write(f"earliest: {report['earliest']}\n")
+        fair.write(f"latest: {report['latest']}\n")
+        fair.write(f"first drowned: {report['first_drowned']}\n")
+        for chamber in sorted(report["chambers"]):
+            fair.write(f"{chamber}: {report['chambers'][chamber]}\n")
+    return report
+`,
+        xp: 50,
+      },
+      {
+        id: 'gwledgers5',
+        title: 'Against the Water',
+        brief: 'Last, the water itself. Some night this working will be pointed at a page '
+          + 'that is not there, and it must refuse in its own voice, not die in the '
+          + 'machine’s.\n\n'
+          + '- Harden `clean_lines`: catch `FileNotFoundError` around the `open` and raise '
+          + 'in its place a `ValueError` whose message is, via f-string, '
+          + '`the lake gave up no page named PATH`\n'
+          + '- `file_report` must let that refusal rise — and it must **never** write a fair '
+          + 'copy for a page it could not read\n'
+          + '- close the working: under `if __name__ == "__main__":`, call '
+          + '`file_report("drowned_ledger.txt", "ledger_report.txt")` inside a `try` and '
+          + 'print, from the summary’s `souls`, `duplicates`, and `malformed` via one '
+          + 'f-string, exactly `filed: 10 souls, 4 re-recordings, 3 beyond reading`; on '
+          + '`ValueError`, print the error instead\n\n'
+          + 'Everything prior must still stand.',
+        starter: py`# The Drowned Ledger — stage 5: against the water.
+# (Your stage-4 working carries forward; this text is the fallback.)
+#
+# TODO (1): harden clean_lines — catch FileNotFoundError around the
+# open and raise ValueError with the message, via f-string:
+#   the lake gave up no page named PATH
+# TODO (2): at the bottom, under if __name__ == "__main__":, call
+# file_report("drowned_ledger.txt", "ledger_report.txt") inside a try
+# and print one f-string built from the summary:
+#   filed: N souls, N re-recordings, N beyond reading
+# On ValueError, print the error instead.
+
+def clean_lines(path):
+    with open(path, "r") as page:
+        raw = page.read().splitlines()
+    cleaned = []
+    for line in raw:
+        line = line.strip()
+        if line != "":
+            cleaned.append(line)
+    return cleaned
+
+
+def parse_entries(lines):
+    records = []
+    malformed = 0
+    for line in lines:
+        parts = line.split("|")
+        if len(parts) != 3:
+            malformed = malformed + 1
+            continue
+        records.append({
+            "name": parts[0].strip(),
+            "chamber": parts[1].strip(),
+            "year": int(parts[2].strip()),
+        })
+    return records, malformed
+
+
+def ledger_report(records):
+    unique = []
+    seen = set()
+    for record in records:
+        key = (record["name"], record["chamber"], record["year"])
+        if key not in seen:
+            seen.add(key)
+            unique.append(record)
+    chambers = {}
+    for record in unique:
+        chambers[record["chamber"]] = chambers.get(record["chamber"], 0) + 1
+    years = [record["year"] for record in unique]
+    first = min(unique, key=lambda record: record["year"])
+    return {
+        "souls": len(unique),
+        "duplicates": len(records) - len(unique),
+        "chambers": chambers,
+        "earliest": min(years),
+        "latest": max(years),
+        "first_drowned": first["name"],
+    }
+
+
+def file_report(src_path, dst_path):
+    lines = clean_lines(src_path)
+    records, malformed = parse_entries(lines)
+    report = ledger_report(records)
+    report["malformed"] = malformed
+    with open(dst_path, "w") as fair:
+        fair.write("THE DROWNED LEDGER\n")
+        fair.write(f"souls: {report['souls']}\n")
+        fair.write(f"duplicates: {report['duplicates']}\n")
+        fair.write(f"malformed: {report['malformed']}\n")
+        fair.write(f"earliest: {report['earliest']}\n")
+        fair.write(f"latest: {report['latest']}\n")
+        fair.write(f"first drowned: {report['first_drowned']}\n")
+        for chamber in sorted(report["chambers"]):
+            fair.write(f"{chamber}: {report['chambers'][chamber]}\n")
+    return report
+`,
+        setup: py`_LEDGER_PAGES = [
+    "Broderick Bode|Space|1899",
+    "",
+    "  Elspeth Crane|Time|1877",
+    "Augustus Rookwood|Prophecy|1881",
+    "Silas Vane|1885",
+    "   ",
+    "Broderick Bode|Space|1899",
+    "Marlowe Fen|Thought|1877",
+    "Odile Marsh|Time|1869",
+    "the ninth level",
+    "   Augustus Rookwood|Prophecy|1881   ",
+    "Corvus Selwyn | Death | 1877",
+    "",
+    "Tobias Whitlock|Prophecy|1885",
+    "Odile Marsh|Time|1869",
+    "Hesper Gaunt|Death|1866",
+    "what the water kept",
+    "  Una Thorn|Thought|1902",
+    "Marlowe Fen|Thought|1877   ",
+    "Edric Blackwood|Prophecy|1902",
+]
+with open("drowned_ledger.txt", "w") as _page:
+    _page.write("\n".join(_LEDGER_PAGES) + "\n")
+`,
+        validation: py`assert "clean_lines" in dir() and "parse_entries" in dir() and "ledger_report" in dir() and "file_report" in dir(), "An earlier stage has gone missing — all four workings must still stand: clean_lines, parse_entries, ledger_report, file_report."
+_drawn = clean_lines("drowned_ledger.txt")
+assert isinstance(_drawn, list) and len(_drawn) == 17 and all(_l == _l.strip() and _l != "" for _l in _drawn), "clean_lines has regressed on a page that exists — 17 stripped, non-blank survivors, exactly as before. Hardening must not change lawful behavior."
+_records, _malformed = parse_entries(_drawn)
+assert len(_records) == 14 and _malformed == 3, "parse_entries has regressed — 14 records and 3 malformed, as stage two swore."
+_prior = ledger_report(_records)
+assert _prior["souls"] == 10 and _prior["duplicates"] == 4 and _prior["first_drowned"] == "Hesper Gaunt", "ledger_report has regressed — ten souls, four re-recordings, Hesper Gaunt first taken, as stage three swore."
+_summary = file_report("drowned_ledger.txt", "fair_copy.txt")
+assert _summary.get("malformed") == 3 and _summary.get("souls") == 10, "file_report has regressed — the summary must still carry souls 10 and malformed 3."
+with open("fair_copy.txt", "r") as _fc:
+    _lines = _fc.read().splitlines()
+assert len(_lines) == 12 and _lines[0] == "THE DROWNED LEDGER" and _lines[6] == "first drowned: Hesper Gaunt", "The fair copy has regressed — twelve lines, the header first, Hesper Gaunt still first taken."
+import os as _os
+_refused = False
+try:
+    clean_lines("no_such_page.txt")
+except ValueError as _err:
+    _refused = True
+    assert "no page" in str(_err), "The refusal must speak the authored line — raise ValueError with a message that contains: gave up no page."
+except FileNotFoundError:
+    raise AssertionError("A missing page still dies of FileNotFoundError — catch it inside clean_lines and raise ValueError in its place, carrying the authored message.")
+assert _refused, "clean_lines admitted a page that does not exist — when the file is missing it must raise ValueError, not answer quietly."
+_doomed = False
+try:
+    file_report("no_such_page.txt", "doomed_copy.txt")
+except ValueError:
+    _doomed = True
+except FileNotFoundError:
+    raise AssertionError("file_report on a missing page must refuse as ValueError — let the hardened refusal in clean_lines rise through it untouched.")
+assert _doomed, "file_report on a missing page must raise ValueError — the refusal travels up from clean_lines."
+assert not _os.path.exists("doomed_copy.txt"), "A fair copy was written for a page that could not be read — read the source FIRST; only a lawful reading earns a written report."
+_spoken = [_l.strip() for _l in _stdout.splitlines() if _l.strip()]
+assert "filed: 10 souls, 4 re-recordings, 3 beyond reading" in _spoken, "The closing page never spoke — under the if __name__ == '__main__' guard, file_report the ledger and print exactly: filed: 10 souls, 4 re-recordings, 3 beyond reading"`,
+        canon: py`# The Drowned Ledger — restored, tallied, fair-copied, hardened.
+
+def clean_lines(path):
+    try:
+        with open(path, "r") as page:
+            raw = page.read().splitlines()
+    except FileNotFoundError:
+        raise ValueError(f"the lake gave up no page named {path}")
+    cleaned = []
+    for line in raw:
+        line = line.strip()
+        if line != "":
+            cleaned.append(line)
+    return cleaned
+
+
+def parse_entries(lines):
+    records = []
+    malformed = 0
+    for line in lines:
+        parts = line.split("|")
+        if len(parts) != 3:
+            malformed = malformed + 1
+            continue
+        records.append({
+            "name": parts[0].strip(),
+            "chamber": parts[1].strip(),
+            "year": int(parts[2].strip()),
+        })
+    return records, malformed
+
+
+def ledger_report(records):
+    unique = []
+    seen = set()
+    for record in records:
+        key = (record["name"], record["chamber"], record["year"])
+        if key not in seen:
+            seen.add(key)
+            unique.append(record)
+    chambers = {}
+    for record in unique:
+        chambers[record["chamber"]] = chambers.get(record["chamber"], 0) + 1
+    years = [record["year"] for record in unique]
+    first = min(unique, key=lambda record: record["year"])
+    return {
+        "souls": len(unique),
+        "duplicates": len(records) - len(unique),
+        "chambers": chambers,
+        "earliest": min(years),
+        "latest": max(years),
+        "first_drowned": first["name"],
+    }
+
+
+def file_report(src_path, dst_path):
+    lines = clean_lines(src_path)
+    records, malformed = parse_entries(lines)
+    report = ledger_report(records)
+    report["malformed"] = malformed
+    with open(dst_path, "w") as fair:
+        fair.write("THE DROWNED LEDGER\n")
+        fair.write(f"souls: {report['souls']}\n")
+        fair.write(f"duplicates: {report['duplicates']}\n")
+        fair.write(f"malformed: {report['malformed']}\n")
+        fair.write(f"earliest: {report['earliest']}\n")
+        fair.write(f"latest: {report['latest']}\n")
+        fair.write(f"first drowned: {report['first_drowned']}\n")
+        for chamber in sorted(report["chambers"]):
+            fair.write(f"{chamber}: {report['chambers'][chamber]}\n")
+    return report
+
+
+if __name__ == "__main__":
+    try:
+        summary = file_report("drowned_ledger.txt", "ledger_report.txt")
+        print(f"filed: {summary['souls']} souls, {summary['duplicates']} re-recordings, {summary['malformed']} beyond reading")
+    except ValueError as err:
+        print(err)
+`,
+        xp: 55,
+      },
+    ],
+  },
+
+  // ----------------------------------------------------------
+  // Rite — Leaving the Codex (see act3rite.js)
+  // ----------------------------------------------------------
+  rite,
 
   // ----------------------------------------------------------
   // Codex — this act's vocabulary

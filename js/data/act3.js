@@ -281,6 +281,122 @@ assert door_code(9, 0) == 108, "door_code(9, 0) should be 108."`,
           successText: 'The plates seat themselves, and the room rotates once — approval, or appetite.',
           xp: 18,
         },
+        {
+          id: 'a3l1x2',
+          kind: 'echo',
+          title: 'Echo: The Vault of Drawers',
+          prompt: 'Below the Hall of Prophecy lie the cold vaults, where what is no longer '
+            + 'foretold is filed away. Every drawer wants a plate and a code.\n\n'
+            + '- `coffin_plate(name, year)` — **returns** (never prints) exactly the string '
+            + '`NAME, taken YEAR`. Example: `coffin_plate("Elspeth Crane", 1877)` returns '
+            + '`Elspeth Crane, taken 1877`.\n'
+            + '- `vault_code(wing, drawer)` — **returns** the integer `wing * 40 + drawer`. '
+            + 'Example: `vault_code(3, 7)` returns `127`.',
+          starter: py`def coffin_plate(name, year):
+    pass
+
+
+def vault_code(wing, drawer):
+    pass
+`,
+          solution: py`def coffin_plate(name, year):
+    return f"{name}, taken {year}"
+
+
+def vault_code(wing, drawer):
+    return wing * 40 + drawer
+`,
+          hints: [
+            'Both bodies are single return lines — no print anywhere. Build the plate with an f-string from both parameters, in the order given.',
+            'coffin_plate: return f"{name}, taken {year}" — and vault_code: return wing * 40 + drawer.',
+          ],
+          validation: py`assert "coffin_plate" in dir(), "The Codex finds no coffin_plate — the working must bear exactly that name."
+assert "vault_code" in dir(), "The Codex finds no vault_code — the working must bear exactly that name."
+p = coffin_plate("Elspeth Crane", 1877)
+assert p is not None, "coffin_plate handed back None — return the plate, do not print it."
+assert isinstance(p, str), "coffin_plate must return a string plate."
+assert p == "Elspeth Crane, taken 1877", "The plate is misforged. Expected exactly: Elspeth Crane, taken 1877"
+assert coffin_plate("Bode", 1899) == "Bode, taken 1899", "coffin_plate must build the plate from its parameters, not fixed text."
+assert coffin_plate("", 1900) == ", taken 1900", "Even the nameless are dated. Add or trim nothing."
+c = vault_code(3, 7)
+assert c is not None, "vault_code handed back None — return the number."
+assert isinstance(c, int), "vault_code must return an integer, not a string."
+assert c == 127, "vault_code(3, 7) should be 127 — wing * 40 + drawer."
+assert vault_code(0, 5) == 5, "The ground wing counts as zero: vault_code(0, 5) should be 5."
+assert vault_code(9, 0) == 360, "vault_code(9, 0) should be 360."`,
+          successText: 'The plate slides home and the drawer takes its number with a sound like a knuckle cracking.',
+          xp: 16,
+        },
+        {
+          id: 'a3l1x3',
+          kind: 'refactor',
+          title: 'The Second Hand: The Bloated Brand',
+          prompt: 'The registry keeps one working that tells the truth in twelve live lines '
+            + 'where five would serve. The Unspeakables do not rewrite what works — they '
+            + '**reduce** it, and the reduction must not change one grain of behavior. This '
+            + 'is the Trial of the Second Hand.\n\n'
+            + 'The starter’s `shelf_labels(seers)` takes a list of seer names and returns a '
+            + 'list of labels `Orb of NAME` — in order, skipping any empty-string names, `[]` '
+            + 'for an empty shelf. It already does all of this correctly.\n\n'
+            + 'Mend it **in place**:\n\n'
+            + '- keep the name `shelf_labels` and identical behavior on every input\n'
+            + '- your whole submission, comments and blank lines aside, must stand at '
+            + '**five live lines or fewer**\n'
+            + '- no semicolon-stitching — the ward counts statements, not just lines',
+          starter: py`# The Second Hand: this working already tells the truth — it is
+# merely bloated. Mend IN PLACE: same name, same behavior, at most
+# FIVE live lines once comments and blanks are stripped away.
+
+def shelf_labels(seers):
+    labels = []
+    seen_any = False
+    for seer in seers:
+        name = seer
+        if name != "":
+            seen_any = True
+            labels.append("Orb of " + name)
+    if seen_any == False:
+        return []
+    result = labels
+    return result
+`,
+          solution: py`def shelf_labels(seers):
+    return ["Orb of " + seer for seer in seers if seer != ""]
+`,
+          hints: [
+            'Observe before cutting: which lines ever change what comes back? The seen_any flag guards a case the empty list already answers, name is a shadow of seer, and result a shadow of labels. Strike the shadows and the flag first.',
+            'The idiom: a list comprehension gathers and filters in one line — [expression for item in sequence if test] builds the whole list at once.',
+            'The cut: the entire body is one line — return ["Orb of " + seer for seer in seers if seer != ""]. The empty shelf answers [] on its own.',
+          ],
+          validation: py`def _ref_labels(seers):
+    out = []
+    for seer in seers:
+        if seer != "":
+            out.append("Orb of " + seer)
+    return out
+
+assert "shelf_labels" in dir(), "The Codex finds no shelf_labels — the mended working must keep its name exactly."
+_trials = [
+    [],
+    [""],
+    ["Cassandra"],
+    ["Cassandra", "", "Mopsus", "Tycho"],
+    ["", "", ""],
+    ["Croaker", "Bode", "Croaker"],
+]
+for _t in _trials:
+    try:
+        _got = shelf_labels(list(_t))
+    except TypeError:
+        raise AssertionError("shelf_labels could not be summoned with a single list — the mend must keep its one-parameter shape: shelf_labels(seers).")
+    _want = _ref_labels(_t)
+    assert _got == _want, "The behavior broke: shelf_labels(" + repr(_t) + ") must still return " + repr(_want) + " but gave " + repr(_got) + ". The Second Hand reshapes; it never changes what the working does."
+_live = [_ln.strip() for _ln in _source.splitlines() if _ln.strip() != "" and not _ln.strip().startswith("#")]
+assert all(";" not in _l for _l in _live), "A semicolon stitches several statements onto one line — the ward counts statements, not just lines. Unstitch it and truly compress the logic."
+assert len(_live) <= 5, "Still too heavy: " + str(len(_live)) + " live lines remain, and the registry accepts five at most. Fold the flag, the shadow names, and the loop into fewer, truer lines — a comprehension carries the whole hunt."`,
+          successText: 'Twelve lines become two, and the working is not merely smaller — it is finally visible at a glance. The second hand cuts; it never breaks.',
+          xp: 50,
+        },
       ],
       trace: [
         {
@@ -624,6 +740,58 @@ assert "day watch: Rookwood, Selwyn" in lines, "The day watch should muster exac
           successText: 'Named and broken: the mutable default argument — forged once at def, shared by every call that leans on it, mended with None.',
           xp: 30,
         },
+        {
+          id: 'a3l2x3',
+          kind: 'echo',
+          title: 'Echo: The Sconce Ledger',
+          prompt: 'The corridors are lit by sconces, and the wax is accounted for like '
+            + 'everything else down here.\n\n'
+            + '- `light_sconce(hall, candles=1)` — `candles` defaults to `1`. **Returns** '
+            + 'exactly the string `HALL lit by CANDLES candles`. It must work called with '
+            + 'just a hall, with a positional count, or with `candles=` as a keyword.\n'
+            + '- `wax_spent(*stubs)` — accepts **any number** of positional numbers and '
+            + '**returns** their sum; called with nothing, it returns `0`.',
+          starter: py`def light_sconce(hall, candles):
+    # candles should default to 1
+    pass
+
+
+# define wax_spent to accept any number of stubs
+`,
+          solution: py`def light_sconce(hall, candles=1):
+    return f"{hall} lit by {candles} candles"
+
+
+def wax_spent(*stubs):
+    total = 0
+    for stub in stubs:
+        total = total + stub
+    return total
+`,
+          hints: [
+            'The default lives in one def line — light_sconce(hall, candles=1) — and the star in the other: def wax_spent(*stubs).',
+            'Inside wax_spent, stubs is a tuple: start a total at 0, add each stub in a loop, and return the total.',
+          ],
+          validation: py`assert "light_sconce" in dir(), "The Codex finds no light_sconce — the working must bear exactly that name."
+assert "wax_spent" in dir(), "The Codex finds no wax_spent — the working must bear exactly that name."
+try:
+    r = light_sconce("the round room")
+except TypeError:
+    raise AssertionError("light_sconce refused a lone hall — give candles a default of 1 in the def line, so the count may be omitted.")
+assert r == "the round room lit by 1 candles", "Called with only a hall, candles must fall back to its default of 1."
+assert light_sconce("the tank row", 6) == "the tank row lit by 6 candles", "A positional count must override the default."
+assert light_sconce("the lift shaft", candles=9) == "the lift shaft lit by 9 candles", "light_sconce must accept candles as a keyword argument."
+try:
+    t = wax_spent()
+except TypeError:
+    raise AssertionError("wax_spent refused an empty call — a starred parameter (*stubs) accepts any number of offerings, including none.")
+assert t == 0, "An unlit night spends nothing — wax_spent() must return 0."
+assert wax_spent(4) == 4, "A single offering: wax_spent(4) should be 4."
+assert wax_spent(1, 2, 3) == 6, "wax_spent(1, 2, 3) should be 6."
+assert wax_spent(7, -2) == 5, "Reclaimed wax counts against the total: wax_spent(7, -2) should be 5."`,
+          successText: 'The sconces take their count in any phrasing, and the dark between them keeps its own.',
+          xp: 17,
+        },
       ],
       trace: [
         {
@@ -911,6 +1079,58 @@ assert refilled(0, 0) == 0, "Nothing added to nothing is still nothing."
 assert lamp_oil == 12, "The ledger itself was altered — pass values in, return values out, and leave lamp_oil be."`,
           successText: 'The lamps burn on borrowed arithmetic, and the ledger never once feels your hand.',
           xp: 18,
+        },
+        {
+          id: 'a3l3x2',
+          kind: 'echo',
+          title: 'Echo: The Tank Gauge',
+          prompt: 'The preserved failures float at a pressure the gauge alone may declare. '
+            + 'The starter holds `tank_pressure = 6` — read it if you must, never touch it: '
+            + 'no reassignment, no `global`.\n\n'
+            + '- `vented(pressure, loss)` — **returns** `pressure - loss`, but never less than `0`.\n'
+            + '- `pumped(pressure, gain)` — **returns** `pressure + gain`, but never more than `12`.\n\n'
+            + 'The ward will check the gauge still reads exactly `6` when your code has finished.',
+          starter: py`tank_pressure = 6   # the gauge — read, never touched
+
+def vented(pressure, loss):
+    pass
+
+
+def pumped(pressure, gain):
+    pass
+`,
+          solution: py`tank_pressure = 6   # the gauge — read, never touched
+
+def vented(pressure, loss):
+    result = pressure - loss
+    if result < 0:
+        result = 0
+    return result
+
+
+def pumped(pressure, gain):
+    result = pressure + gain
+    if result > 12:
+        result = 12
+    return result
+`,
+          hints: [
+            'Work purely from the parameters: compute the new value into a local, clamp it with an if, then return it — the gauge global is never assigned.',
+            'vented: result = pressure - loss; if result < 0: result = 0; return result. pumped mirrors it, capped at 12.',
+          ],
+          validation: py`assert "vented" in dir(), "The Codex finds no vented — the working must bear exactly that name."
+assert "pumped" in dir(), "The Codex finds no pumped — the working must bear exactly that name."
+assert vented(6, 2) == 4, "vented(6, 2) should be 4."
+assert vented(3, 3) == 0, "An exact venting leaves nothing: vented(3, 3) should be 0."
+assert vented(2, 7) == 0, "The gauge never reads below zero: vented(2, 7) should be 0, not negative."
+assert vented(12, 0) == 12, "A costless venting changes nothing: vented(12, 0) should be 12."
+assert pumped(6, 3) == 9, "pumped(6, 3) should be 9."
+assert pumped(10, 5) == 12, "The tank caps at 12: pumped(10, 5) should be 12."
+assert pumped(12, 1) == 12, "Already at the red line: pumped(12, 1) should stay 12."
+assert pumped(0, 0) == 0, "Nothing pumped into nothing is still nothing."
+assert tank_pressure == 6, "The gauge itself was altered — your code must not reassign tank_pressure or use the global keyword. Pass values in, return values out."`,
+          successText: 'The needle never moves, and the thing in the tank goes on failing at exactly six.',
+          xp: 16,
         },
       ],
       trace: [
@@ -1245,6 +1465,55 @@ assert rotted_titles(shelf, 10) == [], "Nothing rots that far — expected an em
 assert rotted_titles([], 3) == [], "An empty shelf names nothing."`,
           successText: 'The tomes settle by age, and the rot answers title by title — the shelf knows its own decay.',
           xp: 20,
+        },
+        {
+          id: 'a3l4x2',
+          kind: 'echo',
+          title: 'Echo: The Night Watch Roster',
+          prompt: 'The night roster has come down from the ninth level, and the wardens '
+            + 'must be ranked before the lamps are doused. Each posting is a tuple: '
+            + '`(name, corridor, dread)` — for example `("Una Thorn", "tank row", 9)`.\n\n'
+            + '- `by_dread(wardens)` — **returns a NEW list** of the postings ordered by '
+            + 'dread (index `2`), **highest first**. Use `sorted()` with a `key`; the '
+            + 'original list must be left unchanged.\n'
+            + '- `haunted_names(wardens, threshold)` — **returns** a list of just the names '
+            + '(index `0`) of postings whose dread is **greater than or equal to** '
+            + '`threshold`, in original roster order.\n\n'
+            + 'Both must return `[]` for an empty roster or when nothing qualifies.',
+          starter: py`# Each posting is a tuple: (name, corridor, dread)
+
+def by_dread(wardens):
+    pass
+
+
+def haunted_names(wardens, threshold):
+    pass
+`,
+          solution: py`def by_dread(wardens):
+    return sorted(wardens, key=lambda posting: posting[2], reverse=True)
+
+
+def haunted_names(wardens, threshold):
+    return [posting[0] for posting in wardens if posting[2] >= threshold]
+`,
+          hints: [
+            'The dread sits at index 2 — sorted(wardens, key=lambda posting: posting[2], reverse=True) puts the worst corridor first and leaves the roster untouched.',
+            'haunted_names is one comprehension: [posting[0] for posting in wardens if posting[2] >= threshold].',
+          ],
+          validation: py`assert "by_dread" in dir(), "The Codex finds no by_dread — the working must bear exactly that name."
+assert "haunted_names" in dir(), "The Codex finds no haunted_names — the working must bear exactly that name."
+roster = [("Marlowe Fen", "east stair", 4), ("Una Thorn", "tank row", 9), ("Odile Marsh", "round room", 6)]
+ordered = by_dread(roster)
+assert ordered is not None, "by_dread handed back None — return the sorted list; .sort() returns nothing."
+assert ordered == [("Una Thorn", "tank row", 9), ("Odile Marsh", "round room", 6), ("Marlowe Fen", "east stair", 4)], "by_dread must order the postings by dread (index 2), highest first."
+assert roster[0] == ("Marlowe Fen", "east stair", 4), "The original roster was reordered — by_dread must return a NEW list. Use sorted(), not .sort()."
+assert by_dread([]) == [], "An empty roster sorts to an empty list."
+assert haunted_names(roster, 6) == ["Una Thorn", "Odile Marsh"], "haunted_names(roster, 6) should be the names only, in roster order: Una Thorn, then Odile Marsh."
+assert haunted_names(roster, 1) == ["Marlowe Fen", "Una Thorn", "Odile Marsh"], "A threshold of 1 keeps every warden, in original order."
+assert haunted_names(roster, 10) == [], "No corridor reaches dread 10 tonight — expected an empty list."
+assert haunted_names([], 5) == [], "An empty roster names no one."`,
+          successText: 'The roster reorders itself worst-first, and the tank row, as always, tops the list.',
+          xp: 18,
         },
       ],
       trace: [
@@ -1741,6 +2010,77 @@ for _imp, _msg in _impostors:
           successText: 'Five impostors bitten, one lawful brewer admitted in silence — the judging is yours now, and it was always the harder craft.',
           xp: 50,
         },
+        {
+          id: 'a3l5x3',
+          kind: 'echo',
+          title: 'Echo: The Feeding of the Tanks',
+          prompt: 'The tanks must be fed, and the feeding obeys the same containment law: '
+            + 'refuse loudly at the threshold, contain the refusal above.\n\n'
+            + '- `feed_tank(volume, dose)` — the strict valve:\n'
+            + '  - if `dose` is less than or equal to `0`, raise `ValueError("nothing to feed")`\n'
+            + '  - if `volume + dose` is greater than `100`, raise `ValueError("the tank would overflow")`\n'
+            + '  - otherwise **return** `volume + dose`\n'
+            + '- `safe_feed(volume, dose)` — call `feed_tank(volume, dose)` inside a `try` '
+            + 'and return its result; if it raises `ValueError`, catch it and return '
+            + '`volume` unchanged.',
+          starter: py`def feed_tank(volume, dose):
+    # dose <= 0            -> ValueError("nothing to feed")
+    # volume + dose > 100  -> ValueError("the tank would overflow")
+    pass
+
+
+def safe_feed(volume, dose):
+    pass
+`,
+          solution: py`def feed_tank(volume, dose):
+    if dose <= 0:
+        raise ValueError("nothing to feed")
+    if volume + dose > 100:
+        raise ValueError("the tank would overflow")
+    return volume + dose
+
+
+def safe_feed(volume, dose):
+    try:
+        return feed_tank(volume, dose)
+    except ValueError:
+        return volume
+`,
+          hints: [
+            'feed_tank is two guard clauses and a return — raise ValueError with the exact message for each unlawful dose, then return the new volume.',
+            'safe_feed wraps one call: try: return feed_tank(volume, dose), then except ValueError: return volume.',
+          ],
+          validation: py`assert "feed_tank" in dir(), "The Codex finds no feed_tank — the working must bear exactly that name."
+assert "safe_feed" in dir(), "The Codex finds no safe_feed — the working must bear exactly that name."
+assert feed_tank(40, 20) == 60, "A lawful feeding: feed_tank(40, 20) should return 60."
+assert feed_tank(90, 10) == 100, "Filling the tank exactly to the brim is lawful: feed_tank(90, 10) should be 100."
+raised = False
+try:
+    feed_tank(50, 0)
+except ValueError as err:
+    raised = True
+    assert "nothing" in str(err), "The empty-dose refusal must carry the message: nothing to feed"
+assert raised, "feed_tank(50, 0) must raise ValueError — the tanks are not fed with nothing."
+raised = False
+try:
+    feed_tank(50, -5)
+except ValueError:
+    raised = True
+assert raised, "A negative dose must also raise ValueError."
+raised = False
+try:
+    feed_tank(95, 10)
+except ValueError as err:
+    raised = True
+    assert "overflow" in str(err), "The overfill refusal must carry the message: the tank would overflow"
+assert raised, "feed_tank(95, 10) must raise ValueError — the tank cannot hold it."
+assert safe_feed(40, 20) == 60, "A lawful feeding passes straight through: safe_feed(40, 20) should be 60."
+assert safe_feed(95, 10) == 95, "When feed_tank refuses, safe_feed must return the volume unchanged."
+assert safe_feed(50, 0) == 50, "safe_feed(50, 0) should be 50 — the refusal is contained, not repeated."
+assert safe_feed(0, 101) == 0, "Even an empty tank refuses what it cannot hold."`,
+          successText: 'The valves refuse, contain, and hold — and whatever is in the tanks is fed exactly what the law allows.',
+          xp: 18,
+        },
       ],
       trace: [
         {
@@ -1858,6 +2198,27 @@ with open("memory.txt", "r") as vial:
             + 'each casting begins with the basin swept clean. On a true machine, what you '
             + 'write with "w" persists on disk long after the program dies. Treat every write '
             + 'as permanent, and you will never be surprised.',
+        },
+        {
+          heading: 'The modern door — pathlib',
+          body: 'Beside the old door of `open()` stands a newer one. `from pathlib import '
+            + 'Path` gives you the **Path** object — a path that is a *thing*, not a bare '
+            + 'string — and three rites that open, act, and seal in one motion:\n\n'
+            + '- `Path(p).write_text(text)` — pours the whole string into the file, replacing '
+            + 'whatever was there. No mode, no close.\n'
+            + '- `Path(p).read_text()` — draws the entire contents back as one string.\n'
+            + '- `Path(p).exists()` — `True` or `False`: is anything there at all? A question '
+            + '`open()` can only answer by dying of `FileNotFoundError`.\n\n'
+            + 'For whole-file work this is the cleaner rite; keep `open()` and `with` for '
+            + 'appending, or for walking a great file line by line. Both doors open onto the '
+            + 'same basin — here in the Forge and on any true machine alike.',
+          code: py`from pathlib import Path
+
+basin = Path("echo.txt")
+basin.write_text("The lift descends.\nThe doors rotate.\n")
+print(basin.exists())                  # True
+print(basin.read_text().splitlines())  # ['The lift descends.', 'The doors rotate.']
+print(Path("unpoured.txt").exists())   # False`,
         },
         {
           heading: 'The structured phial — json',
@@ -2057,6 +2418,70 @@ assert _first == "", "An empty roll answers with the empty string, not an error.
           successText: 'The roll takes the names without complaint. It has taken many.',
           xp: 20,
         },
+        {
+          id: 'a3l6x2',
+          kind: 'echo',
+          title: 'Echo: The Sealed Phial',
+          prompt: 'One basin remains, and it answers only to the modern door: **pathlib**, '
+            + 'no `open()` anywhere in the working.\n\n'
+            + '- `pour_phial(path, memories)` — `memories` is a list of strings. Build one '
+            + 'string holding each memory followed by a newline, pour it with '
+            + '`Path(path).write_text(...)`, and **return** how many memories were poured. '
+            + 'Pouring an empty list must write an empty file — no stray newline.\n'
+            + '- `drain_phial(path)` — if `Path(path).exists()` is `False`, **return** `[]`. '
+            + 'Otherwise **return** the lines of `Path(path).read_text()` without their '
+            + 'newlines (`.splitlines()` gives them back bare).',
+          starter: py`from pathlib import Path
+
+def pour_phial(path, memories):
+    pass
+
+
+def drain_phial(path):
+    # a phial that was never poured drains to []
+    pass
+`,
+          solution: py`from pathlib import Path
+
+def pour_phial(path, memories):
+    text = ""
+    for memory in memories:
+        text = text + memory + "\n"
+    Path(path).write_text(text)
+    return len(memories)
+
+
+def drain_phial(path):
+    phial = Path(path)
+    if not phial.exists():
+        return []
+    return phial.read_text().splitlines()
+`,
+          hints: [
+            'Build one string — each memory plus "\\n" — then a single Path(path).write_text(text) pours and seals in one rite. Return len(memories) after.',
+            'drain_phial: bind phial = Path(path); if not phial.exists(): return [] — otherwise return phial.read_text().splitlines().',
+          ],
+          validation: py`assert "pour_phial" in dir(), "The Codex finds no pour_phial — the working must bear exactly that name."
+assert "drain_phial" in dir(), "The Codex finds no drain_phial — the working must bear exactly that name."
+n = pour_phial("phial.txt", ["the veil breathes", "the ninth door hums"])
+assert n == 2, "pour_phial must return how many memories it poured — 2 here."
+back = drain_phial("phial.txt")
+assert isinstance(back, list), "drain_phial must return a list of strings."
+assert back == ["the veil breathes", "the ninth door hums"], "The memories came back altered — one list item per line, with no newline characters attached."
+pour_phial("phial.txt", ["only this survives"])
+assert drain_phial("phial.txt") == ["only this survives"], "write_text replaces the whole phial — after a second pouring, only the new memory remains."
+assert pour_phial("hollow.txt", []) == 0, "Pouring nothing returns 0."
+assert drain_phial("hollow.txt") == [], "An empty phial drains to an empty list — take care that pouring no memories writes no stray newline."
+try:
+    _ghost = drain_phial("never_poured.txt")
+except FileNotFoundError:
+    raise AssertionError("drain_phial went digging for a phial that was never poured — ask Path(path).exists() first and return [] when the phial is absent.")
+assert _ghost == [], "A phial that never existed drains to [] — the exists() check is the ward."
+assert "Path(" in _source, "This echo walks the modern door — bind Path from pathlib and let it do the pouring, not open()."
+assert "open(" not in _source, "The old door creaks — leave open() behind here; Path.write_text and Path.read_text seal themselves."`,
+          successText: 'The phial seals itself — no mode, no close, no drop lost. The modern door swings both ways.',
+          xp: 20,
+        },
       ],
       trace: [
         {
@@ -2178,6 +2603,45 @@ def summon():
 if __name__ == "__main__":
     # Fires when run directly. Silent if this file were imported.
     print("run directly —", summon())`,
+        },
+        {
+          heading: 'Dissection: the counting of doors',
+          body: 'A finished working from the archive, read as the machine reads it — every '
+            + 'binding in order, nothing skipped.\n\n'
+            + '- **Lines 1–2** bind the tools: `Counter` pulled straight into the namespace, '
+            + 'the whole `math` volume reached by dot.\n'
+            + '- **The def** creates `dominant_door` and binds the name. Nothing inside runs yet.\n'
+            + '- **Inside, when called:** `Counter(trials)` tallies the list; `.most_common(1)` '
+            + 'returns a **list** holding one `(name, count)` pair; `[0]` takes the pair out, '
+            + 'and the two-name assignment unpacks it into `name` and `count`.\n'
+            + '- **The return** hands back the f-string — the call becomes that value.\n'
+            + '- **The guard:** the Forge runs this file directly, so `__name__` wears '
+            + '`"__main__"` and the block fires.\n'
+            + '- **The first print** finally runs the body: oak appears three times, so '
+            + '`oak x3` is spoken.\n'
+            + '- **The second print:** `len(doors)` is 5, and `math.isqrt(5)` is `2` — the '
+            + 'integer part, nothing rounded up.\n\n'
+            + 'Now hold it still and turn it. What would change if another file *imported* '
+            + 'this one? The imports and the `def` would still run — but `__name__` would '
+            + 'wear the module’s own name, the guard would stay dark, and nothing would '
+            + 'print. That silence is the guard’s entire purpose. And what would change if '
+            + 'the unpacking line dropped its `[0]` — `name, count = tally.most_common(1)`? '
+            + 'The right side would be a list holding a single pair, and Python, told to '
+            + 'unpack one item into two names, would die of '
+            + '`ValueError: not enough values to unpack`. The pair must be taken *out* of '
+            + 'the list before it is opened.',
+          code: py`from collections import Counter
+import math
+
+def dominant_door(trials):
+    tally = Counter(trials)
+    name, count = tally.most_common(1)[0]
+    return f"{name} x{count}"
+
+if __name__ == "__main__":
+    doors = ["oak", "iron", "oak", "veil", "oak"]
+    print(dominant_door(doors))
+    print(math.isqrt(len(doors)))`,
         },
       ],
       challenge: {
@@ -2356,6 +2820,64 @@ assert "the" in printed, "The guarded page never fired — the Forge runs your c
           successText: 'The report binds itself shut. Below, faintly, water.',
           xp: 22,
         },
+        {
+          id: 'a3l7x2',
+          kind: 'echo',
+          title: 'Echo: The Watch Tally',
+          prompt: 'The night watch files its sightings as a list, and the archive wants the '
+            + 'worst of them named.\n\n'
+            + '- Import `Counter` from `collections`, and import `math`.\n'
+            + '- `most_seen(sightings)` — `sightings` is a **list of strings**. Tally the '
+            + 'elements with `Counter` and **return the single most common one**.\n'
+            + '- `patrol_root(n)` — **return** the integer part of the square root of `n` '
+            + '(use `math.isqrt(n)`). Example: `patrol_root(26)` returns `5`.\n'
+            + '- Inside an `if __name__ == "__main__":` guard, print the result of '
+            + '`most_seen(["wraith", "orb", "wraith", "door", "wraith"])` — it should '
+            + 'print `wraith`.',
+          starter: py`# imports first
+
+
+def most_seen(sightings):
+    pass
+
+
+def patrol_root(n):
+    pass
+`,
+          solution: py`from collections import Counter
+import math
+
+
+def most_seen(sightings):
+    tally = Counter(sightings)
+    return tally.most_common(1)[0][0]
+
+
+def patrol_root(n):
+    return math.isqrt(n)
+
+
+if __name__ == "__main__":
+    print(most_seen(["wraith", "orb", "wraith", "door", "wraith"]))
+`,
+          hints: [
+            'Counter accepts a list directly — Counter(sightings) tallies the elements, and .most_common(1)[0][0] is the element itself, not the pair.',
+            'patrol_root is one line: return math.isqrt(n). The guard is exactly if __name__ == "__main__": with the print indented beneath it.',
+          ],
+          validation: py`assert "most_seen" in dir(), "The Codex finds no most_seen — the working must bear exactly that name."
+assert "patrol_root" in dir(), "The Codex finds no patrol_root — the working must bear exactly that name."
+assert most_seen(["orb", "wraith", "orb"]) == "orb", "most_seen must return the single most common SIGHTING — most_common(1) hands back a list of (element, count) pairs; take [0][0]."
+assert most_seen(["door", "door", "veil", "veil", "door"]) == "door", "most_seen(['door', 'door', 'veil', 'veil', 'door']) should be door."
+assert most_seen(["lone"]) == "lone", "A single sighting is its own majority."
+assert patrol_root(25) == 5, "patrol_root(25) should be 5."
+assert patrol_root(26) == 5, "patrol_root(26) should be 5 — the integer part only, no rounding up."
+assert patrol_root(1) == 1, "patrol_root(1) should be 1."
+assert patrol_root(0) == 0, "patrol_root(0) should be 0."
+printed = [line.strip() for line in _stdout.splitlines()]
+assert "wraith" in printed, "The guarded page never fired — the Forge runs your code as __main__, so the guard should have printed: wraith"`,
+          successText: 'The tally names the wraith, as every tally in this place eventually does.',
+          xp: 20,
+        },
       ],
       trace: [
         {
@@ -2419,6 +2941,55 @@ print(sqrt(16))`,
     victoryText: 'The Horde recedes into the flooded dark, and the registry — your registry — still answers to its name.',
     xp: 350,
     flawlessBonus: 50,
+    barks: {
+      intro: [
+        'We are every working you left half-finished. We have learned to press forward.',
+        'The water is already at the last door. Register only the lawful, and it may yet hold.',
+      ],
+      hit: [
+        'A door opened that should have stayed shut. We are inside the registry now.',
+        'You named an unbound thing lawful. It wears our drowned flesh already.',
+        'The ward thins exactly where you were certain and wrong. We felt the gap.',
+        'Another entry rots in your book — and rot is the ladder we climb.',
+        'You reached for the answer, and the cold water reached back up your arm.',
+      ],
+      playerFail: [
+        'The working came apart in your hands. We heard it fall from three levels down.',
+        'It would not seal. Every spell you cannot finish rises to join our ranks.',
+        'The registry refused your hand. Mend it, before the water mends it for you.',
+      ],
+      lastCandle: [
+        'One candle left, and the flood is at your knees. We can wait. You cannot.',
+        'The last flame gutters in the wet air. Hold the door, keeper. Only you hold it.',
+      ],
+      death: [
+        'The door held. We sink back into the half-finished dark, unfiled once more.',
+        'The registry answers to its name, not to ours. The water forgets. We do not.',
+      ],
+    },
+    premortem: {
+      prompt: 'Before the Horde reaches the last door, plan the registry’s defense. Three '
+        + 'workings must cooperate: one that admits a spell, one that casts it, one that '
+        + 'contains a failed cast. Where should the first ward stand?',
+      options: [
+        'At the threshold: refuse an unlawful spell — a bad name, a power out of bounds, a '
+          + 'duplicate — before it is ever written, so a refusal can never be un-refused.',
+        'At the end: register every spell first, then walk the finished registry and strike '
+          + 'out any that broke a rule.',
+        'At the cast: enter every spell, cast each once to see which ones fail, and remove '
+          + 'the ones that error.',
+        'Nowhere yet: build the failure-catcher first, so any error anywhere is contained '
+          + 'and the registry never halts.',
+      ],
+      answer: 0,
+      explain: 'Guard at the gate. The final trial demands that a refused spell never enter '
+        + 'the registry — the only way to honor that is to check the name, the power bounds, '
+        + 'and the duplicate and raise BEFORE the entry is written. Register-then-sweep leaves '
+        + 'a window in which the corruption already stands inside; casting each spell to test '
+        + 'it invites the very failure you set out to refuse; and building the catch-all first '
+        + 'only defers the judging you must do at the threshold. Validate first, store second, '
+        + 'contain last.',
+    },
     gauntlet: [
       {
         q: 'A sorcerer writes `def mark(rune): rune * 2` — no return statement. What is the value of `mark("x")`?',

@@ -12,11 +12,12 @@ import { play } from './sound.js';
 // XP thresholds are tuned so the final rank demands near-total mastery
 // of the Codex (see tools/validate_content.mjs, which prints total XP).
 
-// Thresholds tuned to the 10-act curriculum (18,091 attainable XP:
-// core 17,070 + practice extras/traces — see tools/validate_content.mjs
-// breakdown line): from rank 3 on, each act conquered crests roughly
-// one rank; the final rank demands near-everything, reachable through
-// core + achievements or core + the optional practice riders.
+// Thresholds tuned to the 10-act curriculum (19,683 attainable XP:
+// core 17,070 + practice extras/traces/workings/rites — see
+// tools/validate_content.mjs breakdown line): from rank 3 on, each act
+// conquered crests roughly one rank; the final rank demands
+// near-everything, reachable through core + achievements or core + the
+// optional practice riders.
 export const RANKS = [
   { xp: 0,     title: 'Novice at the Threshold' },
   { xp: 200,   title: 'Initiate of Shadows' },
@@ -28,8 +29,8 @@ export const RANKS = [
   { xp: 7500,  title: 'Bearer of the Morgul Blade' },
   { xp: 9300,  title: 'Horcrux Forger' },
   { xp: 11200, title: 'Necromancer of Dol Guldur' },
-  { xp: 13600, title: 'Dark Lord Ascendant' },
-  { xp: 17800, title: 'The Nameless One' },
+  { xp: 14800, title: 'Dark Lord Ascendant' },
+  { xp: 19300, title: 'The Nameless One' },
 ];
 
 export function rankFor(xp) {

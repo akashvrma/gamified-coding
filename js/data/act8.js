@@ -140,6 +140,38 @@ for degree in (1, 3, 9):
             + 'need to lie to you. It only needs you to grade your own prophecy on the past it '
             + 'was carved from.',
         },
+        {
+          heading: 'Autopsy: the flattering curve',
+          body: 'Name the belief before it names you: *"the model with the lowest '
+            + 'training error is the better model — the curve that hugs every point has '
+            + 'learned the most."* You have watched this act argue against it; now lay it '
+            + 'on the slab and let it predict. Below, the line and the degree-9 curve are '
+            + 'fitted on the thirty recorded weeks. On those thirty the curve wins — '
+            + '`5.7` against the line\'s `10.5` — so the belief predicts the curve wins '
+            + 'the ten sealed weeks too.\n\n'
+            + 'The Codex answers: on the sealed weeks the line errs `9.2`; the curve errs '
+            + '`12696888.0`. The winner of the training ledger loses the war by six '
+            + 'orders of magnitude, because training error rewards two different feats — '
+            + 'learning the pattern and memorizing the noise — and cannot tell you which '
+            + 'one it just measured. Only weeks the fit has never seen can tell them '
+            + 'apart.',
+          code: py`import numpy as np
+
+rng = np.random.default_rng(0)
+x = np.linspace(0.0, 4.0, 40)
+y = 30.0 * x + 20.0 + rng.normal(0.0, 4.0, 40)
+def mse(t, p): return float(np.mean((t - p) ** 2))
+for degree in (1, 9):
+    f = np.poly1d(np.polyfit(x[:30], y[:30], degree))
+    print(degree, round(mse(y[:30], f(x[:30])), 1), round(mse(y[30:], f(x[30:])), 1))
+# 1 10.5 9.2       -- the curve wins the recorded past...
+# 9 5.7 12696888.0 -- ...and loses the future by twelve million`,
+          note: '**The law: training error measures memory; only error on data the fit '
+            + 'never saw measures learning.** Bury the belief with honors — everywhere '
+            + 'else in your schooling, fitting the examples better meant knowing more. '
+            + 'Prophecy is the first craft where the examples grade their own author, and '
+            + 'flattery becomes a way to fail.',
+        },
       ],
       challenge: {
         title: 'The Seer\'s Wager',
@@ -233,6 +265,30 @@ assert "9.2" in _stdout, "Print the line's holdout error — round(hold_mse_line
         successText: 'The straight line holds the future to within a torch\'s flicker; the perfect curve is wrong by twelve million. The council votes with the arithmetic.',
         xp: 95,
       },
+      trace: [
+        {
+          id: 'a8l1t1',
+          code: py`import numpy as np
+
+x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+y = np.array([21.0, 47.0, 80.0, 112.0, 141.0])
+line = np.poly1d(np.polyfit(x[:4], y[:4], 1))
+wild = np.poly1d(np.polyfit(x[:4], y[:4], 3))
+print(round(float(abs(y[4] - line(x[4]))), 1))
+print(round(float(abs(y[4] - wild(x[4]))), 1))`,
+          q: 'Both seers fit on the first four weeks only, and the degree-3 curve passes '
+            + 'through all four of its training points exactly. The scrying: what does this '
+            + 'working print — the line\'s miss on the sealed fifth week, then the curve\'s?',
+          options: ['0.5\n0.0', '0.5\n6.0', '6.0\n0.5', '0.0\n0.0'],
+          answer: 1,
+          explain: 'The line misses the sealed week by 0.5; the "perfect" cubic misses '
+            + 'it by 6.0 — twelve times worse. Zero training error means the curve memorized '
+            + 'the four counts, noise and all, and its swing past the data\'s edge is '
+            + 'unbound. The first option is the flatterer\'s promise (perfect past, '
+            + 'perfect future); the third rewards the wrong seer; the last believes both '
+            + 'fits are prophecy.',
+        },
+      ],
       quiz: [
         {
           q: 'As polynomial degree rises, training MSE falls steadily while holdout MSE turns and climbs. What is happening?',

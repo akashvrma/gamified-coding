@@ -137,6 +137,38 @@ print(flat.reshape(2, 3))`,
             + '3×2 — never 2×2. Ask for a shape whose cells do not match the count and '
             + 'numpy refuses with an error rather than guess.',
         },
+        {
+          heading: 'Autopsy: the faster list',
+          body: 'Somewhere in the last three sections, a belief has likely settled in '
+            + 'you: *"an array is just a faster list."* Every law so far has let it live. '
+            + 'Now lay it on the slab and make it predict. Below, a slice is cut from a '
+            + 'list and a slice is cut from an array, and one element of each cutting is '
+            + 'altered. Lists you know of old: a slice is a **copy**, so the belief '
+            + 'predicts both sources stand unchanged — two untouched rows of '
+            + '`7, 3, 8, 5, 2`.\n\n'
+            + 'The Codex answers: the list is whole, but the array now reads '
+            + '`[7 0 8 5 2]`. You never touched `arr` — and it is scarred. An array slice '
+            + 'conjures no copy. It opens a **view**: a second name over the *same shelf '
+            + 'of memory*, so writing through the view writes through to the source. When '
+            + 'separation is what you mean, say so — `keep = arr[1:4].copy()` cuts a true '
+            + 'copy that scars nothing.',
+          code: py`import numpy as np
+
+row = [7, 3, 8, 5, 2]
+cut = row[1:4]        # a list slice: a copy
+cut[0] = 0
+print(row)            # [7, 3, 8, 5, 2] - untouched
+
+arr = np.array([7, 3, 8, 5, 2])
+win = arr[1:4]        # an array slice: a VIEW
+win[0] = 0
+print(arr)            # [7 0 8 5 2] - scarred through the view`,
+          note: '**The law: a list slice copies; an array slice views — one memory under '
+            + 'two names — and `.copy()` is the deliberate act of separation.** The dead '
+            + 'belief was fair inference: every slice you had ever taken was a copy. numpy '
+            + 'broke the pattern without a word, trading that safety for speed across '
+            + 'millions of orbs — and it expects you to know the price.',
+        },
       ],
       challenge: {
         title: 'The Cartography of Shelves',
@@ -227,6 +259,29 @@ assert refold(np.arange(12), 4, 3).shape == (4, 3), "refold must obey any rows x
         successText: 'The rack yields its geometry — row, column, and fold — and the Hall admits you one dimension deeper.',
         xp: 85,
       },
+      trace: [
+        {
+          id: 'a6l1t1',
+          code: py`import numpy as np
+
+arr = np.array([5, 6, 7, 8])
+win = arr[1:3]
+win[0] = 0
+
+lst = [5, 6, 7, 8]
+cut = lst[1:3]
+cut[0] = 0
+print(arr[1], lst[1])`,
+          q: 'The scrying: what does this working print?',
+          options: ['6 6', '0 0', '6 0', '0 6'],
+          answer: 3,
+          explain: 'The array slice `arr[1:3]` is a view — writing `win[0] = 0` writes '
+            + 'into `arr` itself, so `arr[1]` is 0. The list slice `lst[1:3]` is a copy — '
+            + '`cut[0] = 0` alters only the copy, so `lst[1]` is still 6. `6 6` is the '
+            + '"arrays are just faster lists" belief; `0 0` grants lists a view they have '
+            + 'never had; `6 0` swaps the two laws.',
+        },
+      ],
       quiz: [
         {
           q: 'What is the `shape` of `np.array([[1, 2, 3], [4, 5, 6]])`?',
@@ -921,16 +976,26 @@ assert list(ledger.columns) == ["name", "house", "years_dead", "unrest", "toll"]
 assert ledger.shape == (6, 5), "six souls, five columns — the frame is the wrong size"
 assert abs(ledger.loc[0, "toll"] - 1484.0) < 1e-9, "toll must be years_dead * unrest — Elspeth carries 212 * 7.0 = 1484.0"
 assert abs(float(ledger["toll"].sum()) - 3818.0) < 1e-6, "the tolls do not sum true — toll must be years_dead * unrest for every row"
+assert isinstance(eldest, str), "eldest must be a single string — the soul's NAME, not a number and not a Series. Find the row label with .idxmax(), then read the name with .loc[label, 'name']"
 assert eldest == "Ivo", "eldest must be the NAME of the longest-dead soul — idxmax finds the row label, .loc reads the name there"
-assert restless_names(ledger, 7.0) == ["Elspeth", "Marlow", "Rook"], "restless_names(ledger, 7.0) must name every soul with unrest of at least 7, in ledger order, as a plain list"
-assert restless_names(ledger, 100.0) == [], "when no soul is restless enough, return an empty list"
+try:
+    _r = restless_names(ledger, 7.0)
+except ValueError:
+    raise AssertionError("restless_names collapsed before the ward could weigh it: ValueError. pandas cannot judge a whole column with the word and — combine masks with & and give each comparison its own parentheses") from None
+assert isinstance(_r, list), "the ward received a Series, not a plain list — end the spell with .tolist()"
+assert _r == ["Elspeth", "Marlow", "Rook"], "restless_names(ledger, 7.0) must name every soul with unrest of at least 7, in ledger order, as a plain list"
+_r = restless_names(ledger, 100.0)
+assert isinstance(_r, list), "the ward received a Series, not a plain list — end the spell with .tolist()"
+assert _r == [], "when no soul is restless enough, return an empty list"
 _other = pd.DataFrame({
     "name": ["Wren", "Sorrel"],
     "house": ["Hollow", "Vane"],
     "years_dead": [10, 20],
     "unrest": [9.0, 1.0],
 })
-assert restless_names(_other, 5.0) == ["Wren"], "restless_names must work on ANY ledger handed to it, not only yours"
+_r = restless_names(_other, 5.0)
+assert isinstance(_r, list), "the ward received a Series, not a plain list — end the spell with .tolist()"
+assert _r == ["Wren"], "restless_names must work on ANY ledger handed to it, not only yours"
 assert restless_names(_other, 1.0) == ["Wren", "Sorrel"], "at least means >= — a soul exactly at the threshold is counted"`,
         successText: 'The book accepts the six without complaint, and somewhere below the floor, one of them turns over.',
         xp: 90,
@@ -1201,9 +1266,15 @@ _by = unrest_by_house(_df)
 assert abs(float(_by["Grimm"]) - 3.0) < 1e-9, "Grimm holds one soul at 3.0 (its nameless dead was dropped) — mean unrest 3.0"
 assert abs(float(_by["Hollow"]) - 5.0) < 1e-9, "Hollow holds Wren alone — mean unrest 5.0"
 assert abs(float(_by["Vane"]) - 14.0 / 3.0) < 1e-9, "Vane holds Sorrel (8.0), Bram (filled 0.0) and Nance (6.0) — the filled gap counts in the mean"
-assert most_common_house(_df) == "Vane", "Vane holds three of the five souls — value_counts puts it first"
-assert heaviest(_df, 2) == ["Sorrel", "Nance"], "heaviest(df, 2) must be the two highest unrest values, highest first, as a plain list of names"
-assert heaviest(_df, 0) == [], "asking for none must return an empty list"
+_mc = most_common_house(_df)
+assert isinstance(_mc, str), "most_common_house must return the house's NAME — one plain string, not a Series and not a count. value_counts() ranks the winner first: take .index[0]"
+assert _mc == "Vane", "Vane holds three of the five souls — value_counts puts it first"
+_h = heaviest(_df, 2)
+assert isinstance(_h, list), "the ward received a Series, not a plain list — end the spell with .tolist()"
+assert _h == ["Sorrel", "Nance"], "heaviest(df, 2) must be the two highest unrest values, highest first, as a plain list of names"
+_h = heaviest(_df, 0)
+assert isinstance(_h, list), "the ward received a Series, not a plain list — end the spell with .tolist()"
+assert _h == [], "asking for none must return an empty list"
 assert heaviest(_df, 99) == ["Sorrel", "Nance", "Wren", "Hollis", "Bram"], "asking for more than exist must return them all, most restless first"`,
         successText: 'The census closes clean: every gap decided, every house counted, the restless ranked from loudest down.',
         xp: 95,

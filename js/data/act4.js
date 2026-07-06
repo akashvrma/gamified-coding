@@ -310,6 +310,37 @@ print(b.members)                    # [] — clean`,
             + 'belongs to `self`.',
         },
         {
+          heading: 'Autopsy: the phantom copy',
+          body: 'By now a belief may have taken hold in you: *"a class attribute is a '
+            + 'per-ring default — each ring receives its own copy at forging, and what one '
+            + 'ring does with its copy is its own affair."* Lay that belief on the slab and '
+            + 'make it predict. Below, one king raises his tally and marks his list. The '
+            + 'belief predicts the other king untouched on both counts: `b.tally` reads `0`, '
+            + '`b.marks` reads `[]`.\n\n'
+            + 'The Codex answers: `0 [\'Angmar\']`. Half the prediction survives — and the '
+            + 'half that dies was never a copy at all. There are **no copies**. Both names '
+            + 'live on the mold, and every lookup through a ring climbs to it:\n\n'
+            + '- `a.tally += 1` reads the mold\'s `0`, adds one, then **assigns** — and '
+            + 'assignment through an instance writes onto the instance, forging a private '
+            + 'shadow. The mold\'s value beneath is untouched, so `b` still reads `0`.\n'
+            + '- `a.marks.append(...)` reads the mold\'s one list and **mutates it in '
+            + 'place**. No assignment happens, so no shadow is forged — and every ring that '
+            + 'climbs finds the scar.',
+          code: py`class Ring:
+    tally = 0     # the belief: each ring gets its own copy
+    marks = []    # the belief: this one too
+
+a, b = Ring(), Ring()
+a.tally += 1              # assignment - forges a's private shadow
+a.marks.append("Angmar")  # mutation - scars the one shared list
+print(b.tally, b.marks)   # 0 ['Angmar']`,
+          note: '**The law: a class attribute is one object on the class. Assignment '
+            + 'through an instance forges a private shadow; mutation through an instance '
+            + 'wounds the shared original.** The dead belief was earned honestly — with '
+            + 'numbers and strings every `+=` quietly forges a shadow, so the sharing stays '
+            + 'invisible until the first mutable value exposes the single hoard beneath.',
+        },
+        {
           heading: 'One verb, many kings',
           body: 'Instances are ordinary values: they sit in lists, pass through functions, '
             + 'return from them. Put nine kings in a list and one loop commands them all — the '
@@ -404,6 +435,29 @@ assert "the Witch-king serves Sauron" in _stdout, "No oath was heard — print e
         successText: 'Nine hands close around nine bands. The tally of years begins, and it runs in one direction only.',
         xp: 75,
       },
+      trace: [
+        {
+          id: 'a4l2t1',
+          code: py`class Legion:
+    banners = []
+    count = 0
+
+first = Legion()
+second = Legion()
+first.banners.append("red")
+first.count += 1
+print(len(second.banners), second.count)`,
+          q: 'The scrying: what does this working print?',
+          options: ['0 0', '1 1', '1 0', '0 1'],
+          answer: 2,
+          explain: 'No copies exist. `banners` is one list on the class, so '
+            + '`first.banners.append(...)` scars the list `second` also reads: its length '
+            + 'is 1. But `first.count += 1` ends in an assignment, and assignment forges a '
+            + 'private shadow on `first` alone — the class value stays 0, and `second` '
+            + 'reads it. `0 0` is the phantom-copy belief; `1 1` misses the shadow; '
+            + '`0 1` has the two laws exactly backwards.',
+        },
+      ],
       quiz: [
         {
           q: 'The call `king.wear(10)` is equivalent to which of these?',

@@ -594,8 +594,13 @@ _cloaked = veiled(_probe)
 assert _cloaked is not _probe, "veiled must return a NEW wrapper function, not the function it was given"
 assert _cloaked.__name__ == "_probe", "the wrapper has stolen the function's name — apply functools.wraps(func) to the wrapper"
 assert _cloaked.__doc__ == "Reaches into the dark.", "the docstring was lost in the veil — functools.wraps preserves it"
+assert hasattr(_cloaked, "calls"), "the wrapper carries no calls counter — set wrapper.calls = 0 after the wrapper's def ends, before return wrapper"
 assert _cloaked.calls == 0, "a freshly cloaked function must begin with calls == 0"
-assert _cloaked(3, y=4) == 34, "the wrapper must pass positional and keyword arguments through and return the true result"
+try:
+    _first = _cloaked(3, y=4)
+except UnboundLocalError:
+    raise AssertionError("the wrapper died mid-invocation of UnboundLocalError: writing calls += 1 makes calls a LOCAL name of the wrapper, empty at the moment of use. Count on the function object itself — wrapper.calls += 1 — or declare nonlocal calls first, as the closures section foretold.") from None
+assert _first == 34, "the wrapper must pass positional and keyword arguments through and return the true result"
 assert _cloaked(5) == 50, "default arguments must still work through the veil"
 assert _cloaked.calls == 2, "calls must count every invocation — after two calls it should be 2"
 

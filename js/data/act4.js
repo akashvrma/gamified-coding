@@ -157,6 +157,103 @@ assert "Vilya is borne by Gil-galad" in _stdout, "Sammath Naur heard no proclama
         successText: 'The mold cools. Somewhere inside it, nineteen unmade rings wait their turn.',
         xp: 75,
       },
+      extras: [
+        {
+          id: 'a4l1x1',
+          kind: 'echo',
+          title: 'The Seeing Stones',
+          prompt: 'Rings are not the only things cast from one making. In an older chamber '
+            + 'seven seeing-stones were poured from a single mold, and each went to its own '
+            + 'tower — to watch, and to be watched through.\n\n'
+            + 'Your working must satisfy, exactly:\n\n'
+            + '- Define a class named `Palantir`.\n'
+            + '- Its `__init__` takes two parameters after `self`: `seat` and `keeper`. Store them as `self.seat` and `self.keeper`.\n'
+            + '- Inside `__init__`, also set `self.clouded = False` — every stone leaves the making clear. For a while.\n'
+            + '- Create one instance: `orthanc = Palantir("Orthanc", "Saruman")`.\n'
+            + '- Print one line built from the instance\'s attributes, reading exactly: `The stone of Orthanc answers to Saruman`',
+          starter: py`# Seven stones, one making. Carve the mold.
+
+# TODO: class Palantir -- __init__(self, seat, keeper) stores both;
+#   every new stone also starts self.clouded = False
+
+# TODO: orthanc = Palantir("Orthanc", "Saruman")
+# TODO: print "The stone of <seat> answers to <keeper>"
+`,
+          solution: py`class Palantir:
+    def __init__(self, seat, keeper):
+        self.seat = seat
+        self.keeper = keeper
+        self.clouded = False
+
+orthanc = Palantir("Orthanc", "Saruman")
+print("The stone of " + orthanc.seat + " answers to " + orthanc.keeper)`,
+          hints: [
+            'The shape is the ring-mold\'s: class Palantir: over def __init__(self, seat, keeper):, with three assignments onto self in its body — seat, keeper, and clouded = False (that last one takes no parameter).',
+            'After the class, at zero indentation: orthanc = Palantir("Orthanc", "Saruman"), then print("The stone of " + orthanc.seat + " answers to " + orthanc.keeper).',
+          ],
+          validation: py`assert "Palantir" in dir(), "No mold named Palantir stands in this working -- define class Palantir."
+try:
+    p = Palantir("Minas Ithil", "the Nazgul")
+except TypeError:
+    raise AssertionError("Palantir(\"Minas Ithil\", \"the Nazgul\") was refused -- __init__ must take exactly seat and keeper after self.")
+assert p.seat == "Minas Ithil", "The stone forgot its seat -- __init__ must store its first argument as self.seat."
+assert p.keeper == "the Nazgul", "The stone forgot its keeper -- __init__ must store its second argument as self.keeper."
+assert p.clouded is False, "A stone leaves the making clear -- set self.clouded = False inside __init__."
+assert "clouded" in vars(p), "clouded must be laid on each instance inside __init__ (self.clouded = False), not kept anywhere else."
+q = Palantir("Osgiliath", "the river")
+q.clouded = True
+assert p.clouded is False, "Clouding one stone darkened another -- lay attributes on self, so each casting owns its own."
+assert "orthanc" in dir(), "No stone named orthanc was cast -- create orthanc = Palantir(\"Orthanc\", \"Saruman\")."
+assert isinstance(orthanc, Palantir), "orthanc must be cast from the Palantir mold -- call the class to create it."
+assert orthanc.seat == "Orthanc" and orthanc.keeper == "Saruman", "orthanc carries the wrong making -- its seat must be Orthanc, its keeper Saruman."
+assert "The stone of Orthanc answers to Saruman" in _stdout, "The tower heard no report -- print exactly: The stone of Orthanc answers to Saruman"`,
+          successText: 'The stone wakes under your hand. Somewhere far east, something notices.',
+          xp: 20,
+        },
+      ],
+      trace: [
+        {
+          id: 'a4l1t1',
+          code: py`class Ring:
+    def __init__(self, name):
+        self.name = name
+        self.bearer = "unclaimed"
+
+r = Ring("Nenya")
+r.bearer = "Galadriel"
+s = Ring("Nenya")
+print(r.name, s.bearer)`,
+          q: 'The scrying: what does this working print?',
+          options: ['Nenya Galadriel', 'Nenya unclaimed', 'Galadriel unclaimed', 'Nenya None'],
+          answer: 1,
+          explain: '`__init__` runs afresh for every casting: `s` receives its own '
+            + '`bearer = "unclaimed"` at birth, and the assignment onto `r` touches `r` '
+            + 'alone — two rings, two memories. "Nenya Galadriel" imagines the castings '
+            + 'share attributes because they share a name; "Galadriel unclaimed" swaps '
+            + 'what was printed — r.name was never reassigned; "Nenya None" forgets that '
+            + '__init__ lays bearer down before any hand can read it.',
+        },
+        {
+          id: 'a4l1t2',
+          code: py`class Furnace:
+    def __init__(self, heat):
+        self.heat = heat
+        self.lit = self.heat > 0
+
+f = Furnace(4)
+f.heat = 0
+print(f.lit, f.heat)`,
+          q: 'The scrying: what does this working print?',
+          options: ['True 0', 'False 0', 'True 4', 'False 4'],
+          answer: 0,
+          explain: '`self.lit = self.heat > 0` runs ONCE, inside `__init__`, and stores '
+            + 'the result — an attribute holds a value, not a live formula. The later '
+            + '`f.heat = 0` changes heat alone; nothing re-runs the comparison, so lit '
+            + 'stays True. "False 0" imagines lit recomputed at every read — that is what '
+            + 'properties are for, two trials hence; "True 4" forgets the plain assignment '
+            + 'to heat lands; "False 4" commits both errors at once.',
+        },
+      ],
       quiz: [
         {
           q: 'What is the relationship between a class and an instance?',
@@ -435,6 +532,168 @@ assert "the Witch-king serves Sauron" in _stdout, "No oath was heard — print e
         successText: 'Nine hands close around nine bands. The tally of years begins, and it runs in one direction only.',
         xp: 75,
       },
+      extras: [
+        {
+          id: 'a4l2x1',
+          kind: 'echo',
+          title: 'The Engines of Gorgoroth',
+          prompt: 'Not everything the foundry casts fits on a finger. The great engines crawl '
+            + 'toward the walls of the West, and each keeps its own count of paces — though one '
+            + 'brand marks them all.\n\n'
+            + 'Your working must satisfy, exactly:\n\n'
+            + '- Define a class `SiegeEngine`.\n'
+            + '- In the class body (not inside `__init__`), define a class attribute `foundry = "Gorgoroth"`.\n'
+            + '- `__init__` takes `name` after `self`; store `self.name` and start `self.paces = 0`.\n'
+            + '- Method `advance(self, paces)`: add `paces` to `self.paces`, then **return** the new total.\n'
+            + '- Method `at_the_walls(self)`: return `True` once `paces` is 300 or more, otherwise `False`.\n'
+            + '- Create `grond = SiegeEngine("Grond")`, call `grond.advance(150)` twice, then print exactly: `Grond was cast in Gorgoroth` — built from `grond.name` and `grond.foundry`.',
+          starter: py`# One foundry brands them all. Each engine keeps its own tally.
+
+class SiegeEngine:
+    # TODO: class attribute foundry = "Gorgoroth" -- here, not in __init__
+
+    # TODO: __init__(self, name) -- store self.name; start self.paces at 0
+
+    # TODO: def advance(self, paces): add to self.paces, RETURN the new total
+
+    # TODO: def at_the_walls(self): True once paces reaches 300 or more
+    pass
+
+# TODO: grond = SiegeEngine("Grond"); advance it 150 twice;
+#   print "Grond was cast in Gorgoroth" from its attributes
+`,
+          solution: py`class SiegeEngine:
+    foundry = "Gorgoroth"
+
+    def __init__(self, name):
+        self.name = name
+        self.paces = 0
+
+    def advance(self, paces):
+        self.paces = self.paces + paces
+        return self.paces
+
+    def at_the_walls(self):
+        return self.paces >= 300
+
+grond = SiegeEngine("Grond")
+grond.advance(150)
+grond.advance(150)
+print(grond.name + " was cast in " + grond.foundry)`,
+          hints: [
+            'The brand is a plain assignment in the class body: foundry = "Gorgoroth" — no self, no def. The tally is per-engine, so paces starts at 0 inside __init__, on self.',
+            'advance must both change and report: self.paces = self.paces + paces, then return self.paces. at_the_walls is one line: return self.paces >= 300. Then cast grond and call advance(150) twice.',
+          ],
+          validation: py`try:
+    e = SiegeEngine("Ram of Udun")
+except TypeError:
+    raise AssertionError("SiegeEngine(\"Ram of Udun\") was refused -- __init__ must take exactly name after self.")
+try:
+    p0 = e.paces
+except AttributeError:
+    raise AssertionError("A new engine carries no tally at all -- __init__ must set self.paces = 0.")
+assert p0 == 0, "A new engine has moved nowhere -- __init__ must set self.paces = 0."
+assert e.at_the_walls() is False, "An engine still in the foundry is not at the walls -- at_the_walls must return False below 300."
+got = e.advance(120)
+assert got == 120, "advance must RETURN the new total -- advance(120) on a fresh engine should return 120."
+e.advance(179)
+assert e.paces == 299, "The tally drifted -- advance must add its paces onto self.paces."
+assert e.at_the_walls() is False, "At 299 paces the walls still stand off -- at_the_walls must stay False below 300."
+e.advance(1)
+assert e.at_the_walls() is True, "At exactly 300 paces the engine arrives -- use >= 300, not > 300."
+other = SiegeEngine("Tower of Iron")
+assert other.paces == 0, "One engine's paces bled into another -- set self.paces in __init__, never in the class body."
+assert getattr(SiegeEngine, "foundry", None) == "Gorgoroth", "The brand is missing from the mold -- write foundry = \"Gorgoroth\" in the class body itself."
+assert "foundry" not in vars(other), "foundry was stamped onto each engine separately -- define it once in the class body, not inside __init__."
+assert "grond" in dir(), "No engine named grond was cast -- create grond = SiegeEngine(\"Grond\")."
+assert grond.paces == 300, "Grond has crawled the wrong distance -- call grond.advance(150) twice."
+assert "Grond was cast in Gorgoroth" in _stdout, "The muster heard nothing -- print exactly: Grond was cast in Gorgoroth"`,
+          successText: 'The engine reaches the walls on schedule, and the one brand watches through every casting.',
+          xp: 20,
+        },
+        {
+          id: 'a4l2x2',
+          kind: 'cursed',
+          title: 'The Twin Muster-Books',
+          prompt: 'A scroll from the quartermasters of the Black Gate, delivered with a '
+            + 'complaint nailed to it. Two warbands were raised, one at each gate, and each '
+            + 'keeper wrote only in his own muster-book: two names went into the northern '
+            + 'book, one into the southern. Yet when the books were opened before the Eye, '
+            + '**each held all three names** — every orc now answers to both gates, drawing '
+            + 'double rations and obeying neither. The rite raises no error. It simply '
+            + 'refuses to keep two books.\n\n'
+            + 'Mend the rite **in place**. When it is healed, each book must hold only the '
+            + 'names enlisted at its own gate, in enlistment order, and a freshly raised '
+            + 'warband must open an empty book.',
+          starter: py`# THE MUSTER-BOOKS OF THE TWO GATES -- recovered intact from the archive.
+# The rite runs without a single error, and the books still lie.
+# Mend it IN PLACE -- do not rewrite it from nothing.
+
+class Warband:
+    recruits = []
+
+    def __init__(self, gate):
+        self.gate = gate
+
+    def enlist(self, orc):
+        self.recruits.append(orc)
+
+    def muster(self):
+        return self.gate + ": " + ", ".join(self.recruits)
+
+north = Warband("Cirith Gorgor")
+south = Warband("Morannon")
+north.enlist("Muzgash")
+north.enlist("Lagduf")
+south.enlist("Snaga")
+print(north.muster())
+print(south.muster())`,
+          solution: py`# THE MUSTER-BOOKS OF THE TWO GATES -- mended.
+
+class Warband:
+    def __init__(self, gate):
+        self.gate = gate
+        self.recruits = []
+
+    def enlist(self, orc):
+        self.recruits.append(orc)
+
+    def muster(self):
+        return self.gate + ": " + ", ".join(self.recruits)
+
+north = Warband("Cirith Gorgor")
+south = Warband("Morannon")
+north.enlist("Muzgash")
+north.enlist("Lagduf")
+south.enlist("Snaga")
+print(north.muster())
+print(south.muster())`,
+          hints: [
+            'Make the rite confess before you cut: after both warbands are raised, add print(north.recruits is south.recruits) and run it. One book, or two? The is rune counts how many objects truly exist.',
+            'You believed the class-body list was a fresh default handed to each warband at birth. There are no copies — a list in the class body is ONE object living on the mold, and every enlist through any instance appends into that same book.',
+            'Anything mutable and per-instance is forged in __init__: give each warband self.recruits = [] there, and take the list out of the class body. The gate name already lives there; the book belongs beside it.',
+          ],
+          validation: py`try:
+    a = Warband("Isenmouthe")
+except TypeError:
+    raise AssertionError("Warband(\"Isenmouthe\") was refused -- __init__ must still take the gate name after self.")
+b = Warband("Durthang")
+a.enlist("Ufthak")
+a.enlist("Radbug")
+b.enlist("Gorbag")
+assert b.recruits == ["Gorbag"], f"Durthang's book reads {b.recruits} -- names enlisted at one gate are appearing in the other gate's book."
+assert a.recruits == ["Ufthak", "Radbug"], f"Isenmouthe's book reads {a.recruits} -- it must hold exactly its own two names, in enlistment order."
+assert a.recruits is not b.recruits, "Two warbands still write in ONE book -- each instance must own its own recruits list."
+c = Warband("Barad-dur")
+assert c.recruits == [], "A fresh warband must open an empty book -- names from older musters are haunting it."
+assert a.muster() == "Isenmouthe: Ufthak, Radbug", "muster must return the gate, a colon and a space, then the names joined by ', '."
+lines = [l.strip() for l in _stdout.splitlines() if l.strip()]
+assert "Cirith Gorgor: Muzgash, Lagduf" in lines, "The northern book must read exactly: Cirith Gorgor: Muzgash, Lagduf"
+assert "Morannon: Snaga" in lines, "The southern book must read exactly: Morannon: Snaga"`,
+          successText: 'The books part ways at last. The curse bears its true name — the shared mutable class attribute: one list living on the class body, written into by every instance that touches it.',
+          xp: 35,
+        },
+      ],
       trace: [
         {
           id: 'a4l2t1',
@@ -456,6 +715,34 @@ print(len(second.banners), second.count)`,
             + 'private shadow on `first` alone — the class value stays 0, and `second` '
             + 'reads it. `0 0` is the phantom-copy belief; `1 1` misses the shadow; '
             + '`0 1` has the two laws exactly backwards.',
+        },
+        {
+          id: 'a4l2t2',
+          code: py`class King:
+    def __init__(self):
+        self.years = 0
+
+    def wear(self, n):
+        self.years = self.years + n
+        return self.years
+
+k = King()
+King.wear(k, 30)
+print(k.wear(30))`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            '30',
+            '60',
+            'It dies - TypeError: calling wear through the class is not allowed',
+            '0',
+          ],
+          answer: 1,
+          explain: '`King.wear(k, 30)` is exactly what `k.wear(30)` becomes under the '
+            + 'hood — the instance slides in as self — so both calls land on the SAME '
+            + 'tally: 30, then 60. "30" treats the class-form call as a rehearsal that '
+            + 'touched nothing; the TypeError option forgets the class form is lawful '
+            + 'Python (it is the dot-call that is the convenience); "0" believes state '
+            + 'dies with each call — but years lives on k, not in the method.',
         },
       ],
       quiz: [
@@ -711,6 +998,123 @@ assert "True" in _stdout, "The chamber heard no report — print(fire.is_raging)
         successText: 'The fire settles behind its dark glass, lawful and watched. The apprentice\'s grave stays quiet tonight.',
         xp: 80,
       },
+      extras: [
+        {
+          id: 'a4l3x1',
+          kind: 'echo',
+          title: 'The Lantern of the Watch',
+          prompt: 'The wall-watch keeps one lantern against the dark, and its oil is measured '
+            + 'by law: it may burn low, it may run dry, but it may never hold less than '
+            + 'nothing. Build the guard that enforces it.\n\n'
+            + 'Your working must satisfy, exactly:\n\n'
+            + '- Define a class `Lantern`.\n'
+            + '- `__init__` takes `oil` after `self` and assigns it **through the property**: `self.oil = oil`.\n'
+            + '- The true measure lives in `self._oil`.\n'
+            + '- A getter `oil`, marked `@property`, returns `self._oil`.\n'
+            + '- A setter, marked `@oil.setter`, raises `ValueError` if the new value is negative; otherwise it stores the value in `self._oil`. Zero is lawful — a lantern may stand empty.\n'
+            + '- A read-only property `burning` returns `True` while the oil is above 0, else `False`. Give it no setter.\n'
+            + '- Create `lamp = Lantern(3)`, drain it with `lamp.oil = 0`, and `print(lamp.burning)`.',
+          starter: py`class Lantern:
+    def __init__(self, oil):
+        # TODO: assign through the property: self.oil = oil
+        pass
+
+    # TODO: @property getter oil -> return self._oil
+    # TODO: @oil.setter -- raise ValueError if value < 0, else store in self._oil
+    # TODO: read-only property burning -> True while oil is above 0
+
+# TODO: lamp = Lantern(3); drain it: lamp.oil = 0; print(lamp.burning)
+`,
+          solution: py`class Lantern:
+    def __init__(self, oil):
+        self.oil = oil
+
+    @property
+    def oil(self):
+        return self._oil
+
+    @oil.setter
+    def oil(self, value):
+        if value < 0:
+            raise ValueError("a lantern cannot hold less than nothing")
+        self._oil = value
+
+    @property
+    def burning(self):
+        return self._oil > 0
+
+lamp = Lantern(3)
+lamp.oil = 0
+print(lamp.burning)`,
+          hints: [
+            'Both guard methods are named oil: @property over the getter first, then @oil.setter over the judge. In the setter, check value < 0 and raise ValueError BEFORE the storing line self._oil = value.',
+            'In __init__ write self.oil = oil (no underscore) so the setter judges the first fill. burning is @property over def burning(self): return self._oil > 0 — and no setter, so assigning to it refuses.',
+          ],
+          validation: py`lamp2 = Lantern(4)
+assert isinstance(getattr(type(lamp2), "oil", None), property), "oil must be a property -- @property above the getter, @oil.setter above the guard."
+assert isinstance(getattr(type(lamp2), "burning", None), property), "burning must be a @property, read without parentheses."
+assert lamp2.oil == 4, "The getter misreports -- oil must return the stored _oil."
+assert getattr(lamp2, "_oil", None) == 4, "The true measure must sleep in self._oil, beneath the underscore."
+lamp2.oil = 1
+assert lamp2.oil == 1 and lamp2.burning is True, "With oil above 0 the lantern burns -- burning must compute from _oil at each read."
+lamp2.oil = 0
+assert lamp2.burning is False, "A drained lantern is dark -- burning must be False at 0."
+raised = False
+try:
+    lamp2.oil = -2
+except ValueError:
+    raised = True
+assert raised, "A measure below nothing was accepted -- the setter must raise ValueError for negative values."
+assert lamp2.oil == 0, "The failed pour still marked the lantern -- raise BEFORE storing, so _oil stays untouched."
+raised = False
+try:
+    Lantern(-1)
+except ValueError:
+    raised = True
+assert raised, "A lantern was born impossible -- write self.oil = oil in __init__ so the guard judges the first fill."
+raised = False
+try:
+    lamp2.burning = True
+except AttributeError:
+    raised = True
+assert raised, "burning accepted an assignment -- give it NO setter; it is a view through the glass, not a stored value."
+assert "lamp" in dir() and lamp.oil == 0, "The watch lamp is wrong -- create lamp = Lantern(3), then drain it with lamp.oil = 0."
+assert "False" in _stdout, "The watch heard no report -- print(lamp.burning) once the lamp is drained."`,
+          successText: 'The lantern gutters out lawfully, and the law holds even in the dark it leaves.',
+          xp: 25,
+        },
+      ],
+      trace: [
+        {
+          id: 'a4l3t1',
+          code: py`class Vault:
+    def __init__(self, gold):
+        self._gold = gold
+
+    @property
+    def gold(self):
+        return self._gold
+
+v = Vault(900)
+v.gold = 1200
+print(v.gold)`,
+          q: 'The scrying: what is the fate of this working?',
+          options: [
+            'It prints: 1200',
+            'It prints: 900',
+            'It dies - AttributeError: the property has no setter, so v.gold = 1200 is refused',
+            'It prints: 2100',
+          ],
+          answer: 2,
+          raises: 'AttributeError',
+          explain: 'A property with a getter and no setter is read-only: the assignment '
+            + 'dies of AttributeError before anything is stored, and the print is never '
+            + 'reached. "1200" believes the assignment lands as a plain attribute — but '
+            + 'the property on the class intercepts it first; "900" imagines the program '
+            + 'survives to the print; "2100" invents arithmetic no one wrote. To accept '
+            + 'writes, the class would need an @gold.setter.',
+        },
+      ],
       quiz: [
         {
           q: 'What does a single leading underscore, as in `self._heat`, actually do?',
@@ -961,6 +1365,153 @@ assert "Herumor of Numenor, sworn to Sauron" in _stdout, "The oath went unheard 
         successText: 'The bloodline holds. What the fathers built, the sons carry into shadow — nothing retyped, everything turned.',
         xp: 80,
       },
+      extras: [
+        {
+          id: 'a4l4x1',
+          kind: 'echo',
+          title: 'The Line of the Smiths',
+          prompt: 'Before the kings there were smiths, and one line of them listened too long '
+            + 'to a fair-spoken stranger. Write the elder craft, then the pupils who turned '
+            + 'it — inheriting everything, overriding one oath, extending one description.\n\n'
+            + 'Your working must satisfy, exactly:\n\n'
+            + '- Define class `Smith`: `__init__(self, name)` stores `self.name` and sets `self.forge_years = 400`. Method `describe(self)` returns the name followed by `" of Eregion"`. Method `oath(self)` returns `"to the craft"`.\n'
+            + '- Define class `Ringsmith` inheriting from `Smith`: its `__init__(self, name, patron)` first calls `super().__init__(name)`, then stores `self.patron`.\n'
+            + '- `Ringsmith` overrides `oath` to return `"to Annatar"`.\n'
+            + '- `Ringsmith` overrides `describe` to **extend** the ancestor: return `super().describe() + ", pupil of " + self.patron`.\n'
+            + '- Create `celebrimbor = Ringsmith("Celebrimbor", "Annatar")` and print `celebrimbor.describe()` — exactly `Celebrimbor of Eregion, pupil of Annatar`.',
+          starter: py`# The elder craft first. Then the pupil who was taught too well.
+
+class Smith:
+    # TODO: __init__(self, name) -- store self.name; set self.forge_years = 400
+    # TODO: describe(self) -> "<name> of Eregion"
+    # TODO: oath(self) -> "to the craft"
+    pass
+
+# TODO: class Ringsmith(Smith):
+#   __init__(self, name, patron): super().__init__(name), then self.patron
+#   override oath -> "to Annatar"
+#   override describe -> super().describe() + ", pupil of " + self.patron
+
+# TODO: celebrimbor = Ringsmith("Celebrimbor", "Annatar"); print its describe()
+`,
+          solution: py`class Smith:
+    def __init__(self, name):
+        self.name = name
+        self.forge_years = 400
+
+    def describe(self):
+        return self.name + " of Eregion"
+
+    def oath(self):
+        return "to the craft"
+
+class Ringsmith(Smith):
+    def __init__(self, name, patron):
+        super().__init__(name)
+        self.patron = patron
+
+    def oath(self):
+        return "to Annatar"
+
+    def describe(self):
+        return super().describe() + ", pupil of " + self.patron
+
+celebrimbor = Ringsmith("Celebrimbor", "Annatar")
+print(celebrimbor.describe())`,
+          hints: [
+            'The subclass header names its parent: class Ringsmith(Smith): — and its __init__ honors the ancestor FIRST: super().__init__(name), then self.patron = patron.',
+            'The overriding describe reuses the elder work: return super().describe() + ", pupil of " + self.patron. Do not retype " of Eregion" in the subclass; oath simply returns "to Annatar".',
+          ],
+          validation: py`try:
+    s = Smith("Narvi")
+except TypeError:
+    raise AssertionError("Smith(\"Narvi\") was refused -- Smith.__init__ must take name after self.")
+assert s.name == "Narvi" and s.forge_years == 400, "The elder line is flawed -- Smith.__init__ must set self.name and self.forge_years = 400."
+assert s.describe() == "Narvi of Eregion", "The elder describe speaks wrongly -- it must return the name plus ' of Eregion'."
+assert s.oath() == "to the craft", "The elder oath has already turned -- Smith.oath must return 'to the craft'."
+try:
+    r = Ringsmith("Telperion", "the Fair One")
+except TypeError:
+    raise AssertionError("Ringsmith(name, patron) was refused -- its __init__ takes name and patron after self.")
+assert isinstance(r, Ringsmith) and isinstance(r, Smith), "A ringsmith is still a smith -- declare class Ringsmith(Smith):"
+try:
+    fy = r.forge_years
+except AttributeError:
+    raise AssertionError("The pupil was born hollow -- call super().__init__(name) so the ancestor lays down forge_years.")
+assert fy == 400 and r.name == "Telperion", "super().__init__(name) must run so the ancestor sets name and forge_years."
+assert r.patron == "the Fair One", "The patron went unrecorded -- after super().__init__, store self.patron."
+assert r.oath() == "to Annatar", "The turned line must answer 'to Annatar' -- override oath in the subclass."
+assert r.describe() == "Telperion of Eregion, pupil of the Fair One", "The pupil's describe must EXTEND the ancestor: super().describe() + ', pupil of ' + self.patron."
+assert Smith.describe(r) == "Telperion of Eregion", "The ancestor's describe must survive beneath the override -- never edit Smith."
+c2 = Ringsmith("Celebrimbor", "Annatar")
+assert c2.describe() == "Celebrimbor of Eregion, pupil of Annatar", "A second casting answers wrongly -- describe must build from self.name and self.patron, not fixed text."
+assert "Celebrimbor of Eregion, pupil of Annatar" in _stdout, "The forge heard no lineage -- create celebrimbor and print celebrimbor.describe()."`,
+          successText: 'The pupils keep the elder hands and swear the newer oath — and the stranger smiles at what inheritance carries.',
+          xp: 25,
+        },
+      ],
+      trace: [
+        {
+          id: 'a4l4t1',
+          code: py`class Servant:
+    def rank(self):
+        return "a servant"
+
+class Orc(Servant):
+    def rank(self):
+        return "an orc"
+
+class Uruk(Orc):
+    pass
+
+print(Uruk().rank())`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            'a servant',
+            'an orc',
+            'It dies - AttributeError: Uruk itself defines no rank method',
+            'an orc\na servant',
+          ],
+          answer: 1,
+          explain: 'Lookup climbs from the instance\'s own class upward and stops at the '
+            + 'FIRST hit: Uruk defines no rank, so the search moves to Orc and finds one — '
+            + 'Servant is never consulted. "a servant" imagines the climb starts at the '
+            + 'root of the line; the death option forgets that inheriting IS having — '
+            + '`pass` changes nothing about what Uruk receives; the double answer imagines '
+            + 'every ancestor speaks, but only the first match runs.',
+        },
+        {
+          id: 'a4l4t2',
+          code: py`class Servant:
+    def __init__(self, name):
+        self.name = name
+
+class Wraith(Servant):
+    def __init__(self, ring):
+        self.ring = ring
+
+w = Wraith(9)
+print(w.ring)
+print(w.name)`,
+          q: 'The scrying: what is the fate of this working?',
+          options: [
+            'It prints 9, then dies - AttributeError: the wraith was never given a name',
+            'It prints: 9\nNone',
+            'It dies at once - defining __init__ without super() is an error',
+            'It prints: 9\n9',
+          ],
+          answer: 0,
+          raises: 'AttributeError',
+          explain: 'Wraith\'s own `__init__` overrides the parent\'s, which therefore '
+            + 'never runs — nothing ever sets self.name, and Python calls no ancestor '
+            + 'automatically. The first print speaks (ring was stored), then w.name dies '
+            + 'of AttributeError. "None" imagines missing attributes read as None — they '
+            + 'refuse loudly instead; the immediate-death option imagines Python enforces '
+            + 'super() — omitting it is legal, merely hollow; "9 9" imagines name fell '
+            + 'back to ring. The cure: call super().__init__(...) so the ancestor lays '
+            + 'its attributes first.',
+        },
+      ],
       quiz: [
         {
           q: 'What does `class BlackNumenorean(Numenorean):` declare?',
@@ -1187,6 +1738,88 @@ assert "shrieks for blood." in _stdout and "bellows and breaks stone." in _stdou
         successText: 'The horde moves as one word. You never asked what marched — only that it could.',
         xp: 85,
       },
+      extras: [
+        {
+          id: 'a4l5x1',
+          kind: 'echo',
+          title: 'The Ears of the Tower',
+          prompt: 'War is half listening. Three kinds of spy come back to the tower at dusk, '
+            + 'and the debriefer takes every report without once asking what breed of thing '
+            + 'is speaking.\n\n'
+            + 'Your working must satisfy, exactly:\n\n'
+            + '- Define three classes — `Crow`, `Bat`, `Shade` — each with `__init__(self, name)` storing `self.name`, and each with a method `report(self)`:\n'
+            + '- `Crow.report` returns the name + `" croaks what it saw."`\n'
+            + '- `Bat.report` returns the name + `" maps the dark by echo."`\n'
+            + '- `Shade.report` returns the name + `" says nothing, and is believed."`\n'
+            + '- The three classes stand alone — no shared base class.\n'
+            + '- Define a function `debrief(spies)` returning a list of each spy\'s `report()` result, in order. It must return `[]` for no spies, and it must work for ANY object that has a `report` method — no `isinstance` tests.\n'
+            + '- Build a ring of spies holding at least one of each kind, then loop over `debrief(...)` and print each report on its own line.',
+          starter: py`# Three kinds of spy. One debriefing. No questions of breed.
+
+# TODO: class Crow -- __init__(self, name); report(self) returns
+#   "<name> croaks what it saw."
+# TODO: class Bat -- report returns "<name> maps the dark by echo."
+# TODO: class Shade -- report returns "<name> says nothing, and is believed."
+
+def debrief(spies):
+    # TODO: return each spy's report(), in order -- ask nothing of ancestry
+    pass
+
+# TODO: build a ring of spies with one of each, then print every report
+`,
+          solution: py`class Crow:
+    def __init__(self, name):
+        self.name = name
+
+    def report(self):
+        return self.name + " croaks what it saw."
+
+class Bat:
+    def __init__(self, name):
+        self.name = name
+
+    def report(self):
+        return self.name + " maps the dark by echo."
+
+class Shade:
+    def __init__(self, name):
+        self.name = name
+
+    def report(self):
+        return self.name + " says nothing, and is believed."
+
+def debrief(spies):
+    reports = []
+    for spy in spies:
+        reports.append(spy.report())
+    return reports
+
+ring = [Crow("Craban"), Bat("Vespe"), Shade("Lygash")]
+for line in debrief(ring):
+    print(line)`,
+          hints: [
+            'The three classes are near-twins: each stores self.name in __init__ and differs only in the string report returns. Write one, adapt it twice.',
+            'debrief never names Crow, Bat, or Shade: an empty list, a loop appending spy.report(), a return. Then ring = [Crow("Craban"), Bat("Vespe"), Shade("Lygash")] and print each line of debrief(ring).',
+          ],
+          validation: py`c = Crow("Craban")
+b = Bat("Vespe")
+s = Shade("Lygash")
+assert c.report() == "Craban croaks what it saw.", "The crow's report is wrong -- the name plus ' croaks what it saw.'"
+assert b.report() == "Vespe maps the dark by echo.", "The bat's report is wrong -- the name plus ' maps the dark by echo.'"
+assert s.report() == "Lygash says nothing, and is believed.", "The shade's report is wrong -- the name plus ' says nothing, and is believed.'"
+got = debrief([c, b, s])
+assert got == ["Craban croaks what it saw.", "Vespe maps the dark by echo.", "Lygash says nothing, and is believed."], "debrief must return the reports as a list, in the order given."
+assert debrief([]) == [], "No spies, no reports -- an empty ring must return an empty list, without crashing."
+class _Turncoat:
+    def report(self):
+        return "an unexpected voice answers."
+assert debrief([_Turncoat()]) == ["an unexpected voice answers."], "debrief interrogated ancestry instead of trusting the shape -- call report() on WHATEVER arrives; no isinstance dispatch."
+assert debrief([s, c]) == ["Lygash says nothing, and is believed.", "Craban croaks what it saw."], "debrief must preserve the order it was given."
+assert "croaks what it saw." in _stdout and "maps the dark by echo." in _stdout and "says nothing, and is believed." in _stdout, "The tower heard no debriefing -- print every report from your ring of spies."`,
+          successText: 'Three voices, one ledger of the dark. The tower never asked what listened — only what was heard.',
+          xp: 20,
+        },
+      ],
       quiz: [
         {
           q: 'What is polymorphism, as Python practices it?',
@@ -1444,6 +2077,142 @@ assert "gruzh morn ulak" in _stdout, "The band bears no verse — print(a + b) s
         successText: 'The band accepts the deep names. Operators bow; print speaks; the inscription answers for itself now.',
         xp: 85,
       },
+      extras: [
+        {
+          id: 'a4l6x1',
+          kind: 'echo',
+          title: 'The Chant of the Pits',
+          prompt: 'What is cut into gold is also beaten into drums. The pit-chants of the '
+            + 'foundry are strings of syllables, and the drummers demand they behave like '
+            + 'native things — printed, compared, measured, joined.\n\n'
+            + 'Your working must satisfy, exactly:\n\n'
+            + '- Define a class `Chant`.\n'
+            + '- `__init__(self, syllables)` stores a **copy**: `self.syllables = list(syllables)`.\n'
+            + '- `__str__` returns the syllables joined by `-` (a hyphen).\n'
+            + '- `__eq__` returns `True` when the other object is a `Chant` with equal `syllables`.\n'
+            + '- `__len__` returns the number of syllables.\n'
+            + '- `__add__` returns a **new** `Chant` whose syllables are `self.syllables + other.syllables`; neither operand may change.\n'
+            + '- Then: `a = Chant(["ash", "nazg"])`, `b = Chant(["durbatuluk"])`, and `print(a + b)` — the drums must read `ash-nazg-durbatuluk`.',
+          starter: py`class Chant:
+    def __init__(self, syllables):
+        # TODO: store a COPY: self.syllables = list(syllables)
+        pass
+
+    # TODO: __str__ -- the syllables joined by "-"
+    # TODO: __eq__ -- True when other is a Chant with equal syllables
+    # TODO: __len__ -- how many syllables
+    # TODO: __add__ -- a NEW Chant of self.syllables + other.syllables
+
+# TODO: a = Chant(["ash", "nazg"]); b = Chant(["durbatuluk"]); print(a + b)
+`,
+          solution: py`class Chant:
+    def __init__(self, syllables):
+        self.syllables = list(syllables)
+
+    def __str__(self):
+        return "-".join(self.syllables)
+
+    def __eq__(self, other):
+        return isinstance(other, Chant) and self.syllables == other.syllables
+
+    def __len__(self):
+        return len(self.syllables)
+
+    def __add__(self, other):
+        return Chant(self.syllables + other.syllables)
+
+a = Chant(["ash", "nazg"])
+b = Chant(["durbatuluk"])
+print(a + b)`,
+          hints: [
+            'Each dunder is an ordinary method with a reserved name, indented inside the class: __str__ is return "-".join(self.syllables); __eq__ is return isinstance(other, Chant) and self.syllables == other.syllables; __len__ is return len(self.syllables).',
+            '__add__ must forge, not scar: return Chant(self.syllables + other.syllables) — a brand-new chant. Then print(a + b) lets print summon __str__ on the result.',
+          ],
+          validation: py`x = Chant(["ash", "nazg"])
+y = Chant(["ash", "nazg"])
+z = Chant(["gimbatul"])
+assert str(x) == "ash-nazg", "str(...) spoke wrongly -- __str__ must join the syllables with '-'."
+assert x == y, "Two chants of the same syllables must be equal -- __eq__ must compare self.syllables with other.syllables."
+assert not (x == z), "Different syllables must not be judged equal -- __eq__ compares content."
+assert (x != z) is True, "x != z should be True -- define __eq__ and Python derives != for you."
+try:
+    n = len(x)
+except TypeError:
+    raise AssertionError("len() found nothing to summon -- define __len__ returning the syllable count.")
+assert n == 2 and len(z) == 1, "len() miscounted -- __len__ must return the number of syllables."
+assert len(Chant([])) == 0, "An empty chant has length 0 -- __len__ must not fail on silence."
+try:
+    joined = x + z
+except TypeError:
+    raise AssertionError("The + rune found no __add__ -- define __add__ returning a NEW Chant of both syllable lists.")
+assert isinstance(joined, Chant), "__add__ must forge a NEW Chant -- not a list, not a string."
+assert str(joined) == "ash-nazg-gimbatul", "The joined chant reads wrongly -- __add__ must combine self.syllables + other.syllables in order."
+assert len(x) == 2 and len(z) == 1, "__add__ scarred its operands -- build a new Chant and leave both untouched."
+src = ["ash"]
+kept = Chant(src)
+src.append("nazg")
+assert len(kept) == 1, "An outside hand rewrote the chant -- copy in __init__ with list(syllables), never store the caller's list itself."
+assert "ash-nazg-durbatuluk" in _stdout, "The pits heard no chant -- print(a + b) so print can summon __str__ on the new chant."`,
+          successText: 'The drums take the joined chant whole. The syllables answer for themselves now, in every mouth that speaks them.',
+          xp: 25,
+        },
+      ],
+      trace: [
+        {
+          id: 'a4l6t1',
+          code: py`class Verse:
+    def __init__(self, word):
+        self.word = word
+
+    def __repr__(self):
+        return "Verse:" + self.word
+
+v = Verse("ash")
+print(v)
+print([v])`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            'Verse:ash\n[Verse:ash]',
+            'ash\n[ash]',
+            '<Verse object>\n[<Verse object>]',
+            'Verse:ash\n[<Verse object>]',
+          ],
+          answer: 0,
+          explain: 'print() wants __str__, but when __str__ is missing, str() falls back '
+            + 'to __repr__ — so the bare print speaks Verse:ash. And containers always '
+            + 'show their elements with repr, so the list matches. "ash" imagines repr '
+            + 'returns the raw attribute; the object-default options forget the fallback '
+            + 'exists — the <...> form appears only when NEITHER face is defined, and '
+            + 'containers never ignore a __repr__ you wrote.',
+        },
+        {
+          id: 'a4l6t2',
+          code: py`class Band:
+    def __init__(self, words):
+        self.words = words
+
+    def __len__(self):
+        return len(self.words)
+
+a = Band(["ash", "nazg"])
+b = Band(["ash", "nazg"])
+print(len(a), a == b)`,
+          q: 'The scrying: what does this working print?',
+          options: [
+            '2 True',
+            '2 False',
+            'It dies - TypeError: object of type Band has no len()',
+            '4 False',
+          ],
+          answer: 1,
+          explain: 'Each dunder is independent. len(a) summons the __len__ you defined: '
+            + '2. But == was never taught: without __eq__ it falls back to identity, and '
+            + 'a and b are two separate castings — False, however identical their words. '
+            + '"2 True" assumes equality compares content on its own; the TypeError '
+            + 'option misses that __len__ IS defined; "4 False" counts both bands — '
+            + 'len asks one object, not the pair.',
+        },
+      ],
       quiz: [
         {
           q: 'What does `print(v)` actually call on your object?',
@@ -1606,6 +2375,46 @@ print(legion.strength())               # 10 — the whole asks its parts`,
             + '"X is made of Ys", compose. Reserve inheritance for the rare, true "X is a Y" — '
             + 'as the next warden will require of you.',
         },
+        {
+          heading: 'Dissection: the Beacon-chain',
+          body: 'Read this whole working aloud, line by line — it is composition entire, in '
+            + 'miniature.\n\n'
+            + '- `class Beacon` is a **part**: a hill it stands on, and a flame that starts cold.\n'
+            + '- `class Chain` names no parent — it **has** beacons; it is not one.\n'
+            + '- `self._beacons = []` inside `__init__` forges each chain its own guarded list of parts.\n'
+            + '- `add` grows the whole by holding one more beacon; `light` reaches into a single part.\n'
+            + '- `lit_count` **delegates** — it counts living flames at the instant it is asked, never before.\n'
+            + '- The last lines build a chain, hold one beacon, light it *through the beacon itself*, and the chain\'s next count already knows.\n\n'
+            + 'Two questions seal the reading:\n\n'
+            + '- **What changes if `_beacons = []` sits in the class body instead of in `__init__`?** '
+            + 'Every chain shares one list, and a second chain counts flames it never held — the class-attribute trap, returned.\n'
+            + '- **What changes if `lit_count` stores its total in `__init__` instead of counting at call time?** '
+            + 'A beacon lit afterward no longer shows; the whole freezes and stops mirroring its parts. Delegation lives in the asking, not the remembering.',
+          code: py`class Beacon:
+    def __init__(self, hill):
+        self.hill = hill
+        self.lit = False
+
+    def light(self):
+        self.lit = True
+
+class Chain:
+    def __init__(self):
+        self._beacons = []
+
+    def add(self, beacon):
+        self._beacons.append(beacon)
+
+    def lit_count(self):
+        return sum(1 for b in self._beacons if b.lit)
+
+chain = Chain()
+amon = Beacon("Amon Din")
+chain.add(amon)
+chain.add(Beacon("Eilenach"))
+amon.light()
+print(chain.lit_count())   # 1 — the chain asks its parts and finds one lit`,
+        },
       ],
       challenge: {
         title: 'The Muster of Barad-dûr',
@@ -1704,6 +2513,127 @@ assert any(line.strip() == "10" for line in _stdout.splitlines()), "Barad-dur he
         successText: 'The tower stands — not bred, but built. Every part replaceable, and the whole more patient than any bloodline.',
         xp: 90,
       },
+      extras: [
+        {
+          id: 'a4l7x1',
+          kind: 'echo',
+          title: 'The Black Fleet',
+          prompt: 'The Corsairs of Umbar do not breed a fleet from a single ship, nor graft '
+            + 'an admiral onto a hull. The fleet HOLDS its ships — each crewed and counted on '
+            + 'its own — and answers for the whole only by asking the parts.\n\n'
+            + 'Your working must satisfy, exactly:\n\n'
+            + '- Define class `Corsair`: `__init__(self, name, crew)` stores both. Method `report(self)` returns the name, a space, then the crew in square brackets — for example `Blackwake [40]`.\n'
+            + '- Define class `Fleet` — it must NOT inherit from `Corsair`. Its `__init__(self, port)` stores `self.port` and creates an empty list `self._ships`.\n'
+            + '- Method `commission(self, ship)` appends the ship to `self._ships`.\n'
+            + '- Method `crew(self)` returns the sum of every ship\'s `crew` — `0` for an empty fleet. Read the ships at call time; keep no running total.\n'
+            + '- Method `roll(self)` returns a list of each ship\'s `report()`, in commissioning order.\n'
+            + '- Dunder `__len__` returns how many ships the fleet holds.\n'
+            + '- Raise `fleet = Fleet("Umbar")`, commission `Corsair("Blackwake", 40)` and `Corsair("Gull", 30)`, then print `fleet.crew()`.',
+          starter: py`# Hold the ships. Do not become one.
+
+class Corsair:
+    def __init__(self, name, crew):
+        # TODO: store self.name and self.crew
+        pass
+
+    # TODO: def report(self): return "<name> [<crew>]"
+
+class Fleet:
+    def __init__(self, port):
+        # TODO: store self.port; create the empty list self._ships
+        pass
+
+    # TODO: commission(self, ship) -- append the ship to self._ships
+    # TODO: crew(self) -- sum of each ship's crew, asked at call time
+    # TODO: roll(self) -- list of each ship's report(), in order
+    # TODO: __len__(self) -- how many ships are held
+
+# TODO: fleet = Fleet("Umbar"); commission Corsair("Blackwake", 40) and
+#   Corsair("Gull", 30); then print(fleet.crew())
+`,
+          solution: py`class Corsair:
+    def __init__(self, name, crew):
+        self.name = name
+        self.crew = crew
+
+    def report(self):
+        return self.name + " [" + str(self.crew) + "]"
+
+class Fleet:
+    def __init__(self, port):
+        self.port = port
+        self._ships = []
+
+    def commission(self, ship):
+        self._ships.append(ship)
+
+    def crew(self):
+        total = 0
+        for ship in self._ships:
+            total += ship.crew
+        return total
+
+    def roll(self):
+        return [ship.report() for ship in self._ships]
+
+    def __len__(self):
+        return len(self._ships)
+
+fleet = Fleet("Umbar")
+fleet.commission(Corsair("Blackwake", 40))
+fleet.commission(Corsair("Gull", 30))
+print(fleet.crew())`,
+          hints: [
+            'Fleet\'s header is plain — class Fleet: — with no parentheses naming Corsair. The only tie between them is the list self._ships created in __init__.',
+            'Every Fleet method delegates to that list: commission appends, __len__ returns len(self._ships), crew loops adding ship.crew, roll collects ship.report() for each. crew must ASK the ships each call — keep no stored total.',
+          ],
+          validation: py`empty = Fleet("Pelargir")
+assert len(empty) == 0, "An uncommissioned fleet holds nothing -- __len__ must return the number of ships."
+assert empty.crew() == 0, "An empty fleet crews no one -- sum over no ships without crashing."
+assert empty.roll() == [], "An empty fleet's roll is an empty list."
+s1 = Corsair("Blackwake", 40)
+assert s1.report() == "Blackwake [40]", "The ship misreports -- report must return the name, a space, and the crew in square brackets: Blackwake [40]"
+navy = Fleet("Umbar")
+navy.commission(s1)
+navy.commission(Corsair("Gull", 30))
+assert len(navy) == 2, "The count is wrong after two commissions -- commission must append to self._ships, and __len__ must count it."
+assert navy.crew() == 70, "The fleet's crew must be the sum of its ships -- 40 + 30 is 70."
+assert navy.roll() == ["Blackwake [40]", "Gull [30]"], "roll must delegate -- each ship's report(), in commissioning order."
+s1.crew = 55
+assert navy.crew() == 85, "The fleet hoards stale numbers -- crew() must ASK the ships at call time, not copy their crew at commissioning."
+other = Fleet("Harad")
+assert len(other) == 0, "Two fleets share one roster -- create self._ships = [] inside __init__, never in the class body."
+assert not issubclass(Fleet, Corsair), "The hierarchy grew wrong -- a Fleet HAS ships; it must not inherit from Corsair."
+assert any(line.strip() == "70" for line in _stdout.splitlines()), "Umbar heard no count -- print(fleet.crew()) after both commissions."`,
+          successText: 'The fleet answers as one hull though it is a hundred — held, not bred, and every ship still its own.',
+          xp: 20,
+        },
+      ],
+      trace: [
+        {
+          id: 'a4l7t1',
+          code: py`class Orc:
+    def __init__(self, strength):
+        self.strength = strength
+class Legion:
+    def __init__(self, orcs):
+        self._orcs = orcs
+    def total(self):
+        return sum(o.strength for o in self._orcs)
+snaga = Orc(3)
+host = Legion([snaga, Orc(7)])
+snaga.strength = 9
+print(host.total())`,
+          q: 'The scrying: what does this working print?',
+          options: ['10', '16', '9', 'It dies - AttributeError: an enlisted orc\'s strength cannot be reassigned'],
+          answer: 1,
+          explain: 'Composition holds references, not copies, and `total()` reads them at the '
+            + 'moment it is asked: raising `snaga.strength` to 9 changes the very object the '
+            + 'legion holds, so the count is 9 + 7 = 16. "10" is the copied-at-enlistment '
+            + 'belief (3 + 7); "9" forgets the second orc still answers the muster; the death '
+            + 'option imagines a plain attribute can be sealed against reassignment — it cannot.',
+        },
+      ],
       quiz: [
         {
           q: 'What is the honest test for choosing inheritance over composition?',
@@ -1936,6 +2866,49 @@ assert answers == ["One kneels.", "Two kneels, snarling.", "Three kneels, for no
 assert "Muzgash kneels, snarling." in _stdout and "Khamul kneels, for nothing remains to refuse." in _stdout, "The gate heard no oaths — build the host and print each servant's obey()."`,
       xp: 0,
     },
+    barks: {
+      intro: [
+        'You forged me three trials past, and watched the years hollow me. Now I wear your learning for a crown.',
+        'Come to the gate, maker. Let us see whether the mold recalls the hand that cut it.',
+      ],
+      hit: [
+        'A flaw in your casting. I was poured from flaws exactly like it.',
+        'The rune slips — I felt it slip in my own making, and never stopped falling.',
+        'You reached past the guard. The guard remembers every hand.',
+        'One shape set wrong, and the whole host mistakes who commands it.',
+        'Your hierarchy answers to me now. Blood runs downward, maker, never back.',
+      ],
+      playerFail: [
+        'The forge spat your working back. Even iron refuses a hand that shakes.',
+        'Nothing was cast. The mold stays cold, and I stay crowned.',
+        'Your spell died on the anvil. Bring me a finished thing, or bring me none.',
+      ],
+      lastCandle: [
+        'One candle between you and my whole night. I have watched brighter lights fail.',
+        'The dark leans close now. Cast cleanly, or do not cast again.',
+      ],
+      death: [
+        'The crown... empty... you built truer than the one who made me.',
+        'I go thin upon the wind — and the forge answers your hand now, caster.',
+      ],
+    },
+    premortem: {
+      prompt: 'The Witch-king will test the whole bloodline at once — a base line and two '
+        + 'that branch from it. Before you write a single override, which class do you '
+        + 'raise and prove FIRST?',
+      options: [
+        'The base Servant class — both branches inherit its __init__ and __str__, so nothing can lean on it until it stands',
+        'The host list — assemble the three servants first, then define the classes they will need',
+        'Ringwraith first, since it is the most tangled and the rest fall into place around it',
+        'The obey overrides on every class, before any __init__ — behavior matters more than construction',
+      ],
+      answer: 0,
+      explain: 'Raise the ancestor before the heirs. Orc and Ringwraith borrow the '
+        + 'Servant\'s making — its __init__ and its __str__ — so define and prove Servant '
+        + 'first, or the branches inherit a ghost. You cannot build the host from classes '
+        + 'that do not yet exist, and opening on the most tangled branch only means '
+        + 'debugging inheritance whose base you have not yet proven sound.',
+    },
   },
 
   // --------------------------------------------------------------------
@@ -1958,5 +2931,6 @@ assert "Muzgash kneels, snarling." in _stdout and "Khamul kneels, for nothing re
     { term: 'duck typing', def: 'Judging an object by the methods it actually has rather than by its class — if the method is there, the call succeeds.' },
     { term: 'dunder method', def: 'A double-underscore method such as `__str__` or `__eq__` that Python summons when you use operators and built-ins on your object.' },
     { term: 'composition', def: 'Building an object out of other objects it holds (has-a) and delegating work to them, instead of inheriting from them (is-a).' },
+    { term: 'shared mutable class attribute', def: 'A mutable value (a list, a dict) placed in the class body — one object living on the class, so a mutation through any instance is felt by them all; the silent bug cured by building it on `self` in `__init__`.' },
   ],
 };

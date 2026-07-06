@@ -233,6 +233,28 @@ assert "0.368" in _stdout, "Print round(float(bright.min()), 3) — the lifted g
         successText: 'The ledger page turns to your hand. Somewhere in its socket, the Eye adjusts — it has noticed being read.',
         xp: 100,
       },
+      trace: [
+        {
+          id: 'a10l1t1',
+          code: py`import numpy as np
+
+img = np.arange(9).reshape(3, 3)
+print(img[:, ::-1][0])
+print(img[::-1, :][0])`,
+          q: 'The scrying: img is the 3x3 ramp [[0,1,2],[3,4,5],[6,7,8]]. What does this working print — row 0 of the left-right mirror, then row 0 of the top-bottom flip?',
+          options: [
+            '[0 1 2]\n[6 7 8]',
+            '[2 1 0]\n[6 7 8]',
+            '[2 1 0]\n[8 7 6]',
+            '[6 7 8]\n[2 1 0]',
+          ],
+          answer: 1,
+          explain: 'img[:, ::-1] reverses each row, so row 0 becomes [2 1 0]. img[::-1, :] '
+            + 'reverses the ORDER of the rows without touching their contents, so its row 0 is '
+            + 'the old last row, [6 7 8]. The third option flips both axes; the fourth swaps the '
+            + 'two operations. Mirrors are just slices.',
+        },
+      ],
       quiz: [
         {
           q: 'In a grayscale image stored in the 0..255 convention, what does a pixel value of 0 mean?',
@@ -520,6 +542,86 @@ assert "True" in _stdout, "Print soft.shape == glyph.shape — padding first mak
         successText: 'The lens bites. Out of flat gray light, the walls of the brand stand up like scars under a sidelong lamp.',
         xp: 105,
       },
+      extras: [
+        {
+          id: 'a10l2x1',
+          kind: 'cursed',
+          title: 'The Lens That Sees Crooked',
+          prompt: 'A "same"-size lens recovered from the Eye\'s workshop returns a feature map '
+            + 'of the right size and, at a glance, the right values — but every feature it finds '
+            + 'sits one pixel down and one pixel to the right of where it truly is. Feed it the '
+            + 'IDENTITY kernel — a lens that should hand the image back untouched — and even '
+            + 'that moves the whole picture down and right by one. On a real hunt the brand\'s '
+            + 'edges are found, but the coordinates reported are all off by (1, 1): a detector '
+            + 'that sees true and points wrong.\n\n'
+            + 'Mend `conv_same` **in place**. Healed, the identity lens must return the image '
+            + 'unmoved, and every feature must be reported at its true position.',
+          starter: py`# THE LENS THAT SEES CROOKED -- right values, wrong places.
+# The identity kernel should return the image untouched; this lens shifts it.
+# Mend conv_same IN PLACE; the wound is in how it frames the image.
+import numpy as np
+
+def conv_same(img, kernel):
+    kh, kw = kernel.shape
+    padded = np.pad(img, ((kh - 1, 0), (kw - 1, 0)))   # frame the image
+    H, W = img.shape
+    out = np.zeros((H, W))
+    for i in range(H):
+        for j in range(W):
+            out[i, j] = np.sum(padded[i:i + kh, j:j + kw] * kernel)
+    return out
+
+impulse = np.zeros((5, 5))
+impulse[2, 2] = 1.0
+identity = np.array([[0.0, 0.0, 0.0],
+                     [0.0, 1.0, 0.0],
+                     [0.0, 0.0, 0.0]])
+out = conv_same(impulse, identity)
+print("bright pixel at", np.unravel_index(int(np.argmax(out)), out.shape))
+`,
+          solution: py`import numpy as np
+
+def conv_same(img, kernel):
+    kh, kw = kernel.shape
+    pad = kh // 2
+    padded = np.pad(img, pad)
+    H, W = img.shape
+    out = np.zeros((H, W))
+    for i in range(H):
+        for j in range(W):
+            out[i, j] = np.sum(padded[i:i + kh, j:j + kw] * kernel)
+    return out
+
+impulse = np.zeros((5, 5))
+impulse[2, 2] = 1.0
+identity = np.array([[0.0, 0.0, 0.0],
+                     [0.0, 1.0, 0.0],
+                     [0.0, 0.0, 0.0]])
+out = conv_same(impulse, identity)
+print("bright pixel at", np.unravel_index(int(np.argmax(out)), out.shape))`,
+          validation: py`import numpy as np
+_imp = np.zeros((5, 5)); _imp[2, 2] = 1.0
+_ident = np.array([[0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 0.0]])
+_o = conv_same(_imp, _ident)
+assert _o.shape == (5, 5), "conv_same must return a map the same size as the input — HxW."
+assert np.allclose(_o, _imp), "The identity kernel must return the image UNMOVED — a lens that shifts the identity is mis-centered. Pad symmetrically, not on one side."
+_imp2 = np.zeros((7, 7)); _imp2[1, 5] = 1.0
+assert np.allclose(conv_same(_imp2, _ident), _imp2), "The identity lens must fix EVERY position, not just the center — a bright pixel at (1, 5) must stay at (1, 5)."
+_edge = np.zeros((6, 6)); _edge[:, 3:] = 1.0
+_sv = np.array([[-1.0, 0.0, 1.0], [-2.0, 0.0, 2.0], [-1.0, 0.0, 1.0]])
+_r = conv_same(_edge, _sv)
+assert _r.shape == (6, 6), "The Sobel response must stay the input's size — HxW."
+assert abs(_r[3, 3]) > 0 and abs(_r[3, 2]) > 0, "The vertical-edge response must straddle the true boundary at column 3, not sit shifted away from it."
+assert np.argmax(np.abs(_r).sum(axis=0)) in (2, 3), "The loudest edge column must fall on the true boundary (column 2 or 3), not be pushed off by a mis-centered frame."`,
+          successText: 'The lens sees straight. The bug has its true name — the **kernel-centering error** (a wrong padding origin): pad a convolution asymmetrically and every feature is found true but reported one pixel off, a detector that cannot be trusted about where. Center the frame — pad by half the kernel on every side.',
+          hints: [
+            'Convolve the impulse (one bright pixel at the center, (2,2)) with the IDENTITY kernel and print np.unravel_index(np.argmax(out), out.shape). It should land on (2,2) — the identity moves nothing. It lands on (3,3): the whole map is shifted down and right by one.',
+            'For a "same"-size convolution the kernel must be CENTERED on each pixel, so the padding must be symmetric — one ring on every side for a 3x3 kernel. This lens pads only the top and left (kh-1, 0), which slides every window\'s centre off its true pixel by kh//2 down and kw//2 right.',
+            'Pad symmetrically by half the kernel: pad = kh // 2; padded = np.pad(img, pad). For a 3x3 kernel that is one ring on all four sides, the output stays HxW, and every feature is reported where it truly sits.',
+          ],
+          xp: 30,
+        },
+      ],
       quiz: [
         {
           q: 'A 3x3 kernel slides over a 16x16 image with no padding. What is the feature map\'s shape?',
@@ -785,10 +887,10 @@ sobel_v = np.array([[-1.0, 0.0, 1.0],
                     [-1.0, 0.0, 1.0]])
 sobel_h = sobel_v.T
 
-def relu(x):
+def relu(x: np.ndarray) -> np.ndarray:
     return np.maximum(0.0, x)
 
-def pool2(img):
+def pool2(img: np.ndarray) -> np.ndarray:
     H, W = img.shape
     return img.reshape(H // 2, 2, W // 2, 2).max(axis=(1, 3))
 
@@ -855,6 +957,32 @@ assert "(4, 4)" in _stdout, "Print p2.shape — the summit is (4, 4)."`,
         successText: 'Floor by floor the sigil gives up its pixels and keeps only its meaning — and the pyramid, silent, files its first report.',
         xp: 105,
       },
+      trace: [
+        {
+          id: 'a10l3t1',
+          code: py`import numpy as np
+
+img = np.ones((5, 5))
+out = np.zeros((5 - 3 + 1, 5 - 3 + 1))
+for i in range(3):
+    for j in range(3):
+        out[i, j] = img[i:i + 3, j:j + 3].sum()
+print(out.shape)
+print(out[0, 0])`,
+          q: 'The scrying: a 3x3 window slides over a 5x5 all-ones image, summing each window. What does this working print?',
+          options: [
+            '(5, 5)\n25.0',
+            '(3, 3)\n9.0',
+            '(2, 2)\n6.0',
+            '(3, 3)\n1.0',
+          ],
+          answer: 1,
+          explain: 'A 3x3 window over a 5x5 image visits (5 - 3 + 1) = 3 positions per side, so '
+            + 'the output is (3, 3). Each window covers nine ones, and their sum is 9.0. The '
+            + 'first option forgets the valid-region shrink; the third miscounts the positions. '
+            + 'This window arithmetic is the whole skeleton of 2D convolution.',
+        },
+      ],
       quiz: [
         {
           q: 'What does 2x2 max pooling do to an 8x8 feature map?',
@@ -1517,6 +1645,30 @@ assert "0.0024" in _stdout, "Print round(float(history[-1]), 4) — the trained 
         successText: 'The dials turn to coordinates no sigil ever held — and the door opens anyway. The page you lift out is warm, and no archive on earth contains it.',
         xp: 110,
       },
+      trace: [
+        {
+          id: 'a10l5t1',
+          code: py`import numpy as np
+
+fmap = np.arange(9).reshape(3, 3)
+print(fmap.shape)
+print(fmap.reshape(3 // 2, 2, 3 // 2, 2))`,
+          q: 'The scrying: a 3x3 feature map is reshaped for 2x2 pooling. What becomes of this working?',
+          options: [
+            'It prints (3, 3), then a (1, 2, 1, 2) block of the first four values',
+            'It prints (3, 3), then dies of a ValueError — 9 values cannot fill a (1, 2, 1, 2) shape',
+            'It prints (3, 3), then a (2, 2) block',
+            'Nothing — Python refuses the program before any line runs',
+          ],
+          answer: 1,
+          raises: 'ValueError',
+          explain: 'The pool reshape needs an EVEN-sided map: 3 // 2 = 1, so the target shape '
+            + '(1, 2, 1, 2) holds 4 values, but fmap has 9 — reshape refuses to invent or drop '
+            + 'data and raises ValueError. The first print runs, then the reshape dies at '
+            + 'runtime. This is exactly why pool2 trims to a multiple of the window before '
+            + 'reshaping.',
+        },
+      ],
       quiz: [
         {
           q: 'What is the latent space of a trained autoencoder?',
@@ -1571,31 +1723,30 @@ assert "0.0024" in _stdout, "Print round(float(history[-1]), 4) — the trained 
       concept: 'a miniature GAN in raw numpy: a generator net and discriminator net trained by alternating updates on a 1-D target distribution, with honest notes on mode collapse and instability',
       xp: 40,
       narrative: 'The vault decodes what the loom already knew. The Forge\'s true engine was '
-        + 'crueler and stranger: two minds chained facing each other. The first — the '
+        + 'crueler: two minds chained facing each other. The first — the '
         + '**forger** — turns raw noise into coin. The second — the **sentinel** — is handed '
-        + 'true coin and forged coin unlabeled, and paid to tell them apart. Every round, the '
-        + 'sentinel learns from its mistakes; every round, the forger learns from the '
-        + 'sentinel\'s verdicts, adjusting its hand until the sentinel\'s eye slides off its '
-        + 'work. Neither is ever taught what true coin looks like. The forger learns it '
-        + 'anyway, from nothing but the failure to pass. The moderns call the arrangement a '
-        + 'GAN. The wardens called it what it is: a duel that forges its own winner.',
+        + 'true and forged coin unlabeled, and paid to tell them apart. Every round the '
+        + 'sentinel learns from its mistakes; every round the forger learns from the '
+        + 'sentinel\'s verdicts, adjusting its hand until the sentinel\'s eye slides off. '
+        + 'Neither is ever taught what true coin looks like; the forger learns it anyway, '
+        + 'from nothing but its failures to pass. The moderns call it a GAN. The wardens called '
+        + 'it what it is: a duel that forges its own winner.',
       sections: [
         {
           heading: 'Two minds, one coin',
-          body: 'The target is humble on purpose: **true coin** is a stream of values drawn '
-            + 'from a seeded Gaussian — mean 3.0, spread 0.5. The forger must learn to mint '
-            + 'values indistinguishable from it, never being shown the numbers 3.0 or 0.5.\n\n'
+          body: 'The target is humble on purpose: **true coin** is values from a seeded '
+            + 'Gaussian — mean 3.0, spread 0.5. The forger must mint values indistinguishable '
+            + 'from it, never shown 3.0 or 0.5.\n\n'
             + '- **The forger (generator)** is one line: `g = wg * z + bg`, where `z` is raw '
-            + 'noise from a standard Gaussian. Two parameters — a scale and a shift — which is '
-            + 'exactly enough to reshape standard noise into any Gaussian. It starts wrong: '
-            + '`wg = 1.0, bg = 0.0`.\n'
+            + 'noise from a standard Gaussian. Two parameters — scale and shift — enough to '
+            + 'reshape standard noise into any Gaussian. It starts wrong: `wg = 1.0, bg = 0.0`.\n'
             + '- **The sentinel (discriminator)** is the two-layer judge from the Last '
-            + 'Alliance: 8 tanh judges reading one value, then a sigmoid verdict — '
-            + '`p = sigmoid(tanh(np.outer(x, W1) + b1) @ w2 + b2)` — the probability that x '
-            + 'is true coin.\n\n'
-            + 'Below, the two meet untrained. The sentinel\'s verdicts are near-random noise — '
-            + 'it even favors some forgeries over truth. Every skill in this duel will be '
-            + 'learned from zero, in public, by arithmetic.',
+            + 'Alliance: 8 tanh judges over one value, then a sigmoid verdict — '
+            + '`p = sigmoid(tanh(np.outer(x, W1) + b1) @ w2 + b2)` — the probability that x is '
+            + 'true coin.\n\n'
+            + 'Below, the two meet untrained: the sentinel\'s verdicts are near-random, even '
+            + 'favoring some forgeries over truth. Every skill here is learned from zero, in '
+            + 'public, by arithmetic.',
           code: py`import numpy as np
 
 def sigmoid(z):
@@ -1622,24 +1773,20 @@ print(sentinel(fake).round(2))    # [0.48 0.45 0.48 0.58 0.44] -- worthless, so 
         },
         {
           heading: 'The alternating rite',
-          body: 'Each round of the duel is two half-steps, and both are gradients you already '
-            + 'own:\n\n'
-            + '- **Sentinel\'s half**: draw a batch of true coin (label 1) and a batch of '
-            + 'forgeries (label 0), concatenate, and take one cross-entropy step — the error '
-            + 'signal at the verdict is `(p - y)`, exactly as in the Last Alliance, then '
-            + 'backprop through tanh as always.\n'
+          body: 'Each round is two half-steps, both gradients you already own:\n\n'
+            + '- **Sentinel\'s half**: draw a batch of true coin (label 1) and forgeries '
+            + '(label 0), concatenate, and take one cross-entropy step — the verdict error is '
+            + '`(p - y)`, as in the Last Alliance, then backprop through tanh.\n'
             + '- **Forger\'s half**: mint fresh forgeries, ask the sentinel, and descend the '
-            + 'loss of *failing to be believed*: the error at the verdict is `(p - 1)` — the '
-            + 'forger pretends its coin deserves label 1 and lets the blame flow all the way '
-            + 'BACK THROUGH THE SENTINEL\'S BODY into `wg` and `bg` (the chain continues '
-            + '`dh @ W1`, the derivative of the verdict with respect to the coin itself). The '
-            + 'sentinel\'s weights are left untouched in this half — it is a lens for blame, '
-            + 'not a student.\n\n'
-            + 'Two thousand rounds take a breath and a half. Watch `drift` — the distance '
-            + 'between the forger\'s center and the true 3.0 — collapse from 2.97 toward '
-            + 'nothing, and the minted coin\'s spread settle at the true 0.5. The sentinel\'s '
-            + 'verdict on the finished forgeries: 0.5 — a coin flip. **Fooled is the fixed '
-            + 'point.**',
+            + 'loss of *failing to be believed*: the verdict error is `(p - 1)` — the forger '
+            + 'pretends its coin deserves label 1 and lets the blame flow BACK THROUGH '
+            + 'THE SENTINEL\'S BODY into `wg` and `bg` (the chain continues `dh @ W1`, the '
+            + 'verdict\'s derivative w.r.t. the coin). The sentinel\'s weights stay untouched — '
+            + 'a lens for blame, not a student.\n\n'
+            + 'Two thousand rounds take a breath. Watch `drift` — the forger\'s center against '
+            + '3.0 — collapse from 2.97 toward nothing, the minted spread settle at 0.5, and the '
+            + 'sentinel\'s verdict on the forgeries reach 0.5 — a coin flip. **Fooled is the '
+            + 'fixed point.**',
           code: py`import numpy as np
 
 def sigmoid(z):
@@ -1704,26 +1851,23 @@ print(round(float(sigmoid(h @ w2 + b2).mean()), 2))    # 0.5 -- a coin flip`,
           heading: 'The forger\'s diseases',
           body: 'Now the honesty, because this duel is famously treacherous to train:\n\n'
             + '- **Mode collapse.** If true coin came in three denominations, the forger\'s '
-            + 'laziest winning move is to mint ONE of them perfectly, forever. The sentinel '
-            + 'eventually notices the missing variety and the duel lurches — but many GANs die '
-            + 'minting one excellent coin. Our target has one mode, so our duel is safe from '
-            + 'this by *construction*, not by skill. Know the difference.\n'
-            + '- **Instability.** The forger descends a landscape that MOVES — every '
-            + 'sentinel update redraws the loss under the forger\'s feet. Nothing guarantees '
-            + 'the spiral settles; duels oscillate, diverge, or chase each other in circles. '
-            + 'Ours settles because the nets are tiny, the rates are gentle, and the seeds are '
-            + 'fixed.\n\n'
-            + 'Both diseases teach the same testing doctrine, which the challenge enforces: '
-            + 'judge a trained forger by its **distribution** — moments within tolerances, '
-            + 'drift trending down — never by exact output values, which no honest adversarial '
-            + 'run reproduces twice.\n\n'
-            + 'And the bridge: aim this same duel at 64-pixel coins with the vault\'s decoder '
-            + 'as forger and a conv-pyramid as sentinel, and you have an image GAN — the '
-            + 'engines behind the first great waves of synthetic faces. Their heirs, the '
-            + '**diffusion models**, retire the duel: they learn to reverse a gradual '
-            + 'drowning-in-noise, step by step — steadier to train, no sentinel required, same '
-            + 'forgery at the end. The Codex teaches the duel first because the duel is the '
-            + 'idea laid bare: *generation is learning to pass a test you cannot read.*',
+            + 'laziest win is to mint ONE perfectly, forever. Many GANs die minting one '
+            + 'excellent coin. Our target has one mode, so our duel is safe by *construction*, '
+            + 'not skill — know the difference.\n'
+            + '- **Instability.** The forger descends a landscape that MOVES — every sentinel '
+            + 'update redraws the loss under its feet. Nothing guarantees the spiral settles; '
+            + 'duels oscillate, diverge, or chase in circles. Ours settles because the nets are '
+            + 'tiny, the rates gentle, the seeds fixed.\n\n'
+            + 'Both diseases teach the same doctrine, which the challenge enforces: judge a '
+            + 'trained forger by its **distribution** — moments within tolerances, drift '
+            + 'trending down — never by exact output values, which no adversarial run reproduces '
+            + 'twice.\n\n'
+            + 'And the bridge: aim this duel at 64-pixel coins with the vault\'s decoder as '
+            + 'forger and a conv-pyramid as sentinel, and you have an image GAN — the engine '
+            + 'behind the first synthetic faces. Their heirs, the **diffusion models**, retire '
+            + 'the duel: they learn to reverse a gradual drowning-in-noise — steadier to train, '
+            + 'no sentinel, same forgery at the end. The Codex teaches the duel first because it '
+            + 'is the idea laid bare: *generation is learning to pass a test you cannot read.*',
         },
       ],
       challenge: {
@@ -1920,56 +2064,52 @@ assert "0.5" in _stdout, "Print round(float(forgeries.std()), 2) — it reads 0.
       title: 'The Price of Forgery',
       concept: 'the ethics and defense of generative craft: deepfake harms, provenance and watermarking, and a runnable statistical counterfeit-detector built from train-set fingerprints',
       xp: 40,
-      narrative: 'The Forge is yours now. Before the Codex lets you keep it, it shows you the '
+      narrative: 'The Forge is yours now. Before the Codex lets you keep it, it shows the '
         + 'bill. In the archive of the war there is a room the wardens do not show visitors: '
-        + 'confessions no one made, recorded in voices taken from the dead; seals of safe '
-        + 'passage that led columns of refugees to nothing; a queen\'s face, worn by something '
-        + 'else, addressing her own army. Every artifact in that room was minted by the craft '
-        + 'you learned last night. The Codex does not moralize — it prices. And then, because '
-        + 'the ledger has two columns, it teaches the counter-craft: the fingerprints a naive '
-        + 'forger cannot fake, and the marks an honest mint can leave on purpose. The '
-        + 'counterfeit-detector\'s trade, echoing the byte-fingerprint doctrine of the old '
-        + 'hunts. Two edges, one blade. You will carry both.',
+        + 'confessions no one made, in voices taken from the dead; seals of safe passage that '
+        + 'led refugees to nothing; a queen\'s face, worn by something else, addressing her own '
+        + 'army. Every artifact in that room was minted by the craft you learned last night. '
+        + 'The Codex does not moralize — it prices. And then, because the ledger has two '
+        + 'columns, it teaches the counter-craft: the fingerprints a naive forger cannot fake, '
+        + 'and the marks an honest mint leaves on purpose — the counterfeit-detector\'s trade, '
+        + 'echoing the byte-fingerprint doctrine of the old hunts. Two edges, one blade — '
+        + 'carry both.',
       sections: [
         {
           heading: 'The bill for the Forge',
-          body: 'Name the harms plainly, because vagueness is how bills go unpaid:\n\n'
-            + '- **The person imitated.** A forged face or voice spends someone else\'s trust — '
-            + 'reputation, savings, safety. The victim of a deepfake pays for a crime they '
-            + 'never committed, with evidence that never existed.\n'
-            + '- **The person deceived.** Scams wearing a family member\'s voice; markets moved '
-            + 'by synthetic announcements; voters shown events that never occurred. The deceived '
-            + 'pay in money, panic, and choices made on poisoned ground.\n'
+          body: 'Name the harms plainly:\n\n'
+            + '- **The person imitated.** A forged face or voice spends another\'s trust — '
+            + 'reputation, savings, safety. The victim pays for a crime they never committed, '
+            + 'on evidence that never existed.\n'
+            + '- **The person deceived.** Scams in a family member\'s voice; markets moved by '
+            + 'synthetic announcements; voters shown events that never occurred. The deceived '
+            + 'pay in money, panic, and poisoned choices.\n'
             + '- **Everyone else — the deepest cost.** When anything can be forged, everything '
-            + 'can be *denied*. The guilty learn to answer true evidence with "fabricated," and '
-            + 'the honest cannot prove otherwise. The wardens call this the **liar\'s '
-            + 'dividend**: the counterfeit\'s final victim is the credibility of true coin.\n\n'
-            + 'Mark that the third harm arrives even if you never mint a single malicious '
-            + 'forgery — it is priced on the *existence* of the craft. That is why the '
-            + 'counter-craft below is not optional armor. Detection, provenance, and honest '
-            + 'marking are what keep a world with forges in it able to believe anything at '
-            + 'all.',
+            + 'can be *denied*. The guilty answer true evidence with "fabricated"; the honest '
+            + 'cannot prove otherwise. The wardens call this the **liar\'s dividend**: '
+            + 'the counterfeit\'s final victim is the credibility of true coin.\n\n'
+            + 'The third harm arrives even if you never mint one malicious forgery — it is '
+            + 'priced on the *existence* of the craft. That is why the counter-craft below is '
+            + 'not optional: detection, provenance, and honest marking keep a world with forges '
+            + 'able to believe anything at all.',
         },
         {
           heading: 'Provenance, and the maker\'s mark',
-          body: 'Two defenses work *forward*, at minting time, and you should know both by '
-            + 'name:\n\n'
-            + '- **Provenance** — a chain of custody for images: the capturing glass signs '
-            + 'what it saw, every edit adds a signed entry, and the viewer checks the chain\'s '
-            + 'seals. (The moderns build this as signed content credentials.) Provenance does '
-            + 'not say *this is true* — it says *this is what touched it*, which is usually '
-            + 'enough.\n'
+          body: 'Two defenses work *forward*, at minting time:\n\n'
+            + '- **Provenance** — a chain of custody: the capturing glass signs what it saw, '
+            + 'every edit adds a signed entry, the viewer checks the seals. (The moderns call '
+            + 'these content credentials.) It does not say *this is true* — only *this is what '
+            + 'touched it*, usually enough.\n'
             + '- **Watermarking** — an honest mint stamps its forgeries as forgeries: a faint '
-            + 'statistical pattern woven into the output, invisible to the eye, loud to a '
-            + 'detector who knows the key.\n\n'
-            + 'The demonstration stamps a seal with a checkerboard mark thirty times fainter '
-            + 'than the image itself. No eye catches it; the keyed statistic — correlate the '
-            + 'image with the mark and average — moves from 0.0 to 0.03, exactly the stamp\'s '
-            + 'strength. And the honesty: a *single* thin statistic like ours is feeble armor '
-            + '— re-noising, cropping, or re-encoding can scrub it, so real watermarks spread '
-            + 'the mark across thousands of dimensions and accept an arms race with '
-            + 'scrubbers. Watermarks mark the *cooperative* forger. The uncooperative one is '
-            + 'the next section\'s problem.',
+            + 'pattern woven into the output, invisible to the eye, loud to a detector who '
+            + 'holds the key.\n\n'
+            + 'The demo stamps a seal with a checkerboard mark thirty times fainter than the '
+            + 'image. No eye catches it; the keyed statistic — correlate image with '
+            + 'mark and average — moves from 0.0 to 0.03, exactly the stamp\'s strength. And '
+            + 'the honesty: one thin statistic like ours is feeble armor — re-noising, cropping, '
+            + 'or re-encoding scrubs it, so real watermarks spread the mark across thousands of '
+            + 'dimensions and accept an arms race with scrubbers. Watermarks catch the '
+            + '*cooperative* forger; the uncooperative one is the next section\'s problem.',
           code: py`import numpy as np
 
 yy, xx = np.mgrid[0:8, 0:8]
@@ -1989,27 +2129,25 @@ print(round(float(np.mean(stamped * mark)), 4))        # 0.03 -- keyed: it sings
         },
         {
           heading: 'Fingerprints the forger forgets',
-          body: 'Now the uncooperative forger — no watermark, no provenance, actively trying to '
-            + 'pass. You hunt it the way the old byte-doctrine hunted tampered scrolls: **find '
-            + 'a statistic the genuine population cannot help having, and the forger did not '
-            + 'think to fake.**\n\n'
-            + 'The naive forger below is no strawman — it is what "matching the data" means '
-            + 'to a first attempt: copy every pixel\'s mean and spread from the true archive, '
-            + '*exactly*. First-order statistics: flawless. But real sigils are woven — when a '
-            + 'ring-thread pulls bright, ALL its pixels rise together. Neighboring pixels '
-            + '**move together** across the archive. The forger mints each pixel alone, so '
-            + 'its pixels move alone.\n\n'
+          body: 'Now the uncooperative forger — no watermark, no provenance, trying to pass. '
+            + 'Hunt it as the old byte-doctrine hunted tampered scrolls: **find a '
+            + 'statistic the genuine population cannot help having, and the forger did not think '
+            + 'to fake.**\n\n'
+            + 'The naive forger below copies every pixel\'s mean and spread from the archive, '
+            + '*exactly* — what "matching the data" means at first. First-order statistics: '
+            + 'flawless. But real sigils are woven — when a ring-thread pulls bright, ALL its '
+            + 'pixels rise together. Neighbors **move together**; the forger mints each pixel '
+            + 'alone, so pixels move alone.\n\n'
             + '- The fingerprint: subtract the archive\'s average sigil (each pixel\'s mean), '
-            + 'then correlate each pixel with its right-hand neighbor, pooled over the whole '
-            + 'set: `np.corrcoef` of the two shifted views.\n'
+            + 'then correlate each pixel with its right-hand neighbor: `np.corrcoef` of the two '
+            + 'shifted views.\n'
             + '- Genuine archive: about **0.76** — the loom\'s threads bind neighbors.\n'
             + '- Moment-matched forgeries: about **0.01** — perfect means, no weave.\n\n'
-            + 'One statistic, and the counterfeit that matched every per-pixel number is '
-            + 'naked. This is the true shape of the detection war: each generation of forgers '
-            + 'learns yesterday\'s fingerprint (GANs DO learn correlations — and leave subtler '
-            + 'spectral residues instead), and the detectors move to the next statistic the '
-            + 'forge still forgets. No fingerprint is final. The doctrine is the weapon, not '
-            + 'any one statistic.',
+            + 'One statistic, and the counterfeit that matched every per-pixel number is naked. '
+            + 'This is the detection war: each forger generation learns yesterday\'s fingerprint '
+            + '(GANs learn correlations, leaving subtler spectral residues), and detectors move '
+            + 'to the next statistic the forge forgets. No fingerprint is final; the doctrine is '
+            + 'the weapon, not any one statistic.',
           code: py`import numpy as np
 
 yy, xx = np.mgrid[0:8, 0:8]
@@ -2213,6 +2351,49 @@ assert "forgery caught: True" in _stdout, "Third print: f-string reporting the f
     victoryText: 'Brand found, forgery minted in open court, counterfeit caught by its missing weave — the Forge is yours, and so is the blade\'s other edge.',
     xp: 500,
     flawlessBonus: 50,
+    barks: {
+      intro: [
+        'Look closely. I am flawless — every seal, every thread. Why would you doubt me?',
+        'I wear the archive\'s own face. Prove I am not it. You cannot, and you know it.',
+      ],
+      hit: [
+        'You looked, and looking was enough for you. Looking is always enough.',
+        'My moments match yours to the last decimal. What more could a true thing be?',
+        'You hunted the brand and found nothing. So there is nothing. Isn\'t that how it works?',
+        'Your threshold trembles. Lower it a little — for me — and I am genuine.',
+        'Every pixel of me is correct. You measured the wrong thing, as they always do.',
+      ],
+      playerFail: [
+        'Your instrument breaks. Mine is whole, and whole is proof enough.',
+        'The forge spits you out. It never questions me.',
+        'A cracked spell, and still you cannot say what I lack.',
+      ],
+      lastCandle: [
+        'One candle. Squint by it, and I am indistinguishable from the truth.',
+        'Almost. Call me genuine and be done — no one will ever check.',
+      ],
+      death: [
+        'The weave. You looked past every perfect number to the thread I could not fake.',
+        'Row eleven, column five. You did not look at me. You measured me.',
+      ],
+    },
+    premortem: {
+      prompt: 'The trial is four crafts in one working — find the brand, train the vault, mint '
+        + 'an exhibit, read the fingerprint — and each rite feeds the next. What is the wisest '
+        + 'first move before you write a single verdict?',
+      options: [
+        'Write all four verdicts up front from intuition, then bend the code until it agrees.',
+        'Build and check each craft in order — brand, vault, mint, fingerprint — confirming each stage stands before the next leans on it.',
+        'Skip straight to the fingerprint; it is the only verdict that truly matters.',
+        'Train the vault first and let its loss decide whether the brand is present.',
+      ],
+      answer: 1,
+      explain: 'Each rite feeds the next, and a broken stage poisons every verdict downstream. '
+        + 'Forge and verify the crafts in order — features, then the vault, then the mint, then '
+        + 'the fingerprint — so no later ruling rests on an unchecked foundation. When a verdict '
+        + 'looks wrong, debug the earliest broken stage first; the rest often stands once it '
+        + 'does.',
+    },
     gauntlet: [
       {
         q: 'For a normalized grayscale image `img`, what does `img[::-1, :]` produce?',
@@ -2326,6 +2507,11 @@ assert "forgery caught: True" in _stdout, "Third print: f-string reporting the f
         + 'against `imgs[:, :, 1:].ravel()` with `np.corrcoef`). Read '
         + '`real_fp = neighbor_corr(X)` and `naive_fp = neighbor_corr(naive)`, then rule: '
         + '`genuine_pass = bool(real_fp > 0.4)` and `forgery_caught = bool(naive_fp < 0.4)`.\n'
+        + '- **V. The written ruling.** Build `findings = {...}` — a dict carrying `"mark_row"` '
+        + '(`int(mark_row)`), `"mark_col"` (`int(mark_col)`), `"real_fp"` '
+        + '(`round(real_fp, 2)`), `"naive_fp"` (`round(naive_fp, 2)`), and `"ruling"`, one '
+        + 'honest sentence (40+ characters) naming where the brand lies and why the '
+        + 'moment-matched sheets are still caught.\n'
         + '- **The verdict.** Print exactly four lines: '
         + '`print(f"mark at ({mark_row}, {mark_col})")`, then `print(f"present: {present}")`, '
         + 'then `print(f"genuine passes: {genuine_pass}")`, then '
@@ -2364,6 +2550,9 @@ naive = X.mean(axis=0) + X.std(axis=0) * zn              # the apprentice's shee
 # TODO III: encode, decode, and forged — decode [[1.2, -0.8]], reshaped 8x8
 
 # TODO IV: neighbor_corr, real_fp, naive_fp, genuine_pass, forgery_caught
+
+# TODO V: findings = {...} — mark_row, mark_col, real_fp, naive_fp, and a
+#         one-sentence "ruling" (40+ chars) on the brand and the caught forgery
 
 # TODO: the four verdict prints, exactly as required
 `,
@@ -2432,15 +2621,15 @@ for _ in range(1000):
     b2 -= 0.2 * grad_b2
     history.append(np.mean(E ** 2))
 
-def encode(M):
+def encode(M: np.ndarray) -> np.ndarray:
     return M @ W1 + b1
 
-def decode(Z):
+def decode(Z: np.ndarray) -> np.ndarray:
     return Z @ W2 + b2
 
 forged = decode(np.array([[1.2, -0.8]])).reshape(8, 8)
 
-def neighbor_corr(S):
+def neighbor_corr(S: np.ndarray) -> float:
     C = S - S.mean(axis=0)
     imgs = C.reshape(-1, 8, 8)
     a = imgs[:, :, :-1].ravel()
@@ -2451,6 +2640,14 @@ real_fp = neighbor_corr(X)
 naive_fp = neighbor_corr(naive)
 genuine_pass = bool(real_fp > 0.4)
 forgery_caught = bool(naive_fp < 0.4)
+
+findings = {
+    "mark_row": int(mark_row),
+    "mark_col": int(mark_col),
+    "real_fp": round(real_fp, 2),
+    "naive_fp": round(naive_fp, 2),
+    "ruling": "The brand sits at row 11, column 5; the apprentice's sheets match every per-pixel moment yet miss the weave that binds true neighbors, so the counterfeit is caught by the one statistic it forgot.",
+}
 
 print(f"mark at ({mark_row}, {mark_col})")
 print(f"present: {present}")
@@ -2494,7 +2691,16 @@ assert genuine_pass is True and forgery_caught is True, "Both rulings must be Tr
 assert "mark at (11, 5)" in _stdout, "First verdict line: mark at (11, 5)."
 assert "present: True" in _stdout, "Second verdict line: present: True."
 assert "genuine passes: True" in _stdout, "Third verdict line: genuine passes: True."
-assert "forgery caught: True" in _stdout, "Fourth verdict line: forgery caught: True."`,
+assert "forgery caught: True" in _stdout, "Fourth verdict line: forgery caught: True."
+assert "findings" in dir() and isinstance(findings, dict), "The court demands a written ruling — build findings = {...}, a dict of your numbers and your reading. A trial with no findings acquits the counterfeit by default."
+for _k in ("mark_row", "mark_col", "real_fp", "naive_fp", "ruling"):
+    assert _k in findings, "findings is missing the key '" + _k + "' — the ruling must carry mark_row, mark_col, real_fp, naive_fp, and a prose ruling."
+assert int(findings["mark_row"]) == 11 and int(findings["mark_col"]) == 5, "findings['mark_row'] and ['mark_col'] must name the brand's true corner — (11, 5)."
+assert abs(float(findings["real_fp"]) - round(real_fp, 2)) < 1e-9, "findings['real_fp'] must be round(real_fp, 2) — the genuine archive's neighbor-correlation, 0.75."
+assert abs(float(findings["naive_fp"]) - round(naive_fp, 2)) < 1e-9, "findings['naive_fp'] must be round(naive_fp, 2) — the forger's neighbor-correlation, 0.01."
+_ruling = str(findings["ruling"]).lower()
+assert len(_ruling) >= 40, "findings['ruling'] must be a real sentence (40+ characters) — name where the brand lies and why the moment-matched sheets are still caught."
+assert any(_kw in _ruling for _kw in ("brand", "weave", "neighbor", "fingerprint", "forger", "counterfeit", "moment", "mark", "genuine", "corr", "second", "statistic")), "findings['ruling'] must speak to the evidence — the brand's place, or the weave the moment-matched forger could not fake."`,
       successText: '',
       xp: 0,
     },
@@ -2563,6 +2769,10 @@ assert "forgery caught: True" in _stdout, "Fourth verdict line: forgery caught: 
     {
       term: 'watermarking & provenance',
       def: 'The forward defenses of an honest mint: watermarking weaves a faint keyed statistical pattern into generated output (invisible to the eye, loud to whoever holds the key); provenance signs a chain of custody from capture through every edit. Both mark the cooperative forger — statistical fingerprints hunt the uncooperative one.',
+    },
+    {
+      term: 'kernel-centering error',
+      def: 'The silent convolution bug where a "same"-size filter pads asymmetrically (e.g. only the top-left) instead of by `k // 2` on every side — the output keeps the right shape and values but every feature is reported shifted by the padding offset, so an identity kernel moves the image and a detector points one pixel wrong. The mend is symmetric padding: `np.pad(img, k // 2)`.',
     },
   ],
 };

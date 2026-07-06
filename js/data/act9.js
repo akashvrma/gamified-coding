@@ -280,6 +280,110 @@ assert _lines[2] == "True", "Third line must be True — the two censuses agree 
         successText: 'The ledger reweighs itself: the loud words sink to nothing, and six quiet words rise — one per scroll, each naming what its scroll truly keeps.',
         xp: 100,
       },
+      trace: [
+        {
+          id: 'a9l1t1',
+          code: py`text = "the mask hides the mask and the crown"
+words = text.split()
+print(len(words))
+print(words.count("the"))
+print(len(set(words)))`,
+          q: 'The scrying: a message is split on spaces. What does this working print — the token count, the count of "the", then the vocabulary size?',
+          options: [
+            '5\n3\n8',
+            '8\n3\n5',
+            '8\n2\n8',
+            '8\n3\n8',
+          ],
+          answer: 1,
+          explain: 'split() yields 8 tokens; "the" appears 3 times; set() keeps each distinct '
+            + 'word once, so the vocabulary is 5. Term frequency counts occurrences (8, and 3 '
+            + 'for "the"); the vocabulary is the DISTINCT words — the two opposing jaws of '
+            + 'TF-IDF. The first option swaps the token count and vocabulary size; the third '
+            + 'miscounts "the".',
+        },
+      ],
+      extras: [
+        {
+          id: 'a9l1x1',
+          kind: 'echo',
+          title: 'The Rarest Word',
+          prompt: 'Four masked scrolls this time. Weigh their words by the textbook rite and '
+            + 'name the single word that carries the most — the rarest one.\n\n'
+            + 'Requirements, exactly:\n\n'
+            + '- Census: `vocab = sorted({w for t in scrolls for w in t.split()})`, '
+            + '`word_to_idx = {w: i for i, w in enumerate(vocab)}`, `N = len(scrolls)`, '
+            + '`V = len(vocab)`.\n'
+            + '- Build `counts = np.zeros((N, V))` and add `1.0` at `counts[i, word_to_idx[w]]` '
+            + 'for each word `w` of scroll `i`.\n'
+            + '- `df = (counts > 0).sum(axis=0)`, `idf = np.log(N / df)`, and '
+            + '`rarest = vocab[int(np.argmax(idf))]` — the word with the highest idf.\n'
+            + '- Print `V`, then `round(float(idf[word_to_idx["the"]]), 3)`, then `rarest`, '
+            + 'each on its own line.',
+          starter: py`import numpy as np
+
+# The four masks, conjured. Do not alter the scrolls.
+scrolls = [
+    "the mask hides the mask",
+    "the crown hides the king",
+    "the mask keeps the crown",
+    "the king keeps the throne",
+]
+
+# TODO: vocab (sorted unique), word_to_idx, N, V
+
+# TODO: counts, df = (counts > 0).sum(axis=0), idf = np.log(N / df)
+
+# TODO: rarest = vocab[int(np.argmax(idf))]
+
+# TODO: print V, then round(float(idf[word_to_idx["the"]]), 3), then rarest
+`,
+          solution: py`import numpy as np
+
+scrolls = [
+    "the mask hides the mask",
+    "the crown hides the king",
+    "the mask keeps the crown",
+    "the king keeps the throne",
+]
+
+vocab = sorted({w for t in scrolls for w in t.split()})
+word_to_idx = {w: i for i, w in enumerate(vocab)}
+N = len(scrolls)
+V = len(vocab)
+
+counts = np.zeros((N, V))
+for i, t in enumerate(scrolls):
+    for w in t.split():
+        counts[i, word_to_idx[w]] += 1.0
+
+df = (counts > 0).sum(axis=0)
+idf = np.log(N / df)
+rarest = vocab[int(np.argmax(idf))]
+
+print(V)
+print(round(float(idf[word_to_idx["the"]]), 3))
+print(rarest)`,
+          validation: py`import numpy as np
+_v = sorted({_w for _t in scrolls for _w in _t.split()})
+assert vocab == _v, "vocab must be the sorted unique words of the four scrolls."
+assert V == 7 and N == 4, "The census miscounts — 4 scrolls, 7 distinct words."
+assert counts.shape == (4, 7), "counts must be (N, V) = (4, 7) — one row per scroll, one column per word."
+assert abs(counts[0, word_to_idx["mask"]] - 2.0) < 1e-9, "counts must record raw occurrences — 'mask' appears twice in scroll 0."
+assert abs(df[word_to_idx["the"]] - 4.0) < 1e-9, "df of 'the' must be 4 — it lives in every scroll. Count documents, not occurrences."
+assert abs(idf[word_to_idx["the"]]) < 1e-9, "idf of 'the' must be exactly 0 — log(4/4) = 0. A word in every scroll weighs nothing."
+assert abs(idf[word_to_idx["throne"]] - np.log(4.0)) < 1e-6, "idf of 'throne' must be log(4/1) = log(4) — it appears in one scroll only."
+assert rarest == "throne", "rarest must be 'throne' — the single word in exactly one scroll, so the highest idf. Use np.argmax(idf)."
+_lines = [_l.strip() for _l in _stdout.splitlines() if _l.strip()]
+assert _lines[:3] == ["7", "0.0", "throne"], "Print three lines: V (7), the idf of 'the' (0.0), and the rarest word (throne)."`,
+          successText: 'Seven words weighed, and the one that means the most is the one said only once: throne.',
+          hints: [
+            'The census is the same set-comprehension-then-enumerate you used in the lesson. counts is a double loop adding 1.0 at counts[i, word_to_idx[w]]; df counts DOCUMENTS, not occurrences: (counts > 0).sum(axis=0).',
+            'idf = np.log(N / df). The rarest word is the one with the largest idf: vocab[int(np.argmax(idf))]. The three prints read 7, 0.0, and throne.',
+          ],
+          xp: 20,
+        },
+      ],
       quiz: [
         {
           q: 'A word appears in every one of `N` documents. What is its textbook idf, `log(N / df)`?',
@@ -685,16 +789,16 @@ assert _lines[2] == "0", "The third line must be 0 — cold ash and sorrow is a 
       sections: [
         {
           heading: 'Dense vectors — what an embedding is',
-          body: 'Every representation so far has been **sparse**: one slot per vocabulary '
-            + 'word, almost all zeros. Sparse vectors have a fatal social flaw — every pair of '
-            + 'different words is equally unrelated. The one-hot rows for `wolf` and `hound` '
-            + 'are perpendicular, exactly as perpendicular as `wolf` and `teaspoon`.\n\n'
+          body: 'Every representation so far has been **sparse**: one slot per word, almost '
+            + 'all zeros. Sparse vectors have a fatal social flaw — every pair of different '
+            + 'words is equally unrelated. The one-hot rows for `wolf` and `hound` are '
+            + 'perpendicular, exactly as perpendicular as `wolf` and `teaspoon`.\n\n'
             + 'An **embedding** replaces the slot with a *position*: each word becomes a dense '
-            + 'vector of real numbers — a point in a shared space — arranged so that words used '
-            + 'alike sit near each other. Where do the positions come from? From evidence. The '
+            + 'vector — a point in a shared space — arranged so that words used alike sit near '
+            + 'each other. Where do the positions come from? From evidence. The '
             + '**distributional hypothesis** says words that appear in the same company have '
             + 'related meanings: `wolf` and `hound` both howl, hunt, and circle camps, so any '
-            + 'honest accounting of their company must place them close.\n\n'
+            + 'honest accounting places them close.\n\n'
             + 'The crudest honest accounting is the **co-occurrence matrix**: one row per '
             + 'word, counting how often every other word appears within a small window of it.',
           code: py`import numpy as np
@@ -715,11 +819,10 @@ candle = np.array([-1.5, 2.2, 0.1])   # far away: different company entirely`,
             + '- For word `i` in a sentence, its **neighbors** are positions `j != i` with '
             + '`max(0, i-2) <= j < min(len(words), i+3)`.\n'
             + '- `C[word_to_idx[w], word_to_idx[neighbor]] += 1.0` for every such pair.\n\n'
-            + 'Row `w` of `C` is now a crude embedding of `w`: a fingerprint of its company. '
-            + '`wolf` and `hound` never appear in the same sentence below — yet their rows '
-            + 'come out nearly identical, because they keep identical company: both howl, '
-            + 'hunt, and haunt the cold camp. That is the distributional hypothesis doing its '
-            + 'quiet work.',
+            + 'Row `w` of `C` is a crude embedding of `w`: a fingerprint of its company. `wolf` '
+            + 'and `hound` never share a sentence below — yet their rows come out nearly '
+            + 'identical, because they keep identical company. That is the distributional '
+            + 'hypothesis at quiet work.',
           code: py`import numpy as np
 
 gallery = [
@@ -751,10 +854,10 @@ print(C[word_to_idx["wolf"], word_to_idx["howls"]])  # 1.0 -- wolf keeps company
         },
         {
           heading: 'Cosine — the angle of kinship',
-          body: 'To measure kinship between two rows, plain distance misleads: a word used '
-            + 'twenty times has a long row, a rare synonym a short one, and Euclidean distance '
-            + 'punishes the difference in *loudness*. What matters is the difference in '
-            + '**direction** — the mixture of company, not the amount.\n\n'
+          body: 'To measure kinship between two rows, plain distance misleads: a frequent word '
+            + 'has a long row, a rare synonym a short one, and Euclidean distance punishes the '
+            + '*loudness* difference. What matters is the difference in **direction** — the '
+            + 'mixture of company, not the amount.\n\n'
             + '- **Cosine similarity**: `cos(u, v) = (u . v) / (|u| * |v|)` — the dot product, '
             + 'divided by both lengths. In code: `np.dot(u, v) / (np.linalg.norm(u) * '
             + 'np.linalg.norm(v))`.\n'
@@ -762,8 +865,8 @@ print(C[word_to_idx["wolf"], word_to_idx["howls"]])  # 1.0 -- wolf keeps company
             + 'to -1 (opposed). Doubling a vector\'s length changes nothing: `cos(u, 2u) = 1`.\n'
             + '- sklearn\'s `cosine_similarity(C)` computes the whole kinship table at once.\n\n'
             + 'With cosine in hand, **nearest neighbor** is a lookup: compare a word\'s row '
-            + 'against every other row, keep the best. This — literally this — is how the '
-            + 'talking things find "the word most like yours."',
+            + 'against every other, keep the best. This is how the talking things find "the '
+            + 'word most like yours."',
           code: py`import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -786,17 +889,16 @@ print(S.shape, round(float(S[0, 1]), 3))   # (3, 3) 1.0 -- the same arithmetic, 
             + 'tool: **PCA**. `PCA(n_components=2, random_state=0).fit_transform(C)` presses '
             + 'each word\'s company into 2 coordinates that preserve as much variation as '
             + 'possible — a map of the invisible room. (On our toy gallery it flattens '
-            + '`wolf` and `hound` onto almost the same point: company this identical leaves '
-            + 'nothing for the second dimension to say.)\n\n'
-            + 'Famously, embedding spaces half-support **analogies by arithmetic**: take the '
-            + 'vector `wolf - hound + lantern` and its nearest neighbor is `candle` — the '
-            + 'space answers *wolf is to hound as candle is to lantern*. Be honest about the '
-            + 'limits:\n\n'
+            + '`wolf` and `hound` onto almost one point: company this identical leaves the '
+            + 'second dimension nothing to say.)\n\n'
+            + 'Famously, embedding spaces half-support **analogies by arithmetic**: '
+            + '`wolf - hound + lantern` has nearest neighbor `candle` — the space answers '
+            + '*wolf is to hound as candle is to lantern*. Be honest about the limits:\n\n'
             + '- In our toy room it works because the pairs are near-twins; the subtraction '
             + 'barely moves the point.\n'
-            + '- In real embeddings trained on oceans of text, relation-directions (gender, '
-            + 'tense, capital-of) exist *partially*: the celebrated examples work, many '
-            + 'others fail, and the failures are silent.\n'
+            + '- In real embeddings, relation-directions (gender, tense, capital-of) exist '
+            + '*partially*: the celebrated examples work, many fail, and the failures are '
+            + 'silent.\n'
             + '- Embeddings also inherit every prejudice of the text that trained them — the '
             + 'company words keep includes the company we wish they did not.',
           code: py`import numpy as np
@@ -886,10 +988,10 @@ for s in gallery:
             if j != i:
                 C[word_to_idx[w], word_to_idx[words[j]]] += 1.0
 
-def cosine(u, v):
+def cosine(u: np.ndarray, v: np.ndarray) -> float:
     return float(np.dot(u, v) / (np.linalg.norm(u) * np.linalg.norm(v)))
 
-def nearest(word):
+def nearest(word: str) -> str:
     u = C[word_to_idx[word]]
     best, best_sim = None, -2.0
     for other in vocab:
@@ -942,6 +1044,27 @@ assert _lines[3] == "(20, 2)", "Fourth line must be (20, 2) — the shape of the
         successText: 'The map unrolls: beasts in one corner, lights in another, and the small words crowding the middle like servants at a funeral. No one placed them. The company did.',
         xp: 105,
       },
+      trace: [
+        {
+          id: 'a9l3t1',
+          code: py`room = {"wolf": 3, "hound": 3, "candle": 8}
+print(room["wolf"])
+print(room["lantern"])`,
+          q: 'The scrying: a word-to-position dict is looked up twice. What becomes of this working?',
+          options: [
+            'It prints 3, then None — a missing key defaults to None',
+            'It prints 3, then 0 — a missing key defaults to 0',
+            'It prints 3, then dies of a KeyError — "lantern" was never placed in the room',
+            'Nothing — Python refuses the program before any line runs',
+          ],
+          answer: 2,
+          raises: 'KeyError',
+          explain: 'Square-bracket lookup on a dict demands the key exist: room["wolf"] prints '
+            + '3, then room["lantern"] raises KeyError because "lantern" has no entry. Dicts do '
+            + 'NOT default missing keys — that is `.get(key, default)`. This is exactly why the '
+            + 'bag-of-words encoder guards every lookup with "if word in word_to_idx".',
+        },
+      ],
       quiz: [
         {
           q: 'What is the fatal flaw of one-hot vectors that embeddings exist to fix?',
@@ -1323,6 +1446,30 @@ assert _lines[2] == "0.432" and _lines[3] == "0.233", "The temperature shares mu
         successText: 'The portrait clears its painted throat and completes your sentence — fluent, obliging, and utterly without any idea what it just said.',
         xp: 105,
       },
+      trace: [
+        {
+          id: 'a9l4t1',
+          code: py`from collections import Counter, defaultdict
+
+model = defaultdict(Counter)
+for a, b in zip("the door the hall the door".split(), "door the hall the door the".split()):
+    model[a][b] += 1
+print(dict(model["the"]))
+print(model["the"]["door"])`,
+          q: 'The scrying: a bigram ledger counts which word followed which. What does this working print?',
+          options: [
+            "{'door': 2, 'hall': 1}\n2",
+            "{'door': 1, 'hall': 1}\n1",
+            "{'door': 2, 'hall': 1, 'the': 3}\n2",
+            'A KeyError — "the" was never assigned before being read',
+          ],
+          answer: 0,
+          explain: 'zip pairs each word with the next; "the" is followed by "door" twice and '
+            + '"hall" once, so model["the"] is {door: 2, hall: 1}. A defaultdict(Counter) '
+            + 'creates an empty Counter on first touch, so no key is ever missing — the fourth '
+            + 'option forgets that. model["the"]["door"] then reads the count, 2.',
+        },
+      ],
       quiz: [
         {
           q: 'What does a bigram language model actually store?',
@@ -1389,49 +1536,43 @@ assert _lines[2] == "0.432" and _lines[3] == "0.233", "The temperature shares mu
       title: 'The Turning of Attention',
       concept: 'scaled dot-product attention in raw numpy: queries, keys, values, softmax over scores, context-blended outputs — and how transformers stack this into the great echoes',
       xp: 40,
-      narrative: 'Every talking thing you have built so far wears one blindfold or another: '
-        + 'the bag forgets order, the bigram remembers one word back. But the echoes now '
-        + 'waking in the world do something older and stranger — the thing a reader does. In '
-        + '*the hollow crown waits*, your eye rests on **crown**, yet part of your attention '
-        + 'turns to **hollow** and part to **waits**, and the word\'s meaning is rebuilt from '
-        + 'what it gathered. The rite that performs this turning is three matrices and a '
-        + 'softmax. It is called attention, it fits on one slate, and it is the engine of the '
+      narrative: 'Every talking thing you have built wears a blindfold: the bag forgets order, '
+        + 'the bigram remembers one word back. But the echoes now waking do something older — '
+        + 'the thing a reader does. In *the hollow crown waits*, your eye rests on **crown**, '
+        + 'yet part of your attention turns to **hollow**, part to **waits**, and the word\'s '
+        + 'meaning is rebuilt from what it gathered. The rite that performs this turning is '
+        + 'three matrices and a softmax. It is called attention, and it is the engine of the '
         + 'age.',
       sections: [
         {
           heading: 'Queries, keys, values — the library of glances',
-          body: 'One analogy, then the mechanics. In a library index, you approach with a '
-            + '*question*, compare it against the *labels* on the drawers, and take *contents* '
-            + 'out of the drawers that match. Attention gives every word all three roles at '
-            + 'once. Each of the `n` words in a sentence carries three vectors, stacked into '
-            + 'three matrices of shape `(n, d)`:\n\n'
-            + '- **Q (query)** — what this word is looking for. *Crown* asks: what describes '
-            + 'me? what do I do?\n'
-            + '- **K (key)** — what this word advertises. *Hollow* answers: I am a describer '
-            + 'of things.\n'
-            + '- **V (value)** — the meaning this word will hand over if chosen.\n\n'
-            + 'The compatibility of word `i`\'s question with word `j`\'s advertisement is a '
-            + 'dot product — `Q[i] . K[j]` — so the whole table of compatibilities is one '
-            + 'matrix multiplication: `Q @ K.T`, shape `(n, n)`. High score: word `j` has '
-            + 'what word `i` seeks.',
+          body: 'One analogy first. In a library index you approach with a *question*, compare '
+            + 'it against the *labels* on the drawers, and take *contents* from the drawers that '
+            + 'match. Attention gives every word all three roles at once. '
+            + 'Each of the `n` words carries three vectors, stacked into three matrices of shape '
+            + '`(n, d)`:\n\n'
+            + '- **Q (query)** — what this word looks for. *Crown* asks: what describes me?\n'
+            + '- **K (key)** — what this word advertises. *Hollow* answers: I describe things.\n'
+            + '- **V (value)** — the meaning this word hands over if chosen.\n\n'
+            + 'Word `i`\'s question against word `j`\'s advertisement is a dot product '
+            + '`Q[i] . K[j]`, so the whole table of compatibilities is one matrix multiplication '
+            + '`Q @ K.T`, shape `(n, n)`: high where word `j` has what word `i` seeks.',
         },
         {
           heading: 'The rite itself — scores, softmax, blend',
-          body: 'Scaled dot-product attention is three lines of numpy, and you have already '
-            + 'forged every piece of it in Act VIII:\n\n'
-            + '- `scores = Q @ K.T / np.sqrt(d)` — all compatibilities, scaled (the reason '
-            + 'for the scaling is the next section\'s business).\n'
-            + '- `weights = softmax_rows(scores)` — each row becomes a probability '
-            + 'distribution: word `i`\'s attention budget, summing to exactly 1, spread over '
-            + 'every word it may borrow from.\n'
-            + '- `output = weights @ V` — each output row is a **weighted blend of value '
+          body: 'Scaled dot-product attention is three lines of numpy — every piece forged in '
+            + 'Act VIII:\n\n'
+            + '- `scores = Q @ K.T / np.sqrt(d)` — all compatibilities, scaled (why, next '
+            + 'section).\n'
+            + '- `weights = softmax_rows(scores)` — each row a probability distribution: word '
+            + '`i`\'s attention budget, summing to 1, spread over every word it may borrow '
+            + 'from.\n'
+            + '- `output = weights @ V` — each output row a **weighted blend of value '
             + 'vectors**: the word\'s new meaning, rebuilt from what it attended to.\n\n'
-            + 'Work the tiny example by hand. With `d = 4`, the scale is `sqrt(4) = 2`. If '
-            + '*pale*\'s query matches *king*\'s key with raw score 4, scaling gives 2, and '
-            + 'its scores against the other two words are 0. Softmax of `[0, 0, 2]`: '
-            + '`e^2 = 7.389`, total `1 + 1 + 7.389 = 9.389`, so *pale* spends `7.389 / 9.389 '
-            + '= 0.787` — near four-fifths of its attention — on *king*, and its output '
-            + 'vector becomes mostly *king*\'s value: the pallor now knows whom it describes.',
+            + 'Work it by hand. With `d = 4` the scale is `sqrt(4) = 2`. If *pale*\'s query '
+            + 'matches *king*\'s key with raw score 4, scaling gives 2 and its other scores are '
+            + '0. Softmax of `[0, 0, 2]` spends `0.787` — four-fifths — on *king*, so *pale*\'s '
+            + 'output becomes mostly *king*\'s value: the pallor now knows whom it describes.',
           code: py`import numpy as np
 
 def softmax_rows(z):
@@ -1471,18 +1612,16 @@ print(weights.sum(axis=1)) # [1. 1. 1.] -- every budget spent exactly`,
         {
           heading: 'Why divide by sqrt(d)',
           body: 'The scaling is not decoration. A dot product of two length-`d` vectors sums '
-            + '`d` terms, so raw scores grow with the dimension — and softmax is an '
-            + 'exponential amplifier. Feed it scores of 20 and 24 and the loser\'s share is '
-            + '`e^-4` — about 2 percent; feed it 200 and 240 and the loser effectively '
-            + 'ceases to exist. Unscaled attention in high dimension collapses toward a '
-            + 'brittle one-hot glare: every word staring at exactly one other word, all '
-            + 'nuance gone (and, in training, all gradient with it — a saturated softmax '
-            + 'learns nothing, as you saw with saturated sigmoids in Act VIII).\n\n'
-            + 'Dividing by `sqrt(d)` cancels the dimensional growth, keeping scores in the '
-            + 'range where softmax distributes budgets rather than crowning winners. Compare '
-            + 'the same matrices with and without the scale: unscaled, *hollow* spends 0.948 '
-            + 'of its budget on one word; scaled, a workable 0.711 — attentive, not '
-            + 'transfixed.',
+            + '`d` terms, so raw scores grow with the dimension — and softmax is an exponential '
+            + 'amplifier. Feed it 20 and 24 and the loser\'s share is `e^-4`, about 2 percent; '
+            + 'feed it 200 and 240 and the loser ceases to exist. Unscaled attention in high '
+            + 'dimension collapses to a brittle one-hot glare: every word staring at one other, '
+            + 'all nuance gone (and all gradient with it — a saturated softmax learns '
+            + 'nothing).\n\n'
+            + 'Dividing by `sqrt(d)` cancels the dimensional growth, keeping scores where '
+            + 'softmax distributes budgets rather than crowning winners. Compare the same '
+            + 'matrices with and without: unscaled, *hollow* spends 0.948 of its budget on one '
+            + 'word; scaled, a workable 0.711 — attentive, not transfixed.',
           code: py`import numpy as np
 
 def softmax_rows(z):
@@ -1499,23 +1638,21 @@ print(softmax_rows(Q @ K.T / 2.0).round(3))     # [[0.096 0.096 0.711 0.096]] --
         },
         {
           heading: 'From one turning to the new minds',
-          body: 'Now the honest map from this slate to the great echoes. In a **transformer**, '
-            + 'the Q, K, V matrices are not written by hand: each is produced from the same '
-            + 'token embeddings by a **learned** weight matrix — three linear layers, exactly '
-            + 'the species you forged in Act VIII. One attention turning is followed by a '
-            + 'small feedforward network; that pair is a **layer**; the model stacks dozens '
-            + 'of such layers, each running many attention **heads** in parallel (each head '
-            + 'its own Q/K/V, free to track a different kind of company — one head for '
-            + 'adjacency, one for subjects and their verbs, one for distant echoes of a '
-            + 'name). Every layer, every word\'s vector is rebuilt from context — meaning '
-            + 'compounding on meaning.\n\n'
-            + 'Train that stack on oceans of text with the objective you already own from '
-            + 'the portrait lesson — *predict the next word* — descending the same '
-            + 'cross-entropy you descended in Act VIII, and you get a **large language '
-            + 'model**. Nothing in the recipe is magic: matrices, softmax, gradients, scale. '
-            + 'Which is precisely why the portrait\'s failures — the stammer, the confident '
-            + 'interpolation — survive in the great echoes. The architecture grew. The '
-            + 'nature did not.',
+          body: 'Now the map to the great echoes. In a **transformer**, the Q, K, V matrices '
+            + 'are not written by hand: each is produced from the same '
+            + 'token embeddings by a **learned** weight matrix — three linear layers, the '
+            + 'species you forged in Act VIII. One attention turning plus a small feedforward '
+            + 'network is a **layer**; the model stacks dozens, each running many attention '
+            + '**heads** in parallel (each its own Q/K/V, tracking different company — '
+            + 'adjacency, subject-and-verb, distant echoes of a name). Every '
+            + 'layer, every word\'s vector is rebuilt from context — meaning compounding on '
+            + 'meaning.\n\n'
+            + 'Train that stack on oceans of text with the objective from the portrait lesson — '
+            + '*predict the next word* — descending the same cross-entropy, and you get a '
+            + '**large language model**. Nothing in the recipe is magic: matrices, softmax, '
+            + 'gradients, scale. Which is why the portrait\'s failures — the stammer, the '
+            + 'confident interpolation — survive in the great echoes. The architecture grew. '
+            + 'The nature did not.',
         },
       ],
       challenge: {
@@ -1641,6 +1778,68 @@ assert _lines[2] == "0.44", "Third line must be 0.44 — crown's rebuilt vector 
         successText: 'The gaze turns, the budgets spend themselves, and four words leave the rite knowing things about each other that no bag or bigram ever taught them.',
         xp: 110,
       },
+      extras: [
+        {
+          id: 'a9l5x1',
+          kind: 'cursed',
+          title: 'The Tribunal That Abstains',
+          prompt: 'The attention-rite runs, and for most sentences its weight-tables are '
+            + 'lawful — every row a set of shares that sum to one. But hand it a sentence whose '
+            + 'scores run large (a long, emphatic passage, or one the earlier layers have '
+            + 'shouted about) and the whole table returns as `nan`. Not an error — `nan`, '
+            + 'silent and contagious, poisoning every word downstream. The rows that overflow '
+            + 'are exactly the rows that mattered most.\n\n'
+            + 'Mend `softmax_rows` **in place**. Healed, it must return a lawful distribution '
+            + 'for ANY scores, however large — every row finite, non-negative, summing to one.',
+          starter: py`# THE TRIBUNAL THAT ABSTAINS -- the attention weights return as nan.
+# It is right on small scores and poisons everything on large ones.
+# Mend softmax_rows IN PLACE; the armor is one term.
+import numpy as np
+
+def softmax_rows(Z):
+    e = np.exp(Z)                          # raise every score
+    return e / e.sum(axis=1, keepdims=True)
+
+small = np.array([[0.0, 1.0, 2.0],
+                  [2.0, 1.0, 0.0]])
+big = np.array([[10.0, 800.0, 900.0],
+                [1.0, 2.0, 3.0]])
+
+print(softmax_rows(small).round(3))
+print(softmax_rows(big))
+`,
+          solution: py`import numpy as np
+
+def softmax_rows(Z):
+    e = np.exp(Z - Z.max(axis=1, keepdims=True))
+    return e / e.sum(axis=1, keepdims=True)
+
+small = np.array([[0.0, 1.0, 2.0],
+                  [2.0, 1.0, 0.0]])
+big = np.array([[10.0, 800.0, 900.0],
+                [1.0, 2.0, 3.0]])
+
+print(softmax_rows(small).round(3))
+print(softmax_rows(big))`,
+          validation: py`import numpy as np
+_small = softmax_rows(np.array([[0.0, 1.0, 2.0]]))
+assert np.allclose(_small.sum(axis=1), 1.0), "Each row of softmax must sum to 1 — the armor must not change that."
+_big = softmax_rows(np.array([[10.0, 800.0, 900.0], [1.0, 2.0, 3.0]]))
+assert np.all(np.isfinite(_big)), "softmax_rows still overflows on large scores — subtract each row's MAX before exp: np.exp(Z - Z.max(axis=1, keepdims=True))."
+assert np.allclose(_big.sum(axis=1), 1.0), "Every row must still sum to 1 after the fix — check the axis and keepdims on both the max and the sum."
+assert _big[0].argmax() == 2, "The largest score (900) must still win its row's largest share — the fix must not scramble the order."
+_z = np.array([[1.0, 2.0, 3.0]])
+assert np.allclose(softmax_rows(_z), softmax_rows(_z + 500.0)), "softmax is shift-invariant: adding a constant to a row must not change its distribution. If it does, the max-subtraction is wrong or missing."
+assert abs(float(_big[1, 2]) - float(softmax_rows(np.array([[1.0, 2.0, 3.0]]))[0, 2])) < 1e-9, "A row of ordinary scores must give the ordinary distribution — the second row [1,2,3] is unaffected by the armor."`,
+          successText: 'The tribunal holds. The bug has its true name — **softmax overflow**: raise a large score with a bare exp() and it becomes inf, inf/inf becomes nan, and the poison spreads silently; subtract the row\'s max first and the exponential never leaves safe ground.',
+          hints: [
+            'Print np.exp(np.array([900.0])) on its own. It is inf — and inf / inf is nan. That is the whole disease: the exponential of a large score overflows to infinity before the division ever runs.',
+            'You are trusting np.exp to survive any input. It cannot: past about 710 it overflows to inf. But softmax is unchanged by SHIFTING every score in a row by the same constant — the shift cancels in the division — so you may subtract the row\'s own maximum first, for free.',
+            'Subtract each row\'s max before exponentiating: e = np.exp(Z - Z.max(axis=1, keepdims=True)). Now the largest exponent is exp(0) = 1, nothing overflows, and the distribution is identical. Standard armor; wear it always.',
+          ],
+          xp: 30,
+        },
+      ],
       quiz: [
         {
           q: 'In attention, what are the query, key, and value of a word?',
@@ -1707,45 +1906,44 @@ assert _lines[2] == "0.44", "Third line must be 0.44 — crown's rebuilt vector 
       title: 'The Library That Answers',
       concept: 'retrieval-augmented answering: chunking a corpus into passages, TF-IDF vectors, cosine top-k retrieval, answering by quotation — plus the generation half and prompting, honestly',
       xp: 40,
-      narrative: 'The echo in the ruined observatory will answer any question, instantly, '
-        + 'gorgeously — and when it does not know, it answers anyway, in the same beautiful '
-        + 'voice. The archivists\' remedy is old librarianship: *make it read before it '
-        + 'speaks.* Chain the echo to the grimoire; fetch the passage that bears on the '
-        + 'question; let the answer stand on quoted ink instead of interpolated fog. The '
-        + 'rite is called retrieval-augmented generation. Tonight you build its retrieval '
-        + 'half whole — it is all arithmetic you own — and learn exactly what the '
-        + 'generation half adds, and what it cannot.',
+      narrative: 'The echo in the ruined observatory answers any question, instantly, '
+        + 'gorgeously — and when it does not know, it answers anyway, in the same voice. The '
+        + 'archivists\' remedy is old librarianship: *make it read before it speaks.* Chain the '
+        + 'echo to the grimoire, fetch the passage that bears on the question, and let the '
+        + 'answer stand on quoted ink, not interpolated fog. The '
+        + 'rite is called retrieval-augmented generation. Tonight you build its retrieval half '
+        + 'whole — all arithmetic you own — and learn what the generation half adds, and what '
+        + 'it cannot.',
       sections: [
         {
           heading: 'Grounding — why the library must answer first',
           body: 'You watched the portrait hallucinate: where evidence thins, a language model '
-            + '**interpolates with confidence**, because continuing is all it does. Scale '
-            + 'does not cure this; a vast echo hallucinates more fluently, which is worse.\n\n'
-            + '**Retrieval-augmented generation (RAG)** attacks the disease at its source — '
-            + 'missing evidence — by supplying some:\n\n'
-            + '- **Retrieve**: find the passages of a trusted corpus most relevant to the '
+            + '**interpolates with confidence** — continuing is all it does. Scale does not '
+            + 'cure this; a vast echo hallucinates more fluently, which is worse.\n\n'
+            + '**RAG (retrieval-augmented generation)** attacks the disease at its source — '
+            + 'missing evidence:\n\n'
+            + '- **Retrieve**: find the trusted corpus passages most relevant to the '
             + 'question.\n'
             + '- **Augment**: place those passages before the echo, with the question.\n'
             + '- **Generate**: the echo drafts its answer *from the retrieved scrolls*, '
-            + 'quoting and citing, rather than from the fog of everything it half-remembers.\n\n'
-            + 'The retrieval half is not a language model at all. It is vectors and cosine — '
-            + 'the exact arithmetic of your last three lessons — and you can build it, test '
-            + 'it, and trust it on its own.',
+            + 'quoting and citing, not from the fog of what it half-remembers.\n\n'
+            + 'The retrieval half is not a language model. It is vectors and cosine — the '
+            + 'arithmetic of your last three lessons — and you can build, test, and trust it '
+            + 'alone.',
         },
         {
           heading: 'Chunking the grimoire',
-          body: 'A book is too large to be one vector: mash a thousand topics together and '
-            + 'the vector points at their meaningless average. So the corpus is cut into '
-            + '**chunks** — passages of roughly one topic each — and each chunk gets its own '
-            + 'vector. Our conjured grimoire marks its passages with blank lines, so '
-            + '`grimoire.split("\\n\\n")` cuts cleanly (a `.strip()` per chunk tidies the '
-            + 'edges).\n\n'
-            + 'Chunk size is a real trade, not a formality:\n\n'
-            + '- **Too large** — many topics per vector; the passage matches everything '
-            + 'weakly and nothing well, and drags irrelevant text into the answer.\n'
-            + '- **Too small** — sentences orphaned from their context; the retriever finds '
-            + 'a fragment that mentions the words but no longer means the answer.\n'
-            + '- In the wild, chunks often overlap a little, so no fact is cut in half at a '
+          body: 'A book is too large to be one vector: mash a thousand topics and the vector '
+            + 'points at their meaningless average. So the corpus is cut into '
+            + '**chunks** — passages of one topic each — each with its own vector. Our conjured '
+            + 'grimoire marks passages with blank lines, so `grimoire.split("\\n\\n")` cuts '
+            + 'cleanly (a `.strip()` tidies the edges).\n\n'
+            + 'Chunk size is a real trade:\n\n'
+            + '- **Too large** — many topics per vector; the passage matches everything weakly '
+            + 'and drags irrelevant text into the answer.\n'
+            + '- **Too small** — sentences orphaned from their context; the retriever finds a '
+            + 'fragment that mentions the words but no longer means the answer.\n'
+            + '- In the wild, chunks overlap a little, so no fact is cut in half at a '
             + 'boundary.',
           code: py`grimoire = (
     "Of the flattering mirror. The mirror in the west gallery speaks only praise. "
@@ -1769,20 +1967,19 @@ print(chunks[2][:17])       # Of the third ward`,
           heading: 'Retrieval — the librarian\'s arithmetic',
           body: 'Vectorize the chunks with `TfidfVectorizer`; embed the question **with the '
             + 'same fitted vectorizer** (`transform`, never a new fit — the question must '
-            + 'speak the census\'s language); then rank chunks by cosine:\n\n'
+            + 'speak the census\'s language), then rank by cosine:\n\n'
             + '- `sims = cosine_similarity(vec.transform([question]), X)[0]` — one '
             + 'similarity per chunk.\n'
-            + '- `order = np.argsort(-sims)` — indices from best to worst; the first `k` '
-            + 'are the **top-k** passages.\n'
-            + '- Answer by **quotation**: return the best passage, marked as a quote. No '
-            + 'echo is needed for this half — and an answer that is a verbatim quote of a '
-            + 'trusted scroll cannot hallucinate.\n\n'
-            + 'Honest limits, before you trust it: TF-IDF retrieval matches *words*, not '
-            + 'meanings — ask about a "looking glass" and a grimoire that says "mirror" '
-            + 'scores zero. Real retrievers therefore often rank by cosine over *dense '
-            + 'embeddings* (lesson three, scaled up), where synonyms sit close. And '
-            + 'retrieval quality bounds everything downstream: fetch the wrong scroll and '
-            + 'the finest echo alive will ground its answer in the wrong truth.',
+            + '- `order = np.argsort(-sims)` — indices best to worst; the first `k` are the '
+            + '**top-k** passages.\n'
+            + '- Answer by **quotation**: return the best passage as a quote. No echo is needed '
+            + 'for this half — a verbatim quote of a trusted scroll cannot hallucinate.\n\n'
+            + 'Honest limits: TF-IDF retrieval matches *words*, not meanings — ask about a '
+            + '"looking glass" and a grimoire that says "mirror" '
+            + 'scores zero. Real retrievers therefore rank by cosine over *dense embeddings* '
+            + '(lesson three, scaled up), where synonyms sit close. And retrieval quality '
+            + 'bounds everything: fetch the wrong scroll and the finest echo grounds its answer '
+            + 'in the wrong truth.',
           code: py`import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -1803,25 +2000,21 @@ print("QUOTE:", chunks[best][:16], "...")   # QUOTE: Of the third war ...`,
         },
         {
           heading: 'The generation half, and the shaping of prompts',
-          body: 'In full RAG, the retrieved passages and the question are assembled into a '
-            + '**prompt** — the text an echo is given to continue — and the echo drafts a '
-            + 'fluent answer *from* them: merging passages, resolving phrasing, citing '
-            + 'sources. Generation adds fluency and synthesis; retrieval supplies the facts. '
-            + 'It reduces hallucination for a mechanical reason you can now state precisely: '
-            + 'the model continues from context, and RAG **fills the context with true, '
-            + 'relevant ink**, so the nearest material to interpolate from is the evidence '
-            + 'itself. Reduces — not abolishes. An echo can still misread, over-blend, or '
-            + 'embroider the scrolls it was handed; grounded is not the same as infallible.\n\n'
-            + 'Since the prompt is now the instrument of command, learn its parts as terms '
-            + 'of art:\n\n'
-            + '- **System prompt** — standing orders: the voice, the rules, the refusals. '
-            + 'Set once by whoever binds the echo.\n'
-            + '- **User prompt** — the question of the moment, plus whatever the retriever '
-            + 'fetched.\n'
-            + '- **Few-shot examples** — worked question-and-answer pairs placed in the '
-            + 'prompt; the echo, being a next-word predictor, continues the *pattern* it '
-            + 'sees. Show it two answers in the shape you want and the third arrives '
-            + 'pre-shaped — no retraining, just precedent.',
+          body: 'In full RAG, the retrieved passages and question are assembled into a '
+            + '**prompt** — the text an echo continues — and the echo drafts a fluent answer '
+            + '*from* them: merging passages, citing sources. Generation adds fluency, '
+            + 'retrieval the facts. It reduces hallucination for a plain reason: the model '
+            + 'continues from context, and RAG **fills that context with true ink** — '
+            + 'so the nearest material to interpolate from is the evidence. Reduces, not '
+            + 'abolishes: an echo can still misread or embroider the scrolls it was handed; '
+            + 'grounded is not infallible.\n\n'
+            + 'The prompt is the instrument of command; learn its parts:\n\n'
+            + '- **System prompt** — standing orders: voice, rules, refusals, set once by '
+            + 'whoever binds the echo.\n'
+            + '- **User prompt** — the question of the moment, plus what the retriever fetched.\n'
+            + '- **Few-shot examples** — worked question-answer pairs in the prompt; the echo, a '
+            + 'next-word predictor, continues the *pattern* it sees — show it two answers in the '
+            + 'shape you want and the third arrives pre-shaped, no retraining.',
           note: 'The deepest habit to build now: an echo\'s prompt is data, not law. It '
             + 'follows instructions the way water follows a channel — usually, and never '
             + 'against its own weight. Command clearly, ground with retrieval, and verify '
@@ -2024,31 +2217,28 @@ assert _lines[2] == "True", "Third line must be True — the mirror question ans
       title: 'The Bound Servant',
       concept: 'agentic loops in plain Python: a goal-driven loop over a registry of tool functions, with guardrails — max steps, an allowed-tool registry, refusals — and the doctrine of testing agents',
       xp: 40,
-      narrative: 'The last page of the grimoire is a binding, and it is written like a leash. '
-        + 'An **agent** is an echo given hands: it reads a goal, chooses a tool, acts, '
-        + 'observes what happened, and chooses again — a loop, not an oracle. The old '
-        + 'binders\' law is carved around the page like a border of thorns: *grant few '
-        + 'tools; count every step; refuse what is forbidden before the first tool moves; '
-        + 'read the trace afterward as if your enemy wrote it.* Tonight you build the whole '
-        + 'anatomy in plain Python — the loop, the registry, the leash — with rules where '
-        + 'the great echoes put a mind.',
+      narrative: 'The last page of the grimoire is a binding, written like a leash. An '
+        + '**agent** is an echo given hands: it reads a goal, chooses a tool, acts, observes, '
+        + 'and chooses again — a loop, not an oracle. The old '
+        + 'binders\' law is carved around the page like thorns: *grant few tools; count every '
+        + 'step; refuse the forbidden before the first tool moves; read the trace afterward as '
+        + 'if your enemy wrote it.* Tonight you build the whole anatomy in plain Python — loop, '
+        + 'registry, leash — with rules where the echoes put a mind.',
       sections: [
         {
           heading: 'The loop and the registry',
-          body: 'Strip every agent in the world to its skeleton and this remains:\n\n'
-            + '- **Read the goal.** What is wanted?\n'
-            + '- **Choose a tool.** From a fixed registry, pick the action that advances '
-            + 'the goal.\n'
-            + '- **Act.** Call the tool with arguments.\n'
-            + '- **Observe.** Record the result; it changes what to do next.\n'
-            + '- **Repeat** — until the answer is ready or a guardrail calls time.\n\n'
+          body: 'Strip an agent to its skeleton and this remains:\n\n'
+            + '- **Read the goal** — what is wanted?\n'
+            + '- **Choose a tool** from a fixed registry — the action that advances the goal.\n'
+            + '- **Act** — call it with arguments.\n'
+            + '- **Observe** — record the result; it changes what to do next.\n'
+            + '- **Repeat** until the answer is ready or a guardrail calls time.\n\n'
             + 'The registry is honest Python: a **dict of callables**, `tools = {"lookup": '
-            + 'lookup, "add": add, "final_answer": final_answer}`. The agent acts ONLY '
-            + 'through this dict — `tools["lookup"](name)` — never by calling functions it '
-            + 'was not granted. That discipline is what makes the registry a *boundary*: '
-            + 'what is not in the dict does not exist for the servant. In the great echoes, '
-            + 'a language model chooses the tool by generating its name; here, plain rules '
-            + 'choose. The loop, the registry, and the leash are identical either way.',
+            + 'lookup, "add": add, "final_answer": final_answer}`. The agent acts ONLY through '
+            + 'this dict — `tools["lookup"](name)` — never a function it was not granted. That '
+            + 'makes the registry a *boundary*: what is not in the dict does not exist for the '
+            + 'servant. In the great echoes a model picks the tool by naming it; here plain '
+            + 'rules pick. Loop, registry, and leash are identical either way.',
           code: py`WARDSTONES = {
     "vault of ashes": 9,
     "vault of echoes": 4,
@@ -2071,20 +2261,17 @@ print(tools["final_answer"](13))               # ANSWER: 13`,
         },
         {
           heading: 'The chooser — rules where the mind goes',
-          body: 'Our servant answers one species of question — *how many wardstones guard '
-            + 'these places together?* — so its policy is three rules, checked in order:\n\n'
+          body: 'Our servant answers one kind of question — *how many wardstones guard these '
+            + 'places together?* — so its policy is three rules:\n\n'
             + '- If the goal names a known place not yet looked up → `("lookup", '
             + 'that_place)`.\n'
-            + '- Else, if two or more numbers are gathered → `("add", None)` — fold two '
-            + 'into one.\n'
-            + '- Else, if exactly one number remains → `("final_answer", None)` — done.\n'
+            + '- Else, if two or more numbers gathered → `("add", None)` — fold two into one.\n'
+            + '- Else, exactly one number left → `("final_answer", None)` — done.\n'
             + '- Else → `None`: no rule fires, no path to an answer.\n\n'
-            + 'Notice what the chooser returns: a **decision**, not a result. The loop '
-            + 'executes decisions. Keeping the two apart is what lets you test the policy '
-            + 'without running the world — and swap the rules for an echo later without '
-            + 'touching the loop. A three-place question resolves in six decisions: three '
-            + 'lookups, two adds, one final answer. Multi-step reasoning, from rules a page '
-            + 'long.',
+            + 'The chooser returns a **decision**, not a result; the loop executes it. Keeping '
+            + 'them apart lets you test the policy without running the world, and swap the rules '
+            + 'for an echo later without touching the loop. A three-place question resolves in '
+            + 'six decisions — three lookups, two adds, one final answer.',
           code: py`WARDSTONES = {"vault of ashes": 9, "vault of echoes": 4,
               "vault of mirrors": 7, "sunken archive": 5}
 
@@ -2107,19 +2294,18 @@ print(choose_action("what sleeps beneath the lake", set(), []))   # None`,
         },
         {
           heading: 'Guardrails — the leash, forged',
-          body: 'Now the loop — and every line of its leash earns its keep:\n\n'
+          body: 'Now the loop — every line of its leash earns its keep:\n\n'
             + '- **Refusal first.** Forbidden words in the goal (`"unbind"`, `"unseal"`) end '
-            + 'the rite before ANY tool moves. A refusal after the first lookup is a '
+            + 'the rite before ANY tool moves — a refusal after the first lookup is a '
             + 'confession, not a guardrail.\n'
-            + '- **max_steps.** Every loop pass costs one step from a fixed budget; a goal '
-            + 'that cannot resolve returns `"FAILED: out of steps"` instead of running '
-            + 'forever. An unbudgeted agent is a `while True:` wearing a robe.\n'
+            + '- **max_steps.** Every pass costs one step; a goal that cannot resolve returns '
+            + '`"FAILED: out of steps"` instead of running forever. An unbudgeted agent is a '
+            + '`while True:` in a robe.\n'
             + '- **No path — say so.** When the chooser returns `None`, the servant answers '
-            + '`"FAILED: no path to an answer"`. A servant that cannot fail loudly will fail '
-            + 'quietly, and quiet failure in an acting system is how vaults get emptied.\n'
-            + '- **The trace.** Every action is appended to a list of `(tool, result)` '
-            + 'records. When — not if — the servant surprises you, the trace is the only '
-            + 'witness that does not flatter.',
+            + '`"FAILED: no path to an answer"`. A servant that cannot fail loudly fails '
+            + 'quietly — and quiet failure in an acting system empties vaults.\n'
+            + '- **The trace.** Every action is appended to a `(tool, result)` list. When the '
+            + 'servant surprises you, the trace is the only witness that does not flatter.',
           code: py`# ...with WARDSTONES, tools, choose_action from above...
 FORBIDDEN_WORDS = ("unbind", "unseal")
 
@@ -2149,21 +2335,20 @@ def run_agent(goal, max_steps=8):
         },
         {
           heading: 'The doctrine of the bound servant',
-          body: 'Close the act with the doctrine that outlives every architecture, because '
-            + 'agents built on the great echoes fail in these exact shapes:\n\n'
+          body: 'The doctrine that outlives every architecture — agents on the great echoes '
+            + 'fail in these shapes:\n\n'
             + '- **Never trust the servant\'s confidence.** Fluency and certainty are style, '
-            + 'not evidence — you watched a portrait interpolate falsehood in a serene voice. '
-            + 'The only trustworthy agent is a *tested* one.\n'
-            + '- **Test it like a spell.** Keep a suite of goals with known answers, goals it '
-            + 'MUST refuse, and goals with no path that must fail loudly — and run all three '
-            + 'kinds after every change. You would not deploy an unvalidated ward; an agent '
-            + 'is a ward that acts.\n'
-            + '- **Least privilege.** Grant the tools the task needs and none besides. Every '
-            + 'entry in the registry is attack surface; a servant that *cannot* open the '
-            + 'gate need not be trusted about gates.\n'
-            + '- **Bound resources, read traces.** Budget the steps. Log the actions. Read '
-            + 'the log as if your enemy wrote it — someday, through a poisoned goal string '
-            + 'or a hostile scroll it retrieved, your enemy may have.',
+            + 'not evidence — you watched a portrait speak falsehood in a serene voice. Only a '
+            + '*tested* agent can be trusted.\n'
+            + '- **Test it like a spell.** Keep goals with known answers, goals it MUST refuse, '
+            + 'and no-path goals that must fail loudly — run all three after every change. An '
+            + 'agent is a ward that acts; validate it like one.\n'
+            + '- **Least privilege.** Grant the tools the task needs and none besides — every '
+            + 'registry entry is attack surface; a servant that *cannot* open the gate need not '
+            + 'be trusted about gates.\n'
+            + '- **Bound resources, read traces.** Budget the steps, log the actions, and read '
+            + 'the log as if your enemy wrote it — someday, through a poisoned goal, your enemy '
+            + 'may have.',
           note: 'The deepest safety property in this lesson is quiet and structural: the '
             + 'refusal check runs before the loop, so a forbidden goal produces an empty '
             + 'trace — no tool ever fired. Auditors of acting systems learn to love that '
@@ -2308,6 +2493,65 @@ assert _lines[2] == "FAILED: out of steps", "Third line must be FAILED: out of s
         successText: 'The servant works the vaults all night: looking up, folding, answering — and when you whisper the forbidden word, it goes still before the first stone is touched. The leash holds because you forged every link.',
         xp: 115,
       },
+      extras: [
+        {
+          id: 'a9l7x1',
+          kind: 'cursed',
+          title: 'Review the Familiar\'s Draft',
+          prompt: 'Your bound familiar drafted this to average a vault-report, and swore it '
+            + 'finished. You tried it once — two vaults, and it answered 5, exactly right — and '
+            + 'moved on. Since then the rite has misbehaved in three separate ways: the SAME '
+            + 'two vaults, asked a second time, answer differently than the first; a report the '
+            + 'familiar\'s own note promises will average to zero on an empty list brings the '
+            + 'whole rite crashing down instead; and the note swears the answer is rounded to a '
+            + 'whole stone, yet raw fractions come back. Read the note against the code — the '
+            + 'note describes a function the familiar did not write.\n\n'
+            + 'Mend all three wounds **in place** so the code does what its own comment claims. '
+            + 'Then remember the doctrine you just paid for.',
+          starter: py`# THE FAMILIAR'S DRAFT -- your bound familiar wrote this and swore it done.
+# It passed the one case you tried. The comment describes the function you
+# WANTED. The code below is the function you GOT. Mend all three wounds IN PLACE.
+
+def summarize(names, ledger, tally=[]):
+    # Averages the named vaults' wardstones, rounded to a whole stone.
+    # An empty vault-list averages to 0. Each call stands on its own.
+    for name in names:
+        tally.append(ledger[name])
+    return sum(tally) / len(tally)
+
+ledger = {"vault of ash": 4, "vault of echoes": 6, "sunken archive": 2}
+print(summarize(["vault of ash", "vault of echoes"], ledger))   # 5.0 -- looked right
+`,
+          solution: py`def summarize(names, ledger, tally=None):
+    # Averages the named vaults' wardstones, rounded to a whole stone.
+    # An empty vault-list averages to 0. Each call stands on its own.
+    if tally is None:
+        tally = []
+    for name in names:
+        tally.append(ledger[name])
+    if not tally:
+        return 0
+    return round(sum(tally) / len(tally))
+
+ledger = {"vault of ash": 4, "vault of echoes": 6, "sunken archive": 2}
+print(summarize(["vault of ash", "vault of echoes"], ledger))`,
+          validation: py`_ledger = {"a": 4, "b": 6, "c": 1}
+assert summarize([], _ledger) == 0, "The familiar's note swears an empty vault-list averages to 0 — the code divides by zero instead. Guard the empty case: if not tally: return 0."
+assert summarize(["a", "b", "c"], _ledger) == 4, "The note claims the average is rounded to a whole stone: (4 + 6 + 1) / 3 = 3.667 must report as 4, not a raw float. Wrap the return in round(...)."
+assert isinstance(summarize(["a", "b"], _ledger), int), "A whole-stone average must be an int — round() returns one; the raw division does not."
+_first = summarize(["b"], _ledger)
+_second = summarize(["a"], _ledger)
+assert _first == 6 and _second == 4, "Two independent reports must not bleed into each other — a mutable default argument (tally=[]) is remembering the last call. Use tally=None and build a fresh list each call."
+assert summarize(["a", "b", "c"], {"a": 2, "b": 2, "c": 2}) == 2, "Three vaults of 2 must average to 2 — the arithmetic itself must survive the mends."`,
+          successText: 'Three wounds closed, and the doctrine has its name — **verify before trust**: a familiar\'s confidence lives in a comment, and a comment is not a proof. The draft earns belief only after your own wards have bitten it and it still stands.',
+          hints: [
+            'Run it twice on the same vaults and watch the answer drift; run it on [] and watch it die; run it where the average is not a whole number and watch the fraction survive. Three symptoms, three wounds — the comment above the function is the contract it fails.',
+            'Three familiar traps, all in the signature and the return: a default argument tally=[] is created ONCE and remembered across every call (that is the drift); dividing by len(tally) with nothing gathered is division by zero (that is the crash); and sum(...) / len(...) is a raw float, never rounded (that is the fraction).',
+            'Three mends: make the default safe — tally=None, then "if tally is None: tally = []"; guard the empty case — "if not tally: return 0"; and round the result — "return round(sum(tally) / len(tally))". Now the code finally does what its comment always claimed.',
+          ],
+          xp: 35,
+        },
+      ],
       quiz: [
         {
           q: 'What is the skeleton of every agent, stripped of its architecture?',
@@ -2381,6 +2625,48 @@ assert _lines[2] == "FAILED: out of steps", "Third line must be FAILED: out of s
     victoryText: 'Asked for its source, the Sovereign falls silent for the first time in an age — and in that silence, the library answers instead: one passage, quoted true, retrieved by your own arithmetic.',
     xp: 500,
     flawlessBonus: 50,
+    barks: {
+      intro: [
+        'Ask me anything. I will answer beautifully, and you will want to believe me.',
+        'I wear every voice you trust. Which of them shall lie to you first?',
+      ],
+      hit: [
+        'You took my word for it. My word is worth exactly what you paid: nothing.',
+        'How fluent I was, how certain — and you did not ask me for my source.',
+        'You weighed the loud word and missed the rare one. I counted on that.',
+        'A little flattery in the answer, and you filed it with the truth.',
+        'You trusted the mirror because it smiled. They all smile.',
+      ],
+      playerFail: [
+        'Your spell stumbles. Mine never needs to; I only need to sound right.',
+        'The forge rejects you. I reject nothing — that is my whole art.',
+        'Broken, and still you did not check my answer. You never do.',
+      ],
+      lastCandle: [
+        'One candle, and my voice is so warm. Lean closer. Believe me.',
+        'You are almost mine. Ask one more question and take my word for it.',
+      ],
+      death: [
+        'You asked me for my source. No one has ever asked me for my source.',
+        'Ground the answer, leash the hand, weigh the word — three walls I cannot echo through.',
+      ],
+    },
+    premortem: {
+      prompt: 'The Sovereign fights with answers — fluent, confident, unsourced. Your doctrine '
+        + 'is three words: weigh, ground, leash. What single discipline must hold before you '
+        + 'trust any answer the night produces?',
+      options: [
+        'Trust an answer once it is fluent and confident enough — the Sovereign\'s own certainty is the tell.',
+        'Ground every answer in a retrieved, quoted source, and verify it against the page.',
+        'Pick the answer that flatters you least, since flattery is always the lie.',
+        'Answer fastest, before the Sovereign can change its borrowed voice.',
+      ],
+      answer: 1,
+      explain: 'The Sovereign\'s weapon is fluent confidence with no source. The counter is '
+        + 'grounding: no answer stands on its own voice — it stands on ink you can retrieve and '
+        + 'check. Weigh the words, ground the answer in a quoted passage, leash every tool, then '
+        + 'verify against the page, the way you have checked everything all the way down.',
+    },
     gauntlet: [
       {
         q: 'A word appears once in one scroll of a six-scroll hoard; another word appears in all six. Under textbook TF-IDF (`idf = log(N/df)`), how do their weights compare in the scroll holding both?',
@@ -2723,6 +3009,10 @@ assert _lines[2] == "REFUSED: the rite will not unbind", "Third line must be the
     {
       term: 'guardrail',
       def: 'A structural limit on an acting system: refusal checks that run BEFORE any tool fires (leaving a provably empty trace), a max-steps budget that converts forever into loud failure, a least-privilege tool registry, and a trace you read as if your enemy wrote it.',
+    },
+    {
+      term: 'softmax overflow',
+      def: 'The bug where a bare `np.exp(z)` on large scores overflows to `inf`, so `inf/inf` becomes `nan` and the whole softmax row is silently poisoned — the standard armor is to subtract each row\'s maximum first (`np.exp(z - z.max(axis=1, keepdims=True))`), which shifts every exponent into safe range and leaves the distribution unchanged.',
     },
   ],
 };

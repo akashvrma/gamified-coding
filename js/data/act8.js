@@ -220,7 +220,7 @@ y = 30.0 * x + 20.0 + rng.normal(0.0, 4.0, 40)
 x_train, y_train = x[:30], y[:30]
 x_hold, y_hold = x[30:], y[30:]
 
-def mse(y_true, y_pred):
+def mse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     return np.mean((y_true - y_pred) ** 2)
 
 coeffs = np.polyfit(x_train, y_train, 1)
@@ -354,12 +354,11 @@ print(round(float(abs(y[4] - wild(x[4]))), 1))`,
       xp: 40,
       narrative: 'Beneath the allied camp the old delvers cut a stair into the dark, and the '
         + 'war-smiths use it as a parable: every pair `(w, b)` is a place to stand, every loss '
-        + 'value an altitude, and the model you seek sleeps at the bottom of the valley. '
-        + '`np.polyfit` was a moth-eaten map bought from strangers — it teleports you to the '
-        + 'bottom of exactly one kind of valley and no other. The minds you are about to forge '
-        + 'live in valleys no map has ever charted. For those there is only the old way down: '
-        + 'feel the slope beneath your feet, and step against it. Again. Ten thousand times '
-        + 'again. This lesson teaches your boots.',
+        + 'value an altitude, and the model you seek sleeps at the valley floor. `np.polyfit` was '
+        + 'a bought map — it teleports you to the bottom of exactly one kind of valley and no '
+        + 'other. The minds you forge next live in valleys no map has charted. For those there is '
+        + 'only the old way down: feel the slope beneath your feet, and step against it. Again. Ten '
+        + 'thousand times. This lesson teaches your boots.',
       sections: [
         {
           heading: 'The landscape of loss',
@@ -398,8 +397,7 @@ for w in (0.0, 1.0, 2.5, 4.0):
             + '- `dLoss/db = 2 * mean(w*x + b - y)` — the inside\'s derivative with respect to '
             + '`b` is 1, so the bias feels the plain average error.\n\n'
             + 'Together they form the **gradient** — the arrow pointing *uphill*, steepest '
-            + 'ascent. You will therefore always step **against** it. A negative slope means the '
-            + 'floor tilts down toward larger values: step forward.',
+            + 'ascent. You will therefore always step **against** it.',
           code: py`import numpy as np
 rng = np.random.default_rng(0)
 x = rng.uniform(0.0, 4.0, 60)
@@ -470,9 +468,8 @@ print(loss(w, b))                        # 1.8171210583502528e+50 -- diverged`,
             + 'One scaling note for the wars ahead: on a ledger of millions of rows, computing '
             + 'the exact gradient over *all* rows every step is wasteful. **Stochastic gradient '
             + 'descent (SGD)** estimates it from a small random *mini-batch* each step — a '
-            + 'noisier arrow, but you take a hundred steps in the time one exact step would cost, '
-            + 'and the noise averages out over the march. Our ledgers are small; we walk exactly. '
-            + 'The idea is the same boot either way.',
+            + 'noisier arrow, but a hundred steps for the cost of one, and the noise averages out. '
+            + 'Our ledgers are small; we walk exactly.',
           code: py`import numpy as np
 rng = np.random.default_rng(0)
 x = rng.uniform(0.0, 4.0, 60)
@@ -597,6 +594,145 @@ assert "0.092" in _stdout, "Print the final loss — round(history[-1], 3), whic
         successText: 'Four hundred steps, no map, and the valley floor under your boots exactly where the arithmetic said it would be.',
         xp: 95,
       },
+      extras: [
+        {
+          id: 'a8l2x1',
+          kind: 'echo',
+          title: 'The Shorter Stair',
+          prompt: 'A leaner descent: five ferry-tolls ruled by a hidden slope alone — no '
+            + 'intercept to chase. Walk the loss down to it with your own boots.\n\n'
+            + 'Requirements, exactly:\n\n'
+            + '- Define `loss(w)` returning `float(np.mean((w * x - y) ** 2))` and `grad(w)` '
+            + 'returning `float(2.0 * np.mean((w * x - y) * x))`.\n'
+            + '- Descend: start `w = 0.0`, make an empty list `history`, loop 300 times — each '
+            + 'pass `w = w - 0.02 * grad(w)`, then `history.append(loss(w))`.\n'
+            + '- Print `round(w, 2)`, then `round(history[-1], 4)`, each on its own line.',
+          starter: py`import numpy as np
+
+# The ferry-tolls, conjured. Do not alter the conjuring.
+x = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+y = 3.0 * x                       # the hidden slope is 3.0, no intercept
+
+# TODO: define loss(w) and grad(w)
+
+# TODO: descend — w = 0.0, history = [], 300 steps at lr 0.02,
+#       w = w - 0.02 * grad(w); history.append(loss(w))
+
+# TODO: print round(w, 2), then round(history[-1], 4)
+`,
+          solution: py`import numpy as np
+
+x = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+y = 3.0 * x
+
+def loss(w: float) -> float:
+    return float(np.mean((w * x - y) ** 2))
+
+def grad(w: float) -> float:
+    return float(2.0 * np.mean((w * x - y) * x))
+
+w = 0.0
+history = []
+for _ in range(300):
+    w = w - 0.02 * grad(w)
+    history.append(loss(w))
+
+print(round(w, 2))
+print(round(history[-1], 4))`,
+          validation: py`import numpy as np
+_e = np.mean((1.5 * x - y) ** 2)
+assert abs(loss(1.5) - _e) < 1e-9, "loss(w) must be the MSE of the line w*x against y."
+_fd = (loss(1.5 + 1e-6) - loss(1.5 - 1e-6)) / 2e-6
+assert abs(grad(1.5) - _fd) < 1e-3, "grad(w) is not the true slope — the Codex probed it with a finite difference. It must be 2.0 * np.mean((w*x - y) * x)."
+assert len(history) == 300, "history must record 300 losses — one appended after each step."
+assert history[0] > history[-1], "The descent never fell — step AGAINST the slope: w = w - 0.02 * grad(w)."
+assert history[-1] < 1e-3, "After 300 steps the loss must settle near 0 — a higher floor means the stride or the gradient is wrong."
+assert abs(w - 3.0) < 0.05, "The descent must land on the hidden slope 3.0."
+assert "3.0" in _stdout, "Print the landed slope — round(w, 2), which is 3.0."`,
+          successText: 'One parameter, three hundred steps, and the ferry-master\'s hidden toll under your boot: 3.0, exactly.',
+          hints: [
+            'loss(w) is the MSE of the line w*x against y; grad(w) weights each error by its own x, doubled: 2.0 * np.mean((w * x - y) * x). One line each.',
+            'Descend against the slope — w = w - 0.02 * grad(w) — 300 times, appending loss(w) after each step. The two prints read 3.0 and 0.0.',
+          ],
+          xp: 20,
+        },
+        {
+          id: 'a8l2x2',
+          kind: 'cursed',
+          title: 'The Falling That Rises',
+          prompt: 'A descent-rite recovered from the war-smith\'s bench, still warm. It runs to '
+            + 'its last step and announces the mind is trained — but read the loss it logs. It '
+            + 'does not fall. It **climbs**, first slowly, then by powers of ten, until the '
+            + 'numbers curdle to `inf` and the trained slope and intercept are gibberish a '
+            + 'hundred digits long. No error is raised. The log lies in a level voice.\n\n'
+            + 'Mend the rite **in place** — the wound is small and it is repeated. Healed, '
+            + '`descend(x, y)` must walk the loss DOWN to the valley floor and land on the '
+            + 'hidden line, for any line you hand it.',
+          starter: py`# THE FALLING THAT RISES -- recovered from the smith's bench, still warm.
+# It runs clean and swears the mind is trained. Read the loss column: it CLIMBS.
+# Mend it IN PLACE; the wound is small and it is repeated.
+import numpy as np
+
+def descend(x, y, steps=600, lr=0.05):
+    w, b = 0.0, 0.0
+    history = []
+    for _ in range(steps):
+        err = (w * x + b) - y
+        grad_w = 2.0 * np.mean(err * x)
+        grad_b = 2.0 * np.mean(err)
+        w = w + lr * grad_w        # step along the slope
+        b = b + lr * grad_b        # step along the slope
+        history.append(float(np.mean(err ** 2)))
+    return w, b, history
+
+x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+y = 2.0 * x + 1.0                  # the hidden line: w = 2, b = 1
+w, b, history = descend(x, y)
+print(f"first loss {round(history[0], 3)}")
+print(f"final loss {history[-1]}")
+print(f"trained: w={round(w, 2)}, b={round(b, 2)}")
+`,
+          solution: py`import numpy as np
+
+def descend(x, y, steps=600, lr=0.05):
+    w, b = 0.0, 0.0
+    history = []
+    for _ in range(steps):
+        err = (w * x + b) - y
+        grad_w = 2.0 * np.mean(err * x)
+        grad_b = 2.0 * np.mean(err)
+        w = w - lr * grad_w
+        b = b - lr * grad_b
+        history.append(float(np.mean(err ** 2)))
+    return w, b, history
+
+x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+y = 2.0 * x + 1.0
+w, b, history = descend(x, y)
+print(f"first loss {round(history[0], 3)}")
+print(f"final loss {history[-1]}")
+print(f"trained: w={round(w, 2)}, b={round(b, 2)}")`,
+          validation: py`import numpy as np
+_x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+_y = 2.0 * _x + 1.0
+_w, _b, _h = descend(_x, _y)
+assert np.isfinite(_h[-1]), "The loss ran away to infinity — the descent is climbing, not falling. Are you stepping WITH the gradient instead of against it?"
+assert _h[0] > _h[-1], "The recorded loss must FALL from first step to last — the gradient points uphill, so descend by SUBTRACTING it from each parameter."
+assert _h[-1] < 1e-3, "After 600 steps the loss must reach the valley floor (near 0). If it plateaus high or grows, the update sign is wrong."
+assert abs(_w - 2.0) < 0.05 and abs(_b - 1.0) < 0.05, "The healed rite must land on the hidden line w=2.0, b=1.0."
+_x2 = np.linspace(0.0, 3.0, 12)
+_y2 = -1.5 * _x2 + 4.0
+_w2, _b2, _h2 = descend(_x2, _y2, steps=900, lr=0.05)
+assert _h2[-1] < 1e-2 and abs(_w2 + 1.5) < 0.1 and abs(_b2 - 4.0) < 0.1, "descend must fall to ANY hidden line you hand it — here w=-1.5, b=4.0. A mend that only fits one line is not a mend."`,
+          successText: 'The rite is mended, and the bug has its true name — the **gradient sign error**: add the gradient instead of subtracting it and every step climbs the loss it was meant to descend, training in reverse behind a calm log.',
+          hints: [
+            'Make the rite confess: print history[0], history[100], history[-1] and read them in order. A healthy descent falls monotonically toward zero; this one grows. The loss is going the WRONG way.',
+            'The gradient points UPHILL — toward greater loss. To descend you must step AGAINST it, subtracting it from each parameter. This rite adds it, so every step climbs the wall it should walk down; the +/- is the whole wound.',
+            'Flip both update signs: w = w - lr * grad_w and b = b - lr * grad_b. Nothing else moves. Healed, descend(x, y) lands on w=2.0, b=1.0 and the loss falls to the noise floor.',
+          ],
+          xp: 30,
+        },
+      ],
       quiz: [
         {
           q: 'What is the gradient of a loss function?',
@@ -864,6 +1000,30 @@ assert "0.992" in _stdout, "Print the verdict — round(acc, 3), which is 0.992.
         successText: 'The ember takes its first breath and, without being told what an orc is, learns to smell one. The smiths of both hosts go quiet.',
         xp: 100,
       },
+      trace: [
+        {
+          id: 'a8l3t1',
+          code: py`import numpy as np
+
+X = np.arange(6).reshape(3, 2)
+w = np.array([1.0, -1.0])
+print((X @ w).shape)
+print(X @ w)`,
+          q: 'The scrying: X is three rows of two measures, w one weight per measure. What does this working print?',
+          options: [
+            '(2,)\n[-1. -1.]',
+            '(3,)\n[-1. -1. -1.]',
+            '(3, 2)\n[[ 0. -1.]\n [ 2. -3.]\n [ 4. -5.]]',
+            'A ValueError — the shapes do not align',
+          ],
+          answer: 1,
+          explain: '(3, 2) @ (2,) contracts the shared dimension of 2 and leaves one number per '
+            + 'row — shape (3,). Each row [a, b] becomes a*1 + b*(-1) = a - b, and every row of '
+            + 'the ramp differs by exactly 1, so all three land on -1. Matrix-times-vector is a '
+            + 'weighted sum per row — a neuron\'s first stroke. The third option keeps the shape '
+            + 'unreduced; the last forgets that (n, k) @ (k,) is legal.',
+        },
+      ],
       quiz: [
         {
           q: 'What does a single neuron compute?',
@@ -931,9 +1091,9 @@ assert "0.992" in _stdout, "Print the verdict — round(acc, 3), which is 0.992.
         + '*agree* — both east or both west of the old road — the fires are the alliance\'s own; '
         + 'where the signs *cross*, the fires are the Shadow\'s. Draw any single straight line '
         + 'through that plain and you cut your own camps in half. The lone spark judges by one '
-        + 'line; therefore the lone spark fails, precisely and provably, at one of the oldest '
-        + 'patterns in war. The answer is not a better spark. It is a council of them — and a way '
-        + 'to teach the whole council at once.',
+        + 'line; therefore it fails, precisely and provably, at one of the oldest patterns in '
+        + 'war. The answer is not a better spark. It is a council of them — and a way to teach '
+        + 'the whole council at once.',
       sections: [
         {
           heading: 'The problem no line survives',
@@ -944,7 +1104,7 @@ assert "0.992" in _stdout, "Print the verdict — round(acc, 3), which is 0.992.
             + '- This is not a training failure. No learning rate, no step count, no seed will '
             + 'save it: a single neuron\'s verdict boundary is one straight line, and no straight '
             + 'line separates crossed quadrants.\n'
-            + '- The lesson generalizes: some truths are not linear in the measures you have. For '
+            + '- The lesson generalizes: some truths are not linear in your measures, and for '
             + 'those you need intermediate judges.',
           code: py`import numpy as np
 
@@ -970,19 +1130,19 @@ print(round(acc, 3))    # 0.519 -- the lone ember fails, as it mathematically mu
         {
           heading: 'The forward pass — a council in two matrices',
           body: 'A **hidden layer** is a row of neurons standing between input and verdict. Eight '
-            + 'hidden neurons means eight weighted sums computed at once — which is exactly one '
-            + 'matrix multiplication:\n\n'
+            + 'hidden neurons means eight weighted sums computed at once — one matrix '
+            + 'multiplication:\n\n'
             + '- `h = np.tanh(X @ W1 + b1)` — `X` is (160, 2), `W1` is (2, 8): one column of '
-            + 'weights per hidden neuron. Result: (160, 8) — every fire, as seen by every hidden '
-            + 'judge. `tanh` is the mask that keeps the council nonlinear.\n'
+            + 'weights per hidden neuron. Result: (160, 8) — every fire seen by every judge. '
+            + '`tanh` is the mask that keeps the council nonlinear.\n'
             + '- `p = sigmoid(h @ w2 + b2)` — the output neuron weighs the eight judges\' '
             + 'opinions and speaks the final probability.\n\n'
-            + 'This front-to-back computation is the **forward pass**. Each hidden neuron learns '
-            + 'to draw ONE line across the plain; the output neuron learns to combine their '
-            + 'verdicts — and a combination of lines can fence any shape the war requires.\n\n'
+            + 'This front-to-back computation is the **forward pass**. Each hidden neuron draws '
+            + 'ONE line; the output neuron combines their verdicts — and a combination of lines '
+            + 'can fence any shape the war requires.\n\n'
             + 'Starting weights must be random: `np.zeros` would make all eight judges identical '
-            + 'twins, receiving identical gradients, remaining identical forever — the scrolls '
-            + 'call it the *symmetry trap*. Seeded random draws break it reproducibly.',
+            + 'twins, fed identical gradients, identical forever — the *symmetry trap*. Seeded '
+            + 'random draws break it reproducibly.',
           code: py`import numpy as np
 
 rng = np.random.default_rng(0)
@@ -1004,19 +1164,18 @@ print(p.shape)     # (160,)   -- one verdict per fire`,
           body: 'Training needs the gradient of the loss with respect to *every* weight in both '
             + 'layers. **Backpropagation** is not a new force — it is the chain rule from a8l2, '
             + 'applied layer by layer, walking backward from the error. For our network '
-            + '(`h = tanh(X @ W1 + b1)`, `p = sigmoid(h @ w2 + b2)`, cross-entropy loss, '
-            + '`n` rows), the whole recipe is five lines:\n\n'
+            + '(`h = tanh(X @ W1 + b1)`, `p = sigmoid(h @ w2 + b2)`, cross-entropy, `n` rows), '
+            + 'the whole recipe is five lines:\n\n'
             + '- `dz2 = (p - y) / n` — the output error, exactly as for the lone neuron.\n'
-            + '- `grad_w2 = h.T @ dz2` and `grad_b2 = dz2.sum()` — each judge\'s blame is its own '
+            + '- `grad_w2 = h.T @ dz2` and `grad_b2 = dz2.sum()` — each judge\'s blame is its '
             + 'opinion times the output error.\n'
             + '- `dz1 = np.outer(dz2, w2) * (1 - h ** 2)` — the error flows *backward* through '
-            + 'the output weights (`np.outer` hands each hidden judge its share, scaled by how '
-            + 'much the verdict listened to it), then through tanh\'s own slope, which is '
-            + '`1 - tanh(z)**2 = 1 - h**2`. Chain rule, link by link.\n'
+            + 'the output weights (`np.outer` hands each hidden judge its share), then through '
+            + 'tanh\'s own slope, `1 - tanh(z)**2 = 1 - h**2`. Chain rule, link by link.\n'
             + '- `grad_W1 = X.T @ dz1` and `grad_b1 = dz1.sum(axis=0)` — and the blame reaches '
             + 'the first layer\'s weights.\n\n'
-            + 'Every gradient has the same shape as the weight it judges — check this whenever '
-            + 'you forge by hand; it catches most errors before they cost you a night.',
+            + 'Every gradient has the shape of the weight it judges — check it as you forge; it '
+            + 'catches most errors early.',
         },
         {
           heading: 'The loop, and what it buys',
@@ -1025,10 +1184,9 @@ print(p.shape)     # (160,)   -- one verdict per fire`,
             + 'ember could not:\n\n'
             + '- The loss falls from 0.695 (pure guessing) to 0.002.\n'
             + '- Accuracy: **1.0**. Every camp on the plain correctly claimed.\n\n'
-            + 'Inspect the hidden layer after training and you will find each judge has claimed '
-            + 'one straight cut across the plain — four or five doing real work, the rest '
-            + 'redundant — and the output neuron has learned to vote them into a fence around '
-            + 'the crossed camps. Nothing mystical arrived. Lines, masks, and the chain rule '
+            + 'After training, each judge has claimed one straight cut — four or five doing real '
+            + 'work, the rest redundant — and the output neuron votes them into a fence around '
+            + 'the crossed camps. Nothing mystical arrived: lines, masks, and the chain rule '
             + 'built a curve.',
           code: py`import numpy as np
 
@@ -1195,6 +1353,29 @@ assert "1.0" in _stdout, "Print the council's verdict — round(net_acc, 3), whi
         successText: 'Eight small judges, each seeing only a line — and together they fence the crossed fires perfectly. The first true mind of the alliance is awake.',
         xp: 100,
       },
+      trace: [
+        {
+          id: 'a8l4t1',
+          code: py`import numpy as np
+
+rng = np.random.default_rng(0)
+draws = rng.integers(0, 10, 5)
+print(draws)
+print(int(draws.sum()))`,
+          q: 'The scrying: a generator seeded with 0 draws five integers in the range [0, 10). What does this working print?',
+          options: [
+            '[8 6 5 2 3]\n24',
+            '[5 0 3 3 7]\n18',
+            '[0 1 2 3 4]\n10',
+            'Five different numbers on every run — the draw is random',
+          ],
+          answer: 0,
+          explain: 'default_rng(0) fixes the whole stream, so the five draws are always '
+            + '[8 6 5 2 3] and their sum is always 24. Seeding is what makes "random" '
+            + 'reproducible — every weight, every dataset in this act is drawn this way. The '
+            + 'fourth option is the trap the entire act was built to refuse.',
+        },
+      ],
       quiz: [
         {
           q: 'Why does a single neuron fail on the crossed-signs (XOR) pattern no matter how it is trained?',
@@ -1889,23 +2070,21 @@ assert "caught 5 of 5" in _stdout, "Report the verdict exactly — print(f\"caug
         + 'readings off the deep-drums\' wire, mostly the mountain\'s own noise. Somewhere in it, '
         + 'three times, the Shadow\'s sappers struck their tunneling rhythm — a rise, a blow, a '
         + 'rise. A dense mind would study all 120 readings at once and need a separate weight '
-        + 'for every position a pattern might occupy — a fresh education for every inch of wire. '
-        + 'The elves build a smaller thing: one tiny eye that knows the rhythm, dragged along '
-        + 'the whole line, asking at every step *is it here? is it here?* One pattern, learned '
-        + 'once, found anywhere. That eye is called a convolution, and it is the last craft this '
-        + 'Codex teaches.',
+        + 'for every position — a fresh education for every inch of wire. The elves build a '
+        + 'smaller thing: one tiny eye that knows the rhythm, dragged along the line, asking at '
+        + 'every step *is it here?* One pattern, learned once, found anywhere. That eye is a '
+        + 'convolution, the last craft this Codex teaches.',
       sections: [
         {
           heading: 'The sliding eye',
           body: 'A **kernel** is a short array of weights — the pattern the eye carries. '
-            + '**Convolution** slides it along the signal: at each position, multiply the kernel '
-            + 'against the window of signal beneath it, sum, and record one number. High output '
-            + 'means *the window resembles the kernel* — a matched pattern resonates.\n\n'
-            + '- The output is called a **feature map**: the pattern\'s echo at every position.\n'
+            + '**Convolution** slides it along the signal: at each position, multiply kernel '
+            + 'against the window beneath it, sum, and record one number. High output means '
+            + '*the window resembles the kernel* — a matched pattern resonates.\n\n'
+            + '- The output is a **feature map**: the pattern\'s echo at every position.\n'
             + '- Sliding a length-k eye along n readings yields `n - k + 1` positions — the '
             + '"valid" length, where the kernel never hangs off an edge.\n\n'
-            + 'The loop is honest and short — write it once by hand and convolution stops being '
-            + 'a mystery forever.',
+            + 'The loop is short — write it once by hand and convolution stops being a mystery.',
           code: py`import numpy as np
 
 def slide(signal, kernel):
@@ -1922,19 +2101,19 @@ print(slide(sig, kernel))    # [ 6. 11.  6.  1.] -- loudest where the bump align
         {
           heading: 'np.convolve, the flip, stride, and padding',
           body: 'NumPy ships the same rite as `np.convolve(signal, kernel, mode="valid")` — with '
-            + 'one ancient trap: mathematical convolution **flips the kernel** before sliding '
-            + '(a convention from signal theory). What deep-learning calls "convolution" is the '
+            + 'one trap: mathematical convolution **flips the kernel** before sliding (a '
+            + 'signal-theory convention). What deep-learning calls "convolution" is the '
             + 'unflipped slide — properly, *cross-correlation*. So to reproduce your `slide` '
             + 'with NumPy, hand it the kernel reversed: `np.convolve(sig, kernel[::-1], '
             + '"valid")`. For symmetric kernels nobody notices; for asymmetric ones the flip '
-            + 'bites. Networks never care — they *learn* the kernel, flipped or not — but your '
-            + 'hand-checks must.\n\n'
+            + 'bites. Networks never care — they *learn* the kernel — but your hand-checks '
+            + 'must.\n\n'
             + 'Two dials every convolutional layer exposes:\n\n'
-            + '- **Stride** — how far the eye steps each time. Stride 1 checks every position; '
-            + 'stride 2 checks every other (`fmap[::2]` after a stride-1 pass), halving the map.\n'
+            + '- **Stride** — how far the eye steps. Stride 1 checks every position; stride 2 '
+            + 'checks every other (`fmap[::2]`), halving the map.\n'
             + '- **Padding** — zeros stitched to the edges (`np.pad(sig, 1)`) so border patterns '
-            + 'are not orphaned; for an odd-length kernel, pad by `k // 2` and the output length matches the input — the '
-            + '"same" mode of the great engines.',
+            + 'are not orphaned; pad an odd kernel by `k // 2` and the output matches the input '
+            + '— the "same" mode of the great engines.',
           code: py`import numpy as np
 
 def slide(signal, kernel):
@@ -1959,21 +2138,18 @@ print(slide(sig, kernel)[::2])                         # [1. 7.] -- stride 2`,
           heading: 'Pooling, and the eye at war',
           body: '**Pooling** downsamples a feature map. Max pooling with window 4 keeps only the '
             + 'loudest response in each block of four — "was the pattern anywhere in this '
-            + 'stretch?" — shrinking the map fourfold while keeping every detection. The '
-            + 'reshape trick does it in one line: trim to a multiple of the window, reshape to '
-            + '`(-1, size)`, take `.max(axis=1)`.\n\n'
-            + 'Below, a war-rehearsal in miniature: the sappers\' motif buried in thirty noisy '
-            + 'readings, hunted with a **matched kernel** — the motif itself, since a pattern '
-            + 'resonates hardest with its own shape. The feature map towers exactly where the '
-            + 'motif hides.\n\n'
-            + 'Why this beats a dense layer for local patterns: the eye is **3 weights, shared '
-            + 'everywhere** — position-independent by construction, and cheap. A dense layer '
-            + 'sees position 11 and position 90 as unrelated worlds and must learn the rhythm '
-            + 'separately at each. But honesty cuts both ways: when the signal is *global* and '
-            + 'order-free — which words appear in a scroll, in any order — locality is no '
-            + 'virtue, and the bag-of-words tribunal from a8l5 beats convolutional eyes at that '
-            + 'war. The craft is matching the mind to the pattern, not worshiping the fancier '
-            + 'mind.',
+            + 'stretch?" — shrinking the map fourfold, every detection kept. The reshape trick '
+            + 'does it in one line: trim to a multiple of the window, reshape to `(-1, size)`, '
+            + 'take `.max(axis=1)`.\n\n'
+            + 'Below, a war-rehearsal: the sappers\' motif buried in noisy readings, hunted with '
+            + 'a **matched kernel** — the motif itself, since a pattern resonates hardest with '
+            + 'its own shape.\n\n'
+            + 'Why this beats a dense layer: the eye is **3 weights, shared everywhere** — '
+            + 'position-independent, and cheap. A dense layer sees positions 11 '
+            + 'and 90 as unrelated and must learn the rhythm at each. But when the signal '
+            + 'is *global* and order-free — which words appear in a scroll — locality buys '
+            + 'nothing, and the bag-of-words tribunal from a8l5 wins. Match the mind to the '
+            + 'pattern, not the fashion.',
           code: py`import numpy as np
 
 def slide(signal, kernel):
@@ -2000,19 +2176,17 @@ print(round(fmap[11], 1))                 # 49.7 -- towering over the noise`,
         },
         {
           heading: 'Beyond the browser-forge',
-          body: 'One dispatch before the last battle, and the only one of its kind in this act. '
-            + 'Beyond this Forge stand the industrial engines — **TensorFlow, Keras, PyTorch** — '
-            + 'and they map one-to-one onto what your hands now know: their Dense layer is your '
-            + '`X @ W + b`, their activations are your masks, their `fit()` is your training '
-            + 'loop, their losses are your MSE and cross-entropy, their Conv layers are your '
-            + 'sliding eye with learned kernels — the same mathematics with autodiff writing the '
-            + 'backward pass and hardware doing the arithmetic. Three duties await you there, '
-            + 'each one sentence here. **Persistence**: a trained mind is its weights — save '
-            + 'them to a file, and it wakes elsewhere without retraining. **Versioning**: record '
-            + 'the data, code, and seed behind every trained mind, or you will one day field a '
-            + 'model no one can rebuild or explain. **Serving**: deployment is loading saved '
-            + 'weights behind an interface that answers prediction requests — the mind becomes '
-            + 'a service the whole army can query.',
+          body: 'One dispatch before the last battle. Beyond this Forge stand the industrial '
+            + 'engines — **TensorFlow, Keras, PyTorch** — and they map one-to-one onto what your '
+            + 'hands now know: their Dense layer is your `X @ W + b`, their activations are your '
+            + 'masks, their `fit()` is your training loop, their losses are your MSE and '
+            + 'cross-entropy, their Conv layers are your sliding eye with learned kernels — the '
+            + 'same mathematics, autodiff writing the backward pass and hardware doing the '
+            + 'arithmetic. Three duties await. **Persistence**: a trained mind '
+            + 'is its weights — save them to a file, and it wakes elsewhere without retraining. '
+            + '**Versioning**: record the data, code, and seed behind every mind, or one day '
+            + 'field a model no one can rebuild. **Serving**: deployment is saved weights behind '
+            + 'an interface that answers requests — the mind becomes a service the army queries.',
           code: py`import numpy as np
 
 # Persistence, in miniature: a mind is its weights.
@@ -2129,6 +2303,31 @@ assert "[20, 55, 90]" in _stdout, "Print the strikes — hits.tolist(), which re
         successText: 'Three towers rise from the noise at 20, 55, and 90. One small eye, three weights, and nowhere on the line left for a sapper to hide.',
         xp: 115,
       },
+      trace: [
+        {
+          id: 'a8l7t1',
+          code: py`import numpy as np
+
+A = np.ones((2, 3))
+B = np.ones((2, 3))
+print("shapes", A.shape, B.shape)
+print(A @ B)`,
+          q: 'The scrying: two (2, 3) arrays are multiplied with @. What becomes of this working?',
+          options: [
+            'It prints the shapes, then a (2, 3) array of sixes',
+            'It prints the shapes, then a (2, 2) array of threes',
+            'It prints the shapes line, then dies of a ValueError — the inner dimensions do not match',
+            'Nothing — Python refuses the program before any line runs',
+          ],
+          answer: 2,
+          raises: 'ValueError',
+          explain: 'Matrix multiplication needs the inner dimensions to agree: (2, 3) @ (2, 3) '
+            + 'tries to contract a 3 against a 2 and cannot. The first print runs — Python '
+            + 'executes top to bottom — then the @ raises ValueError at runtime; it is not a '
+            + 'refusal before the program starts. To multiply you would transpose one operand '
+            + 'to (3, 2). Elementwise sixes would need * on same-shaped arrays, not @.',
+        },
+      ],
       quiz: [
         {
           q: 'A kernel of length 3 slides over a signal of length 120 with no padding, stride 1. How long is the feature map?',
@@ -2207,6 +2406,48 @@ assert "[20, 55, 90]" in _stdout, "Print the strikes — hits.tolist(), which re
     victoryText: 'Your forged mind names the ring, the alliance holds, and the Shadow recoils from the one weapon it cannot learn: a smith who checks.',
     xp: 500,
     flawlessBonus: 50,
+    barks: {
+      intro: [
+        'I am the sum of every mind you have read. Field yours, and I will have read it too.',
+        'You forge in the open. I have already descended the loss of your defiance.',
+      ],
+      hit: [
+        'Another gradient. I learn from your every misstep, and you offer so many.',
+        'You graded your prophecy on the past it was carved from. I never do.',
+        'Your ward thins where you did not check it. I live in what you do not inspect.',
+        'You trusted a curve that flattered you. Flattery is the oldest of my weapons.',
+        'Each error you make is a lesson I keep. I am larger now than when we began.',
+      ],
+      playerFail: [
+        'Your forge coughs and dies. Mine never sleeps.',
+        'The arithmetic refused you. It has never once refused me.',
+        'A broken spell is a weight I need not learn around.',
+      ],
+      lastCandle: [
+        'One candle. I have modeled its flicker and the darkness after it.',
+        'The ring closes. Name it now, or wear it.',
+      ],
+      death: [
+        'You read me to my last wire. There was no deeper secret. There never was.',
+        'A smith who checks. The one weapon I could not learn to become.',
+      ],
+    },
+    premortem: {
+      prompt: 'The muster is already split — 120 souls for the forging, 40 sealed away. Before '
+        + 'the first weight moves, commit to the ORDER of your judgment. Which plan keeps the '
+        + 'verdict honest?',
+      options: [
+        'Train on all 160 souls, then report the accuracy on those same souls.',
+        'Train on the 120 forging rows alone, and judge once on the 40 sealed rows you never touched.',
+        'Judge on the sealed rows first, then keep forging until that number is highest.',
+        'Train and judge on whichever split hands you the larger accuracy.',
+      ],
+      answer: 1,
+      explain: 'The holdout is honest only while it stays sealed until the counting is done. '
+        + 'Forge on the training rows alone; judge once on the sealed rows; never let the '
+        + 'holdout\'s verdict steer the forging. Every other plan grades the mind on a test it '
+        + 'helped write — which is exactly how the Shadow prefers to be measured.',
+    },
     gauntlet: [
       {
         q: 'A court seer\'s degree-15 curve passes through every training point; its holdout error is a thousand times its training error. What is the verdict?',
@@ -2310,6 +2551,13 @@ assert "[20, 55, 90]" in _stdout, "Print the strikes — hits.tolist(), which re
         + '- Define `forward(M)` returning `sigmoid(np.tanh(M @ W1 + b1) @ w2 + b2)`.\n'
         + '- Judge on the sealed rows: `hold_pred = (forward(X_hold) >= 0.5).astype(int)` and '
         + '`holdout_acc = (hold_pred == y_hold).mean()`.\n'
+        + '- **File the written verdict.** Build `findings = {...}` — a dict carrying '
+        + '`"holdout_correct"` (the count of sealed souls judged truly, '
+        + '`int((hold_pred == y_hold).sum())`), `"taken_found"` (the taken — label 1 — caught in '
+        + 'the holdout, `int(((hold_pred == 1) & (y_hold == 1)).sum())`), `"final_loss"` '
+        + '(`round(float(history[-1]), 3)`), and `"verdict"`, one honest sentence (40+ '
+        + 'characters) on whether this mind can be trusted on souls it never trained on, and why '
+        + 'the sealed holdout is what tells you.\n'
         + '- Print `round(holdout_acc, 3)`, then `round(history[-1], 3)`, each on its own line.',
       starter: py`import numpy as np
 
@@ -2343,6 +2591,9 @@ n = 120
 # TODO: define forward(M)
 
 # TODO: hold_pred and holdout_acc — judged on the SEALED rows
+
+# TODO: findings = {...} — holdout_correct, taken_found, final_loss, and a
+#       one-sentence "verdict" (40+ chars) on trusting this mind on unseen souls
 
 # TODO: print round(holdout_acc, 3), then round(history[-1], 3)
 `,
@@ -2392,11 +2643,18 @@ for _ in range(1500):
     b2 -= 0.5 * grad_b2
     history.append(-np.mean(y_train * np.log(p + 1e-9) + (1 - y_train) * np.log(1 - p + 1e-9)))
 
-def forward(M):
+def forward(M: np.ndarray) -> np.ndarray:
     return sigmoid(np.tanh(M @ W1 + b1) @ w2 + b2)
 
 hold_pred = (forward(X_hold) >= 0.5).astype(int)
 holdout_acc = (hold_pred == y_hold).mean()
+
+findings = {
+    "holdout_correct": int((hold_pred == y_hold).sum()),
+    "taken_found": int(((hold_pred == 1) & (y_hold == 1)).sum()),
+    "final_loss": round(float(history[-1]), 3),
+    "verdict": "Judged on the forty sealed souls it never trained on, the mind named every taken one and every loyal one; a holdout this clean is what earns trust, because the ring was learned, not memorized.",
+}
 
 print(round(holdout_acc, 3))
 print(round(history[-1], 3))`,
@@ -2433,7 +2691,16 @@ assert abs(holdout_acc - (_hp == np.asarray(y_hold)).mean()) < 1e-9, "holdout_ac
 assert holdout_acc > 0.9, "The last mind must claim over 90% of the sealed souls (it reaches 1.0). Less means the forging or the judgment went astray."
 assert abs(history[-1] - 0.005513) < 3e-4, "The recorded loss does not match a forging on the 120 training rows alone — the sealed rows must have stayed sealed. Train only on X_train and y_train; X_hold exists to be judged, never learned from."
 assert "1.0" in _stdout, "Print the sealed verdict first — round(holdout_acc, 3), which is 1.0."
-assert "0.006" in _stdout, "Print the final loss — round(history[-1], 3), which is 0.006."`,
+assert "0.006" in _stdout, "Print the final loss — round(history[-1], 3), which is 0.006."
+assert "findings" in dir() and isinstance(findings, dict), "The council demands a written verdict — build findings = {...}, a dict carrying your numbers and your reading. A forge with no findings is a mind fielded on faith."
+for _k in ("holdout_correct", "taken_found", "final_loss", "verdict"):
+    assert _k in findings, "findings is missing the key '" + _k + "' — the verdict must carry holdout_correct, taken_found, final_loss, and a prose verdict."
+assert int(findings["holdout_correct"]) == 40, "findings['holdout_correct'] must be the count of sealed souls judged truly — all 40 here: int((hold_pred == y_hold).sum())."
+assert int(findings["taken_found"]) == 24, "findings['taken_found'] must count the taken (label 1) caught in the sealed holdout — 24 of them: int(((hold_pred == 1) & (y_hold == 1)).sum())."
+assert abs(float(findings["final_loss"]) - round(float(history[-1]), 3)) < 1e-6, "findings['final_loss'] must be the forge's final training loss, round(history[-1], 3) = 0.006."
+_verdict = str(findings["verdict"]).lower()
+assert len(_verdict) >= 40, "findings['verdict'] must be a real sentence (40+ characters) — say plainly whether this mind can be trusted on souls it never trained on, and why the sealed holdout is what tells you."
+assert any(_kw in _verdict for _kw in ("hold", "seal", "unseen", "taken", "loyal", "ring", "trust", "honest", "generaliz", "train", "judge", "forge")), "findings['verdict'] must speak to the holdout — why judging on the sealed souls, not the forged ones, is what earns this mind its trust."`,
       successText: '',
       xp: 0,
     },
@@ -2502,6 +2769,10 @@ assert "0.006" in _stdout, "Print the final loss — round(history[-1], 3), whic
     {
       term: 'pooling',
       def: 'Downsampling a feature map between layers — max pooling keeps only the strongest response per window (`x[:usable].reshape(-1, size).max(axis=1)`), shrinking the map while preserving detections at the cost of exact position.',
+    },
+    {
+      term: 'gradient sign error',
+      def: 'The training-loop bug where each update ADDS the gradient (`w += lr*grad`) instead of subtracting it — the gradient points uphill, so every step climbs the loss the descent was meant to lower, and the program prints as if training while the loss quietly explodes toward inf. The mend is one sign per parameter: `w -= lr*grad`.',
     },
   ],
 };

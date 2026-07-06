@@ -37,7 +37,7 @@ export default {
   lessons: [ /* exactly 7 lesson objects, see §3 */ ],
   boss: { /* see §4 */ },
   codex: [ { term: 'print()', def: 'one-sentence plain definition, markdown-lite' }, ... ],
-                            // 10–16 entries covering the act's Python vocabulary
+                            // 10–17 entries covering the act's Python vocabulary
 };
 ```
 
@@ -481,7 +481,7 @@ Laws:
 
 ## 11. Hard checklist per act (validated mechanically)
 
-- Exactly 7 lessons, ids `aNl1..aNl7`; one boss; 10–16 codex entries.
+- Exactly 7 lessons, ids `aNl1..aNl7`; one boss; 10–17 codex entries (17th earned by a cursed scroll's true name).
 - Every challenge: solution passes its own validation in CPython 3.11.
 - Every quiz question: exactly 4 options, `answer` in 0..3, non-empty `explain`.
 - No `input(`, no backticks, no `${` inside any `py` field.
@@ -502,3 +502,38 @@ Laws:
   never executed), checklist 3–8 with stable slug ids, xp 60–120; any
   `download` names a `.py` file, carries `fallbackCanon: true`, and its
   `fromWorking` (if named) resolves to a real working.
+
+## 12. Warden barks & the pre-mortem (optional `boss.barks`, `boss.premortem`)
+
+The arena engine reads two optional boss fields; both are pure flavor and
+counsel — neither gates, scores, nor pays XP. Their absence is silence, and
+silence is valid.
+
+```js
+boss: {
+  // ...existing boss fields...
+  barks: {
+    intro: ['...'],        // optional, 1–3 lines, spoken at the reveal
+    hit: ['...'],          // 4–6 — the warden struck true (learner erred)
+    playerFail: ['...'],   // 3–4 — a casting failed in the forge
+    lastCandle: ['...'],   // 2–3 — the learner stands at one life
+    death: ['...'],        // 2–3 — the warden falls
+  },
+  premortem: {
+    prompt: '...',         // one planning question, asked before gauntlet 1
+    options: ['...', '...', '...', '...'],
+    answer: 0,
+    explain: '...',        // optional — the Warden's correction on a miss
+  },
+}
+```
+
+Laws:
+- Barks are the warden's OWN voice — in-character for that act's boss,
+  menacing, never mocking the learner's craft directly ("Your wards thin"
+  yes; "you are stupid" never). Each line ≤ 120 characters; no markdown.
+- `hit`/`playerFail`/`lastCandle`/`death` are all REQUIRED once `barks`
+  exists; `intro` is optional. Line counts are validator-enforced.
+- The premortem is a decomposition question about the coming fight's PLAN
+  (what order, what to verify first), not a quiz item in disguise — its
+  answer must not leak a gauntlet answer. Never shown in ordeal mode.

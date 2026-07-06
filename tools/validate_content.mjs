@@ -112,8 +112,8 @@ curriculum.acts.forEach((act, ai) => {
   if (!Array.isArray(act.lessons) || act.lessons.length !== 7) {
     err(`${aw}: expected exactly 7 lessons, got ${act.lessons?.length}`);
   }
-  if (!Array.isArray(act.codex) || act.codex.length < 10 || act.codex.length > 16) {
-    err(`${aw}: codex needs 10–16 entries, got ${act.codex?.length}`);
+  if (!Array.isArray(act.codex) || act.codex.length < 10 || act.codex.length > 17) {
+    err(`${aw}: codex needs 10–17 entries, got ${act.codex?.length}`);
   }
   (act.codex || []).forEach((c, i) => {
     if (!c.term || !c.def) err(`${aw} codex[${i}]: missing term/def`);
@@ -248,6 +248,40 @@ curriculum.acts.forEach((act, ai) => {
   });
   totalXp += (boss.xp || 0) + (boss.flawlessBonus || 0);
   coreXp += (boss.xp || 0) + (boss.flawlessBonus || 0);
+
+  // ---- warden barks + premortem: optional arena flavor (spec §12) ----
+  if (boss.barks !== undefined) {
+    const BARK_BOUNDS = { intro: [1, 3], hit: [4, 6], playerFail: [3, 4], lastCandle: [2, 3], death: [2, 3] };
+    for (const k of Object.keys(boss.barks)) {
+      if (!BARK_BOUNDS[k]) err(`${bw}.barks: unknown key ${k}`);
+    }
+    for (const [k, [lo, hi]] of Object.entries(BARK_BOUNDS)) {
+      const lines = boss.barks[k];
+      if (lines === undefined) {
+        if (k !== 'intro') err(`${bw}.barks: missing ${k}`);
+        continue;
+      }
+      if (!Array.isArray(lines) || lines.some((l) => typeof l !== 'string' || !l.trim())) {
+        err(`${bw}.barks.${k}: must be an array of non-empty strings`);
+      } else if (lines.length < lo || lines.length > hi) {
+        err(`${bw}.barks.${k}: ${lines.length} lines outside ${lo}–${hi}`);
+      }
+    }
+  }
+  if (boss.premortem !== undefined) {
+    const pm = boss.premortem;
+    if (!pm.prompt || typeof pm.prompt !== 'string') err(`${bw}.premortem: missing prompt`);
+    if (!Array.isArray(pm.options) || pm.options.length !== 4
+        || pm.options.some((o) => typeof o !== 'string' || !o.trim())) {
+      err(`${bw}.premortem: options must be 4 non-empty strings`);
+    }
+    if (!Number.isInteger(pm.answer) || pm.answer < 0 || pm.answer > 3) {
+      err(`${bw}.premortem: answer ${pm.answer} out of range`);
+    }
+    if (pm.explain !== undefined && (typeof pm.explain !== 'string' || !pm.explain.trim())) {
+      err(`${bw}.premortem: explain must be a non-empty string when present`);
+    }
+  }
 
   // ---- great working: optional post-boss staged project (spec §9) ----
   if (act.working !== undefined) {
